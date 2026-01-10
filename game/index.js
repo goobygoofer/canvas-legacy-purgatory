@@ -1,24 +1,19 @@
-//include spritesheet to draw from
 const spriteSheet = new Image();
 spriteSheet.src = 'spritesheet-0.5.18.png';
 const canvas = document.getElementById('disp');
 const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = true;//this got rid of those nasty white lines
-//however, maybe client can enable them to have a grid? *shrugs*
+ctx.imageSmoothingEnabled = true;//toggle to enable grid? *shrugs*
 
 const socket = io({reconnection : false});
 const form = document.getElementById('form');
 const input = document.getElementById('input');
 const messages = document.getElementById('messages');
 
-// Handle form submission
 form.addEventListener('submit', (e) => {
     e.preventDefault();
     const message = input.value.trim();
     if (message) {
-        // Emit the message to the server
         socket.emit('chat message', message);
-        // Clear the input
         input.value = '';
     }
 });
@@ -49,7 +44,6 @@ const keystate = {
   lastInput: Date.now()
 };
 
-//player input
 document.addEventListener("keydown", onKeyDown);
 document.addEventListener("keyup", onKeyUp);
 
@@ -64,7 +58,7 @@ function onKeyDown(e) {
   if (e.key === ' ') {
     const active = document.activeElement;
     if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') {
-      return; // do nothing
+      return;
     }
     layTile();
     return;
@@ -74,7 +68,6 @@ function onKeyDown(e) {
   emitInputSwitch=true;
   keystate[key] = true;
   keystate.lastInput = Date.now();
-  //emitInput();
 }
 
 function onKeyUp(e) {
@@ -121,7 +114,7 @@ canvas.addEventListener("click", (e) => {
 });
 
 canvas.addEventListener("contextmenu", (e) => {
-  e.preventDefault(); // prevent default context menu
+  e.preventDefault();//prevent default context menu (right click options)
   const rect = canvas.getBoundingClientRect();
 
   const scaleX = canvas.width / rect.width;
@@ -155,14 +148,12 @@ function handleClick(mouseX, mouseY, leftRight) {
 
   const subX = Math.floor(pixelInTileX / 8);
   const subY = Math.floor(pixelInTileY / 8);
-  //console.log("Clicked tile:", worldTileX, worldTileY);
-  //console.log(`on pixel ${subX}, ${subY}`);
+
   console.log(`palette: ${palette.value}`);
   let data = {x:worldTileX, y:worldTileY, subX:subX, subY:subY, c:Number(palette.value), btn:leftRight};//change c(color) to picker val
   socket.emit('paint', data);
 }
 
-//listen for incoming messages
 socket.on('chat message', (data) => {
   const { user, message } = data;
   messages.innerHTML += `<div><strong>${user}:</strong> ${message}</div>`;
@@ -182,8 +173,6 @@ let playerData = {
 };
 
 socket.on('playerState', (data)=> {
-  //console.log(data.x);
-  //console.log(data.y);
   playerData.x=data.x;
   playerData.y=data.y;
 });
@@ -196,7 +185,6 @@ socket.on('updateChunk', (data) => {
     console.log("received new chunk");
     //data is map chunk
     //send to another fxn that builds it on the clients canvas element
-    //updateView(data);
     latestView = data;
     chunkNeedsRender = true;
     /*
@@ -227,7 +215,7 @@ function updateView(data){
         j*32, i*32, 32, 32
       );
       //draw pixels
-      ctx.fillStyle = "black";//change to number from map, get color code from COLOR_PALLETE
+     
       let subTile = data[i][j].data.pixels;
       for (let y in subTile){
         for (let x in subTile[y]){
@@ -297,18 +285,7 @@ function updateDraw(now) {
   requestAnimationFrame(updateDraw);
 }
 requestAnimationFrame(updateDraw);
-//admin only! use only for production, do not deploy this code to server
-//however if players are going to build stuff, some of this code
-//will probably be useful for user client
 
-const select = document.getElementById("tileSelect");
-
-Object.keys(base_tiles).forEach(key => {
-  const option = document.createElement("option");
-  option.value = key;
-  option.textContent = key;
-  select.appendChild(option);
-});
 
 const COLOR_PALETTE = {
   0: { name: "Black", hex: "#000000" },
@@ -333,17 +310,30 @@ Object.keys(COLOR_PALETTE).forEach(key => {
   const color = COLOR_PALETTE[key];
   const option = document.createElement("option");
   console.log(key);
-  option.value = key;      // store hex directly
-  option.textContent = color.name; // just show the name
+  option.value = key;
+  option.textContent = color.name;
   palette.appendChild(option);
 });
 
 const preview = document.getElementById("colorPreview");
 preview.style.backgroundColor = palette.value;
 
-// Update preview when selection changes
 palette.addEventListener("change", () => {
   preview.style.backgroundColor = COLOR_PALETTE[palette.value].hex;
+});
+
+/*
+//admin only! use only for production, do not deploy this code to server
+//however if players are going to build stuff, some of this code
+//will probably be useful for user client
+
+const select = document.getElementById("tileSelect");
+
+Object.keys(base_tiles).forEach(key => {
+  const option = document.createElement("option");
+  option.value = key;
+  option.textContent = key;
+  select.appendChild(option);
 });
 
 function layTile(){
@@ -360,3 +350,4 @@ function layTile(){
 function saveMap(){
   socket.emit('saveMap');
 }
+*/
