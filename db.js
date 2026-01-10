@@ -13,10 +13,10 @@ const db = mysql.createPool({
 */
 
 const db = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
   password: process.env.SQL_SECRET,
-  database: 'draw_battle',
+  database: process.env.DB_NAME,
   connectionLimit: 10,
   charset: 'utf8mb4'
 });
