@@ -4,7 +4,10 @@ const canvas = document.getElementById('disp');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = true;//toggle to enable grid? *shrugs*
 
-const socket = io('http://45.55.36.171:3000', {reconnection : false});
+//const socket = io('http://45.55.36.171:3000', {reconnection : false});
+const socket = io(window.location.origin, {
+  reconnection: false
+});
 const form = document.getElementById('form');
 const input = document.getElementById('input');
 const messages = document.getElementById('messages');
