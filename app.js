@@ -139,7 +139,13 @@ function initPlayer(name){//maybe make a player template for easier changes
       console.error(err.message);
       return;
     }
-    p_coords = JSON.parse(result[0].coords);
+    if (!result.length || !result[0].coords) {
+      // No player found yet — maybe set default coordinates
+      p_coords = [49, 49]; // or whatever starting coords you want
+      return;
+    } else {
+      p_coords = JSON.parse(result[0].coords);
+    }
     console.log(p_coords);
     players[name] = {
     coords: p_coords,
