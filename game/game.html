@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Canvas Legacy: Purgatory</title>
+  <style>
+  body {
+    margin: 0;
+    padding: 20px;
+    font-family: Arial, sans-serif;
+    font-size: 10px;
+  }
+  #disp {
+    width: 640px;
+    height: 320px;
+    border: 1px solid black; /* optional, for visibility */
+  }
+  #messages {
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    margin-bottom: 20px;
+    border: 1px solid #ddd;
+    padding: 5px;
+    height: 100px;
+    width: 300px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-all;
+    white-space: pre-wrap;
+    }
+    #messages li {
+      padding: 5px 16px;
+      border-bottom: 1px solid #eee;
+      display: block;
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-all;
+      white-space: pre-wrap;
+    }
+    #messages li:last-child {
+      border-bottom: none;
+    }
+    #form {
+      display: flex;
+      margin-top: 10px;
+    }
+    #input {
+      padding: 5px;
+      font-size: 10px;
+      width: 220px;
+    }
+    button {
+      padding: 10px 20px;
+      background: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin-left: 10px;
+      }
+    button:hover {
+      background: #45a049;
+    }
+    #bottom-row {
+      display: flex;
+      align-items: flex-start;
+      width: 640px;
+      margin-top: 10px;
+    }
+
+    #chat-column {
+      width: 300px;
+    }
+
+    #side-column {
+      margin-left: auto;
+      display: flex;
+      align-self: stretch;
+      justify-content: flex-end;
+      align-items: flex-end;
+    }
+  </style>
+</head>
+<body>
+<canvas id="disp" width="640" height="320"></canvas>
+
+<div id="bottom-row">
+  <div id="chat-column">
+    <ul id="messages"></ul>
+    <form id="form" action="#">
+      <input id="input" autocomplete="off" placeholder="Type your message..." />
+      <button>Send</button>
+    </form>
+  </div>
+  <div id="side-column">
+    <div>
+      <h3>palette</h3>
+      <select id="colorSelect"></select>
+    </div>
+    <div>
+      <h3>select tile</h3>
+      <select id="tileSelect"></select>
+      <span id="colorPreview" style="
+          display:inline-block;
+          width:20px;
+          height:20px;
+          border:1px solid #000;
+          vertical-align:middle;
+          margin-left:5px;">
+      </span>
+    </div>
+    <button type="button" id="saveMapBtn" onclick="saveMap()">save map</button>
+    <button type="button" id="logoutBtn" onclick="logout()">Logout</button>
+  </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="base_tiles.js"></script>
+  <script src="index.js"></script>
+  
+</body>
+</html>
