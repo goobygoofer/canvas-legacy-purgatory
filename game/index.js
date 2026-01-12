@@ -2,7 +2,7 @@ const spriteSheet = new Image();
 spriteSheet.src = 'spritesheet-0.5.18.png';
 const canvas = document.getElementById('disp');
 const ctx = canvas.getContext('2d');
-ctx.imageSmoothingEnabled = true;//toggle to enable grid? *shrugs*
+ctx.imageSmoothingEnabled = false;//toggle to enable grid? *shrugs*
 
 const socket = io(window.location.origin, {
   reconnection: false
