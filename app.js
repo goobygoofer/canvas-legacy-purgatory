@@ -383,14 +383,9 @@ function checkCollision(coords){
   //check objects on potential tile
   //come back to this when tiles have an object key
   for (obj in map.Map[coords[1]][coords[0]].data.objects){
-    try {
         if (baseTiles[map.Map[coords[1]][coords[0]].data.objects[obj].name].collision===true){
         return true;
       }
-    } catch(err){
-      map.Map[coords[1]][coords[0]].data.objects={};
-    }
-
   }
   return false; 
 }

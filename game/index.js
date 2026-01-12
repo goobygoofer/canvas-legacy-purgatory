@@ -116,7 +116,7 @@ function logout(){
   location.reload();
   return false;
 }
-
+/*
 canvas.addEventListener("click", (e) => {
   const rect = canvas.getBoundingClientRect();
 
@@ -171,6 +171,76 @@ function handleClick(mouseX, mouseY, leftRight) {
   console.log(`palette: ${palette.value}`);
   let data = {x:worldTileX, y:worldTileY, subX:subX, subY:subY, c:Number(palette.value), btn:leftRight};//change c(color) to picker val
   socket.emit('paint', data);
+}
+*/
+//let painting = false;
+let currentButton = "left"; // Track left or right mouse button
+
+// When mouse button is pressed
+canvas.addEventListener("mousedown", (e) => {
+  e.preventDefault(); // prevent right-click menu
+  painting = true;
+  currentButton = e.button === 2 ? "right" : "left"; // 0 = left, 2 = right
+  paintAtMouse(e);
+});
+
+// When mouse moves
+canvas.addEventListener("mousemove", (e) => {
+  if (!painting) return;
+  paintAtMouse(e);
+});
+
+// When mouse button is released
+canvas.addEventListener("mouseup", () => {
+  painting = false;
+});
+
+// Prevent right-click menu
+canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+function paintAtMouse(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+
+  const mouseX = (e.clientX - rect.left) * scaleX;
+  const mouseY = (e.clientY - rect.top) * scaleY;
+
+  handleClick(mouseX, mouseY, currentButton);
+}
+
+function handleClick(mouseX, mouseY, leftRight) {
+  const tilesAcross = 20;
+  const tilesDown = 10;
+
+  const viewCenterX = Math.floor(tilesAcross / 2);
+  const viewCenterY = Math.floor(tilesDown / 2);
+
+  const tileOffsetX = Math.floor(mouseX / 32);
+  const tileOffsetY = Math.floor(mouseY / 32);
+
+  const topLeftTileX = playerData.x - viewCenterX;
+  const topLeftTileY = playerData.y - viewCenterY;
+
+  const worldTileX = topLeftTileX + tileOffsetX;
+  const worldTileY = topLeftTileY + tileOffsetY;
+
+  const pixelInTileX = mouseX % 32;
+  const pixelInTileY = mouseY % 32;
+
+  const subX = Math.floor(pixelInTileX / 8);
+  const subY = Math.floor(pixelInTileY / 8);
+
+  let data = {
+    x: worldTileX,
+    y: worldTileY,
+    subX: subX,
+    subY: subY,
+    c: Number(palette.value),
+    btn: leftRight
+  };
+
+  socket.emit("paint", data);
 }
 
 socket.on('chat message', (data) => {
