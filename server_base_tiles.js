@@ -1,5 +1,6 @@
 
 module.exports = {
+    "chatDots":{"x":80, "y":626},
     "spiderL":{"x":112, "y":240},
     "heartContainer":{"x":128, "y":528},
     "staminaPot":{"x":64, "y":1072},
@@ -30,15 +31,15 @@ module.exports = {
     "cutGrass":{"x":128, "y":48},//when grass2 gets cut
     "snow":{"x":208, "y":528},//
     "tree":{"x":16, "y":0, "collision":true},//
-    "oak":{"x":128, "y":1104},//
-    "deadtree":{"x":48, "y":464},//
-    "snowtree":{"x":176, "y":544},//
-    "rock":{"x":176, "y":0},//
+    "oak":{"x":128, "y":1104, "collision":true},//
+    "deadtree":{"x":48, "y":464, "collision":true},//
+    "snowtree":{"x":176, "y":544, "collision":true},//
+    "rock":{"x":176, "y":0, "collision":true},//
     "water":{"x":0, "y":48, "collision":true},//
     "flower1":{"x":16, "y":48},//
     "flower2":{"x":64, "y":48},//
     "flower3":{"x":112, "y":48},//
-    "mushroom":{"x":80, "y":256},//
+    "mushroom":{"x":80, "y":256, "collision":true},//
     "rupee":{"x":64, "y":800},//need to change this sprite to look more like a rupee
     //paths
     "pathHORIZ":{"x":0, "y":544},//
@@ -53,23 +54,23 @@ module.exports = {
     "pathCRV3":{"x":144, "y":544},//
     "pathCRV4":{"x":160, "y":544},//
     //stuff
-    "grave":{"x":32, "y":160},//
-    "stoneblock":{"x":288, "y":0},//
-    "woodblock":{"x":112, "y":0},//
+    "grave":{"x":32, "y":160, "collision":true},//
+    "stoneblock":{"x":288, "y":0, "collision":true},//
+    "woodblock":{"x":112, "y":0, "collision":true},//
     "stump1":{"x":192, "y":448},
     "stump2":{"x":64, "y":1120},
     "stump3":{"x":80, "y":1120},
     "campfire":{"x":32, "y":384},//
     "rain":{"x":144, "y":432},//
-    "fenceV":{"x":0, "y":160},
-    "fenceH":{"x":16, "y":160},
+    "fenceV":{"x":0, "y":160, "collision":true},
+    "fenceH":{"x":16, "y":160, "collision":true},
     "sand":{"x":16, "y":64},
     "boulder":{"x":144, "y":1232},
     "rockpile":{"x":304, "y":1072},
     "mapsign":{"x":16, "y":176},
     "bed":{"x":128, "y":112},
-    "cactus":{"x":160, "y":48},
-    "ankh":{"x":128, "y":96},
+    "cactus":{"x":160, "y":48, "collision":true},
+    "ankh":{"x":128, "y":96, "collision":true},
     "chest":{"x":32, "y":128},
     "woodplate":{"x":112, "y":80},
     "stoneplate":{"x":128, "y":80},
@@ -115,8 +116,8 @@ module.exports = {
     "portalfish":{"x":224, "y":480},
     "cookedfish":{"x":272, "y":480},
     "bobber":{"x":304, "y":480},
-    "chest2":{"x":240, "y":816},
-    "web":{"x":208, "y":400},
+    "chest2":{"x":240, "y":816, "collision":true},
+    "web":{"x":208, "y":400, "collision":true},
     "raft":{"x":128, "y":1264},
     "sail":{"x":144, "y":1264},//draw raft > pla"y"er > sail
     "key":{"x":16, "y":848},
@@ -164,7 +165,7 @@ module.exports = {
     "urShad":{"x":304, "y":352},
     "llShad":{"x":288, "y":369},
     "lrShad":{"x":304, "y":368},
-    //projectiles -- all these have up down left right, "y":bit bulk"y" but makes easier in Projectile f"x"n
+    //projectiles -- all these have up down left right
     "arrowup":{"x":208, "y":240},
     "arrowdown":{"x":224, "y":240},
     "arrowleft":{"x":240, "y":240},

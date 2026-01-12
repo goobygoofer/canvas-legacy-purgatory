@@ -11,6 +11,17 @@ function save_map(map) {
   }
 }
 
+function persist_map(map){
+  var jsonMap = JSON.stringify(map);
+  const filePath = 'blank_map.json';
+  try {
+    fs.writeFileSync(filePath, jsonMap);
+    console.log('JSON data saved to file successfully.');
+  } catch (error) {
+    console.error('Error writing JSON data to file:', error);
+  }
+}
+
 function generate_Chunk(coords){//coords is [x,y], pulled from player x and player y in database
   const chunk = [];
   for (let y = coords[1] - 5; y <= coords[1] + 5; y++) {
@@ -25,5 +36,6 @@ function generate_Chunk(coords){//coords is [x,y], pulled from player x and play
 
 module.exports = {
     save: save_map,
+    persist: persist_map,
     chunk: generate_Chunk
 }

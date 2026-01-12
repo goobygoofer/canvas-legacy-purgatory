@@ -22,12 +22,14 @@ form.addEventListener('submit', (e) => {
 });
 
 let typingTimeout;
+let isTyping=false;
 
 input.addEventListener('input', () => {
   socket.emit('typing');
-
+  isTyping=true;
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => {
+    isTyping = false;
     socket.emit('stopTyping');
   }, 1000);
 });
@@ -36,7 +38,16 @@ const keys = {
   ArrowLeft:  "left",
   ArrowRight: "right",
   ArrowUp:    "up",
-  ArrowDown:  "down"
+  ArrowDown:  "down",
+  w: "up",
+  s: "down",
+  a: "left",
+  d: "right",
+  W: "up",
+  S: "down",
+  A: "left",
+  D: "right"
+
 };
 
 const keystate = {
@@ -57,7 +68,9 @@ window.addEventListener("keydown", e => {
 });
 
 function onKeyDown(e) {
+  if (document.activeElement === input) return;
   //remove for, for admin only
+  /*
   if (e.key === ' ') {
     const active = document.activeElement;
     if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') {
@@ -66,6 +79,7 @@ function onKeyDown(e) {
     layTile();
     return;
   }
+  */
   const key = keys[e.key];
   if (!key) return;
   emitInputSwitch=true;
@@ -146,12 +160,15 @@ function handleClick(mouseX, mouseY, leftRight) {
   const worldTileX = topLeftTileX + tileOffsetX;
   const worldTileY = topLeftTileY + tileOffsetY;
 
+  if (painting===false){
+    return;
+  }
+
   const pixelInTileX = mouseX % 32;
   const pixelInTileY = mouseY % 32;
 
   const subX = Math.floor(pixelInTileX / 8);
   const subY = Math.floor(pixelInTileY / 8);
-
   console.log(`palette: ${palette.value}`);
   let data = {x:worldTileX, y:worldTileY, subX:subX, subY:subY, c:Number(palette.value), btn:leftRight};//change c(color) to picker val
   socket.emit('paint', data);
@@ -306,6 +323,16 @@ const COLOR_PALETTE = {
   12: { name: "Gray", hex: "#808080" }
 };
 
+
+let painting = false;
+function togglePaint(){
+  if (painting===false){
+    painting=true;
+  } else {
+    painting=false;
+  }
+}
+
 const palette = document.getElementById("colorSelect");
 
 
@@ -325,11 +352,12 @@ palette.addEventListener("change", () => {
   preview.style.backgroundColor = COLOR_PALETTE[palette.value].hex;
 });
 
-/*
+
 //admin only! use only for production, do not deploy this code to server
 //however if players are going to build stuff, some of this code
 //will probably be useful for user client
 
+/*
 const select = document.getElementById("tileSelect");
 
 Object.keys(base_tiles).forEach(key => {

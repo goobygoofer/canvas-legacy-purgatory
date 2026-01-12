@@ -31,10 +31,10 @@ base_tiles = {
     "cutGrass":{"x":128, "y":48},//when grass2 gets cut
     "snow":{"x":208, "y":528},//
     "tree":{"x":16, "y":0, "collision":true},//
-    "oak":{"x":128, "y":1104},//
+    "oak":{"x":128, "y":1104, "collision":true},//
     "deadtree":{"x":48, "y":464},//
     "snowtree":{"x":176, "y":544},//
-    "rock":{"x":176, "y":0},//
+    "rock":{"x":176, "y":0, "collision":true},//
     "water":{"x":0, "y":48, "collision":true},//
     "flower1":{"x":16, "y":48},//
     "flower2":{"x":64, "y":48},//
@@ -165,7 +165,7 @@ base_tiles = {
     "urShad":{"x":304, "y":352},
     "llShad":{"x":288, "y":369},
     "lrShad":{"x":304, "y":368},
-    //projectiles -- all these have up down left right, "y":bit bulk"y" but makes easier in Projectile f"x"n
+    //projectiles -- all these have up down left right
     "arrowup":{"x":208, "y":240},
     "arrowdown":{"x":224, "y":240},
     "arrowleft":{"x":240, "y":240},

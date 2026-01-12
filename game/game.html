@@ -9,9 +9,16 @@
     font-family: Arial, sans-serif;
     font-size: 10px;
   }
+  #page {
+  width: fit-content;
+  margin: 0 auto;
+  }
   #disp {
     width: 640px;
     height: 320px;
+    border: 1px solid black;
+  }
+  #palette {
     border: 1px solid black;
   }
   #messages {
@@ -22,13 +29,14 @@
     border: 1px solid #ddd;
     padding: 5px;
     height: 100px;
-    width: 300px;
+    width: 260px;
     overflow-y: auto;
     overflow-x: hidden;
     max-width: 100%;
     overflow-wrap: anywhere;
     word-break: break-all;
     white-space: pre-wrap;
+    background: "#ffffff";
     }
     #messages li {
       padding: 5px 16px;
@@ -45,6 +53,7 @@
     #form {
       display: flex;
       margin-top: 10px;
+      background: "#ffffff";
     }
     #input {
       padding: 5px;
@@ -53,39 +62,41 @@
     }
     button {
       padding: 10px 20px;
-      background: #4CAF50;
+      background: darkolivegreen;
       color: white;
       border: none;
       cursor: pointer;
       margin-left: 10px;
       }
     button:hover {
-      background: #45a049;
+      background: olive;
     }
-    #bottom-row {
-      display: flex;
-      align-items: flex-start;
-      width: 640px;
-      margin-top: 10px;
-    }
-
     #chat-column {
       width: 300px;
+    }
+
+    #bottom-row {
+      display: flex;
+      width: 640px;
+      align-items: flex-start;
     }
 
     #side-column {
       margin-left: auto;
       display: flex;
-      align-self: stretch;
+      flex-direction: row;
       justify-content: flex-end;
       align-items: flex-end;
+      /*gap: 10px;*/
+      outline: 1px solid black;
     }
   </style>
 </head>
-<body>
+<body style="background-color:black">
+  <div id="page">
 <canvas id="disp" width="640" height="320"></canvas>
 
-<div id="bottom-row">
+<div id="bottom-row" style="background-color:burlywood">
   <div id="chat-column">
     <ul id="messages"></ul>
     <form id="form" action="#">
@@ -95,28 +106,33 @@
   </div>
   <div id="side-column">
     <div>
-      <h3>palette</h3>
-      <select id="colorSelect"></select>
+      <canvas id="palette" width="260" height="127"></canvas>"
+      <button type="button" id="logoutBtn" onclick="logout()">Logout</button>
     </div>
     <div>
-      <h3>select tile</h3>
-      <select id="tileSelect"></select>
+      <button type="button" id="togglePaintBtn" onclick="togglePaint()">Paint</button>
+       pick paint<select id="colorSelect">palette</select>
+    </div>
+   
+    <div>
+    <!--   <select id="tileSelect"></select> --->
       <span id="colorPreview" style="
           display:inline-block;
-          width:20px;
-          height:20px;
+          width:4px;
+          height:4px;
           border:1px solid #000;
           vertical-align:middle;
-          margin-left:5px;">
+          margin-left:0px;">
       </span>
     </div>
-    <button type="button" id="saveMapBtn" onclick="saveMap()">save map</button>
-    <button type="button" id="logoutBtn" onclick="logout()">Logout</button>
+   
+    <!---<button type="button" id="saveMapBtn" onclick="saveMap()">save map</button>--->
   </div>
+  <!--<button type="button" id="logoutBtn" onclick="logout()">Logout</button>-->
   </div>
   <script src="/socket.io/socket.io.js"></script>
   <script src="base_tiles.js"></script>
   <script src="index.js"></script>
-  
+</div>
 </body>
 </html>

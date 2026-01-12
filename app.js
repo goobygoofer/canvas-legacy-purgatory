@@ -155,7 +155,8 @@ function initPlayer(name){//maybe make a player template for easier changes
     lastMove: Date.now(),
     typing: {"state": false, "lastSpot":{x:0, y:0}},
     lastChunk: null,//last chunk of map received by client, hopefully works
-    lastChunkSum: null
+    lastChunkSum: null,
+    lastChunkKey: null
     };
     map.Map[p_coords[1]][p_coords[0]].data.players[name] = {
       sprite: players[name].sprite
@@ -170,6 +171,8 @@ function cleanupPlayer(name){
   delete map.Map[players[name].coords[1]][players[name].coords[0]].data.players[name];
   markTileChanged(players[name].coords[0], players[name].coords[1]);
   //save players coords to database
+  dbPlayerCoords(name);
+  /*
   const sql = `UPDATE players SET x = ?, y = ? WHERE player_name = ?`;
   db.query(sql, [players[name].coords[0], players[name].coords[1], name], (err, result) => {
     if (err) {
@@ -181,9 +184,23 @@ function cleanupPlayer(name){
       return;
     }
   });
+  */
   delete players[name];
 }
 
+function dbPlayerCoords(name) {
+  const sql = `UPDATE players SET x = ?, y = ? WHERE player_name = ?`;
+  db.query(sql, [players[name].coords[0], players[name].coords[1], name], (err, result) => {
+    if (err) {
+      console.error('Error updating player position:', err);
+      return;
+    }
+    if (result.affectedRows === 0) {
+      console.warn(`No player found with name: ${name}`);
+      return;
+    }
+  });
+}
 // Add player
 function addPlayer(name, pass, callback) {
   db.query("INSERT INTO players (player_name, pass, x, y) VALUES (?, ?, ?, ?)", [name, pass, 49, 49], (err) => {
@@ -200,50 +217,72 @@ function checkPassword(input, actual) {
   return input === actual;
 }
 
+function mapPersist(){
+  map.Fxn.persist(map.Map);
+  //loop through active players and save their coords to db
+  for (p in players){
+    console.log(`${p}'s coords saved...`);
+    dbPlayerCoords(p);//should work?
+  }
+}
+
 function addToMap(name, x, y){//this for map building
   map.Map[y][x].data.objects[name] = {"name":name};
   markTileChanged(x, y);
   console.log(map.Map[y][x].data.objects);
 }
 
+function clearTile(x, y){//this for map building
+  map.Map[y][x].data['base-tile']="grass";
+  map.Map[y][x].data['collision']=false;
+  map.Map[y][x].data.objects = {};
+  markTileChanged(x, y);
+  console.log(map.Map[y][x].data.objects);
+}
+/*
+                "base-tile": "water",
+                "collision": false,
+                "players": {},
+                "objects": {},
+                "typing": false,
+                "version": 0,
+*/
+
+
 function mapUpdate() {
   if (Object.keys(players).length === 0) return;
 
   for (const p in players) {
     const player = players[p];
-
+    if (!player.sock_id) continue;
     io.to(players[p].sock_id).emit('playerState', {
         x: player.coords[0],
         y: player.coords[1]
     });
-    if (!player.sock_id) continue;
-
-    // Generate the chunk for this player
     const chunk = map.Fxn.chunk(player.coords);
 
-    // Compute sum of versions for the new chunk
     let newSum = 0;
     for (const row of chunk) {
       for (const [x, y] of row) {
-        //const tile = map.Map[y]?.[x];
-        //if (tile) newSum += tile.data.version;
-        newSum += map.Map[y][x].data.version;
+        if (map.Map[y] && map.Map[y][x]) {
+          newSum += map.Map[y][x].data.version;
+        }
       }
     }
 
-    // Compare to previous sum
-    //console.log(`${player.lastChunkSum}:${newSum}`);
-    if (player.lastChunkSum === newSum) {
-      continue; // nothing changed → skip
+    const chunkKey = `${player.coords[0]},${player.coords[1]}`;
+
+    if (
+      player.lastChunkSum === newSum &&
+      player.lastChunkKey === chunkKey
+    ) {
+      continue;
     }
 
-    // Store the new sum for next tick
     player.lastChunkSum = newSum;
+    player.lastChunkKey = chunkKey;
 
-    // Generate and send the live chunk
-    const liveChunk = generateLiveChunk(chunk);
-    player.lastChunk = liveChunk;
-    io.to(player.sock_id).emit('updateChunk', liveChunk);
+    io.to(player.sock_id).emit('updateChunk', generateLiveChunk(chunk));
   }
 }
 
@@ -258,11 +297,10 @@ function generateLiveChunk(player_chunk){
   for (let row of player_chunk) {
     const objectRow = [];
     for (let [x, y] of row) {
-      // Access the map object from your global 'map' variable
       if (map.Map[y] && map.Map[y][x]) {
         objectRow.push(map.Map[y][x]);
       } else {
-        objectRow.push(null); // or skip if you prefer
+        objectRow.push(null);
       }
     }
     chunkObjects.push(objectRow);
@@ -321,6 +359,8 @@ function movePlayer(name, data){
   });
 }
 
+
+var noCollision = false;//TURN OFF OR TAKE OUT FOR CLIENT
 function checkCollision(coords){
   //coords[0],[1]
   if (coords[0]<10 || coords[0]>90){
@@ -328,6 +368,10 @@ function checkCollision(coords){
   }
   if (coords[1]<10 || coords[1]>90){
     return true;
+  }
+  if (noCollision){//TURN OFF OR TAKE OUT FOR CLIENT
+    markTileChanged(coords[0], coords[1]);
+    return false;
   }
   if (map.Map[coords[1]][coords[0]].data.collision){
     return true;
@@ -423,6 +467,13 @@ io.on('connection', (socket) => {
     addToMap(data, x, y);//addToMap then discerns what it is
   });
 
+  socket.on("clearTile", data => {
+    console.log(data);
+    let x = players[socket.user].coords[0];
+    let y = players[socket.user].coords[1]
+    clearTile(x, y);
+  });
+
   socket.on('saveMap', () => {
     map.Fxn.save(map.Map);
   })
@@ -439,6 +490,7 @@ io.on('connection', (socket) => {
 
 //really we need a global interval for all game synapses?
 setInterval(mapUpdate, 200);
+setInterval(mapPersist, 60000);//5 for local, 15 to 60 min server
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () => {
