@@ -196,8 +196,8 @@ base_tiles = {
     "gnollL":{"x":240, "y":576},
     "rangeGoblinR":{"x":80, "y":336},
     "rangeGoblinL":{"x":96, "y":336},
-    "mageLichR":{"x":80, "y":160},
-    "mageLichL":{"x":64, "y":160}//to here
+    "mageLichR":{"x":80, "y":160, "collision":true},
+    "mageLichL":{"x":64, "y":160, "collision":true}//to here
   }
 
   
