@@ -175,24 +175,24 @@ function handleClick(mouseX, mouseY, leftRight) {
 */
 //let painting = false;
 let currentButton = "left"; // Track left or right mouse button
-
+let ispainting = false;
 // When mouse button is pressed
 canvas.addEventListener("mousedown", (e) => {
   e.preventDefault(); // prevent right-click menu
-  painting = true;
+  ispainting = true;
   currentButton = e.button === 2 ? "right" : "left"; // 0 = left, 2 = right
   paintAtMouse(e);
 });
 
 // When mouse moves
 canvas.addEventListener("mousemove", (e) => {
-  if (!painting) return;
+  if (!ispainting) return;
   paintAtMouse(e);
 });
 
 // When mouse button is released
 canvas.addEventListener("mouseup", () => {
-  painting = false;
+  ispainting = false;
 });
 
 // Prevent right-click menu
@@ -224,6 +224,10 @@ function handleClick(mouseX, mouseY, leftRight) {
 
   const worldTileX = topLeftTileX + tileOffsetX;
   const worldTileY = topLeftTileY + tileOffsetY;
+
+  if (painting===false){
+    return;//need to fix this later
+  }
 
   const pixelInTileX = mouseX % 32;
   const pixelInTileY = mouseY % 32;
