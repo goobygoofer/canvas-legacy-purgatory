@@ -4,7 +4,6 @@ const canvas = document.getElementById('disp');
 const ctx = canvas.getContext('2d');
 ctx.imageSmoothingEnabled = true;//toggle to enable grid? *shrugs*
 
-//const socket = io('http://45.55.36.171:3000', {reconnection : false});
 const socket = io(window.location.origin, {
   reconnection: false
 });
@@ -328,8 +327,10 @@ let painting = false;
 function togglePaint(){
   if (painting===false){
     painting=true;
+    ctx.imageSmoothingEnabled = true;
   } else {
     painting=false;
+    ctx.imageSmoothingEnabled = false;
   }
 }
 
