@@ -1,16 +1,63 @@
-  <!DOCTYPE html>
-  <html>
-    <body>
-  <div>
-  <form method="POST" action="/login">
-  <label for="name">Player Name:</label>
-  <input type="text" id="name" name="name" required>
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      html, body {
+        height: 100%; /* needed for vertical centering */
+        margin: 0;
+        font-family: 'Courier New', monospace;
+        color: white;
+        background-color: black;
+        display: flex;
+        flex-direction: column; /* stack elements vertically */
+        align-items: center;    /* horizontal centering */
+        justify-content: center; /* vertical centering */
+      }
 
-  <label for="pass">Password:</label>
-  <input type="password" id="pass" name="pass" required>
+      canvas {
+        display: block;
+        margin-bottom: 20px; /* spacing below canvas */
+      }
 
-  <button type="submit">Login</button>
-  </form>
-  </div>
-</body>
-  </html>
+      h1 {
+        text-align: center;
+        margin: 10px 0;
+      }
+
+      form {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        text-align: left; /* keep labels/input aligned */
+      }
+
+      input, button {
+        padding: 5px;
+        font-family: 'Courier New', monospace;
+      }
+
+      div {
+        margin-top: 20px; /* optional spacing above form */
+      }
+    </style>
+  </head>
+  <body>
+    <img id="goat" src="goat.png" style="display:none;">
+    <canvas id="canvas" height="32" width="640"></canvas>
+    <h1>CANVAS LEGACY: PURGATORY</h1>
+
+    <div>
+      <form method="POST" action="/login">
+        <label for="name">Player Name:</label>
+        <input type="text" id="name" name="name" required>
+
+        <label for="pass">Password:</label>
+        <input type="password" id="pass" name="pass" required>
+
+        <button type="submit">Login</button>
+      </form>
+    </div>
+
+    <script src="./index.js"></script>
+  </body>
+</html>
