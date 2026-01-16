@@ -37,5 +37,5 @@ function generate_Chunk(coords){//coords is [x,y], pulled from player x and play
 module.exports = {
     save: save_map,
     persist: persist_map,
-    chunk: generate_Chunk
+    chunk: generate_Chunk,
 }

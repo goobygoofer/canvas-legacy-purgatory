@@ -6,14 +6,10 @@ var map = {
   Map: require('./blank_map.json'),//this will be the in memory map, do stuff to map.Map...
   Fxn: require('./map_fxns.js')
 };
-
-map.Fxn.save(map.Map);//just to initialize this and prove works, change later
-
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const http = require('http');
-//const https = require('https');
 const { Server } = require('socket.io');
 const path = require('path');
 const app = express();
@@ -22,7 +18,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
 //Session middleware FIRST (move this above all routes)
-
 const sessionMiddleware = session({
   secret: process.env.SESSION_SECRET,
   resave: false,
@@ -32,18 +27,22 @@ const sessionMiddleware = session({
 app.use(sessionMiddleware);
 
 const server = http.createServer(app);
-//https.createServer({ key, cert }, app);
 const io = new Server(server);
 
-//const mysql = require('mysql');
-const db = require('./db.js');
-const querystring = require('querystring');
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files from /public
+const db = require('./db.js');
+const querystring = require('querystring');
+
+//GLOBAL VARS
+var players = {};
+var noCollision = false;//TURN OFF WHEN PUSHING TO GITHUB
+const PORT = process.env.PORT || 3000;
+
+//Serve static files from /public
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve game files securely after successful login
+//Serve game files securely after successful login
 app.use('/game', (req, res, next) => {
   if (!req.session.user) {
     return res.redirect('/?error=403');
@@ -52,117 +51,98 @@ app.use('/game', (req, res, next) => {
 }, express.static(path.join(__dirname, 'game')));
 
 // Handle login POST from your HTML form
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const { name, pass } = req.body;
-  queryPassword(
-    name,
-    pass,
-    () => {
-      setActive(name, 1);//putting this here might resolve login server crash bug
-      req.session.user = name; // store user in session
-      res.redirect('/game/game.html');   // redirect after success
-    },
-    () => {
-      return res.redirect('/?error=401incorrect_password');
-    }
-  );
+  try {
+    await queryPassword(name, pass);
+    await setActive(name, 1); // make sure this is also promise-based
+    req.session.user = name;
+    res.redirect('/game/game.html');
+  } catch (err) {
+    console.error("Login failed:", err.message);
+    res.redirect('/?error=401incorrect_password');
+  }
 });
 
-// Query password function
-function queryPassword(name, pass, onSuccess, onFail) {
-  const sql = "SELECT * FROM players WHERE player_name = ?";
-  db.query(sql, [name], function (err, result) {
-    if (err) {
-      console.error(err.message);
-      return onFail();
-    }
-
-    if (!result || result.length === 0) {
-      console.log("New player!");
-      addPlayer(name, pass, onSuccess);
-      setActive(name, 1);
-      return;
-    }
-
-    const actual_pass = result[0].pass;
-    if (checkPassword(pass, actual_pass)) {
-      return onSuccess();
-    } else {
-      console.log("Wrong password!");
-      return onFail();
-    }
+function query(sql, params = []) {//apply this to other bits in code
+  return new Promise((resolve, reject) => {
+    db.query(sql, params, (err, result) => {
+      if (err) return reject(err);
+      resolve(result);
+    });
   });
 }
 
-var players = {
+async function queryPassword(name, pass) {
+  const sql = "SELECT * FROM players WHERE player_name = ?";
 
-  /*
-  example:
-    "playerName": {
-      coords: p_coords,
-      sock_id: null,//add at io.connection part
-      sprite: "ghostR",
-      lastInput: Date.now(),
-      add more stuff as needed, put it here for reference if changes
-    }
-  */
+  const result = await query(sql, [name]);
 
-};
+  // New player
+  if (!result || result.length === 0) {
+    console.log("New player!");
 
-function setActive(name, active){
-  const sql = "UPDATE players SET active = ? WHERE player_name = ?";
-  db.query(
-    sql,
-    [active, name],
-    (err) => {
-      if (err) {
-        console.error(err.message);
-        return;
-      }
-      console.log(`${name} active value set to ${active}`);
-    }
-  );
-  if (active==0){
-    cleanupPlayer(name);
-  } else {
-      initPlayer(name);
+    await addPlayer(name, pass);
+    await setActive(name, 1);
+
+    return { created: true };
   }
+
+  const actual_pass = result[0].pass;
+
+  if (!checkPassword(pass, actual_pass)) {
+    console.log("Wrong password!");
+    throw new Error("incorrect_password");
+  }
+
+  return { created: false };
 }
 
-function initPlayer(name){//maybe make a player template for easier changes
-                          //can put that in player.js or something
-  //if this doesn't finish before player is added to players list, there will be a no coords error
-  //pull player x and y coord from db and put it in an array
+function setActive(name, active) {
+  return query(
+    "UPDATE players SET active = ? WHERE player_name = ?",
+    [active, name]
+  );
+}
+
+async function initPlayer(name) {
+  const sql = "SELECT JSON_ARRAY(x, y) AS coords FROM players WHERE player_name = ?";
+  const result = await new Promise((resolve, reject) => {
+    db.query(sql, [name], (err, result) => {
+      if (err) return reject(err);
+      resolve(result);
+    });
+  });
+
   let p_coords;
-  db.query("SELECT JSON_ARRAY(x, y) AS coords FROM players WHERE player_name = ?;", [name], (err, result) => {
-    if (err) {
-      console.error(err.message);
-      return;
-    }
-    if (!result.length || !result[0].coords) {
-      // No player found yet — maybe set default coordinates
-      p_coords = [49, 49]; // or whatever starting coords you want
-      return;
-    } else {
-      p_coords = JSON.parse(result[0].coords);
-    }
-    console.log(p_coords);
-    players[name] = {
+  if (!result.length || !result[0].coords) {
+    // No player found yet, set default coordinates (this may change)
+    p_coords = [49, 49];
+  } else {
+    p_coords = JSON.parse(result[0].coords);
+  }
+
+  console.log("Player coords:", p_coords);
+
+  // Initialize player object
+  players[name] = {
     coords: p_coords,
-    sock_id: null,//add at io.connection part
+    sock_id: null, // to be set in io.connection
     sprite: "ghostR",
     lastInput: Date.now(),
     lastMove: Date.now(),
-    typing: {"state": false, "lastSpot":{x:0, y:0}},
-    lastChunk: null,//last chunk of map received by client, hopefully works
+    typing: { state: false, lastSpot: { x: 0, y: 0 } },
+    lastChunk: null,
     lastChunkSum: null,
-    lastChunkKey: null
-    };
-    map.Map[p_coords[1]][p_coords[0]].data.players[name] = {
-      sprite: players[name].sprite
-    }
-    markTileChanged(p_coords[0], p_coords[1]);
-  });
+    lastChunkKey: null,
+    activeInventory: 0,
+    inventory: []
+  };
+  map.Map[p_coords[1]][p_coords[0]].data.players[name] = {
+    sprite: players[name].sprite
+  };
+  markTileChanged(p_coords[0], p_coords[1]);
+  syncInventory(name);
 }
 
 function cleanupPlayer(name){
@@ -172,19 +152,6 @@ function cleanupPlayer(name){
   markTileChanged(players[name].coords[0], players[name].coords[1]);
   //save players coords to database
   dbPlayerCoords(name);
-  /*
-  const sql = `UPDATE players SET x = ?, y = ? WHERE player_name = ?`;
-  db.query(sql, [players[name].coords[0], players[name].coords[1], name], (err, result) => {
-    if (err) {
-      console.error('Error updating player position:', err);
-      return;
-    }
-    if (result.affectedRows === 0) {
-      console.warn(`No player found with name: ${name}`);
-      return;
-    }
-  });
-  */
   delete players[name];
 }
 
@@ -201,6 +168,49 @@ function dbPlayerCoords(name) {
     }
   });
 }
+
+async function getInventory(playerName) {
+  const sql = `
+    SELECT id, amount
+    FROM inventories
+    WHERE player_name = ?
+  `;
+  return await query(sql, [playerName]);
+}
+
+async function addItem(playerName, itemId, amount) {
+  const sql = `
+    INSERT INTO inventories (player_name, id, amount)
+    VALUES (?, ?, ?)
+    ON DUPLICATE KEY UPDATE amount = amount + VALUES(amount)
+  `;
+  await query(sql, [playerName, itemId, amount]);
+}
+
+async function removeItem(playerName, itemId, amount) {
+  const sql = `
+    UPDATE inventories
+    SET amount = amount - ?
+    WHERE player_name = ?
+    AND id = ?
+  `;
+  await query(sql, [amount, playerName, itemId]);
+
+  const cleanup = `
+    DELETE FROM inventories
+    WHERE player_name = ?
+    AND id = ?
+    AND amount <= 0
+  `;
+  await query(cleanup, [playerName, itemId]);
+}
+
+async function syncInventory(playerName) {
+  const inventory = await getInventory(playerName);
+  players[playerName].inventory = inventory;
+  io.to(players[playerName].sock_id).emit("invData", inventory);
+}
+
 // Add player
 function addPlayer(name, pass, callback) {
   db.query("INSERT INTO players (player_name, pass, x, y) VALUES (?, ?, ?, ?)", [name, pass, 49, 49], (err) => {
@@ -212,7 +222,7 @@ function addPlayer(name, pass, callback) {
     callback();
   });
 }
-// Simple password check (replace with hashing in production)
+//replace with hashing
 function checkPassword(input, actual) {
   return input === actual;
 }
@@ -222,7 +232,7 @@ function mapPersist(){
   //loop through active players and save their coords to db
   for (p in players){
     console.log(`${p}'s coords saved...`);
-    dbPlayerCoords(p);//should work?
+    dbPlayerCoords(p);
   }
 }
 
@@ -255,12 +265,11 @@ function mapUpdate() {
   for (const p in players) {
     const player = players[p];
     if (!player.sock_id) continue;
-    io.to(players[p].sock_id).emit('playerState', {
+    io.to(players[p].sock_id).emit('playerState', {//might remove this/put somewhere else
         x: player.coords[0],
         y: player.coords[1]
     });
     const chunk = map.Fxn.chunk(player.coords);
-
     let newSum = 0;
     for (const row of chunk) {
       for (const [x, y] of row) {
@@ -272,16 +281,12 @@ function mapUpdate() {
 
     const chunkKey = `${player.coords[0]},${player.coords[1]}`;
 
-    if (
-      player.lastChunkSum === newSum &&
-      player.lastChunkKey === chunkKey
+    if (player.lastChunkSum === newSum && player.lastChunkKey === chunkKey
     ) {
       continue;
     }
-
     player.lastChunkSum = newSum;
     player.lastChunkKey = chunkKey;
-
     io.to(player.sock_id).emit('updateChunk', generateLiveChunk(chunk));
   }
 }
@@ -291,6 +296,8 @@ function markTileChanged(x, y){
   console.log(`${x}, ${y} changed`);
 }
 
+//this had to stay here because map_fxns.js doesn't have map
+//would be nice to have this in map_fxns
 function generateLiveChunk(player_chunk){
   const chunkObjects = [];
 
@@ -309,9 +316,12 @@ function generateLiveChunk(player_chunk){
   return chunkObjects;
 }
 
+
 function handlePlayerInput(name, data){
   if (Date.now()>players[name].lastInput+25){
     players[name].lastInput=Date.now();
+    //change to handle other types of input
+    //e.g. attack, special, etc...
     movePlayer(name, data);
   }
 }
@@ -327,26 +337,26 @@ function movePlayer(name, data){
       let coordCheck;
       let pCoords = [players[name].coords[0], players[name].coords[1]];
       let modCoords;
-      switch (dir){
-        case 'up':
-          modCoords = [pCoords[0], pCoords[1] - 1];
-          if (checkCollision(modCoords)) return;
-          break;
-        case 'down':
-          modCoords = [pCoords[0], pCoords[1] + 1];
-          if (checkCollision(modCoords)) return;
-          break;
-        case 'left':
-          players[name].sprite="ghostL";
-          modCoords = [pCoords[0] - 1, pCoords[1]];
-          if (checkCollision(modCoords)) return;
-          break;
-        case 'right':
-          players[name].sprite="ghostR";
-          modCoords = [pCoords[0] + 1, pCoords[1]];
-          if (checkCollision(modCoords)) return;
-          break;
-      }
+      const dirOffsets = {
+        up: [0, -1],
+        down: [0, 1],
+        left: [-1, 0],
+        right: [1, 0]
+      };
+
+      const spriteMap = {
+        left: "ghostL",
+        right: "ghostR"
+      };
+
+      //get new coordinates
+      const [dx, dy] = dirOffsets[dir];
+      modCoords = [pCoords[0] + dx, pCoords[1] + dy];
+      if (checkCollision(modCoords)) return;
+
+      //update sprite if left/right
+      if (spriteMap[dir]) players[name].sprite = spriteMap[dir];
+      //delete old sprite
       delete map.Map[players[name].coords[1]][players[name].coords[0]].data.players[name];
       markTileChanged(players[name].coords[0], players[name].coords[1]);
       players[name].coords = modCoords;
@@ -359,8 +369,6 @@ function movePlayer(name, data){
   });
 }
 
-
-var noCollision = false;//TURN OFF OR TAKE OUT FOR CLIENT
 function checkCollision(coords){
   //coords[0],[1]
   if (coords[0]<10 || coords[0]>90){
@@ -405,18 +413,20 @@ io.use((socket, next) => {
   next();
 });
 
-//I think this is where the error is when a login crashes server
-//need to have client set up before sockets? idk
-io.on('connection', (socket) => {
+io.on('connection', async (socket) => {
+  console.log(`connecting ${socket.user} with socket id: ${socket.id}...`);
+  await initPlayer(socket.user);
   console.log(`User connected: ${socket.user}`);
-  players[socket.user].sock_id = socket.id;//this work?
+  players[socket.user].sock_id = socket.id;
   console.log(`Added id: ${socket.user} : ${players[socket.user].sock_id}`);
   Object.entries(players).forEach(([playerName, playerData]) => {
     console.log('Player:', playerName, 'ID:', playerData.sock_id);
   });
-  io.emit('server message', {
+
+  io.emit('server message', {//global chat, user needs toggle for wanting privacy
     message: `${socket.user} logged in...`
   });
+
   socket.on('chat message', (msg) => {
     console.log(`${socket.user}: ${msg}`)
     io.emit('chat message', {
@@ -449,8 +459,9 @@ io.on('connection', (socket) => {
     markTileChanged(players[socket.user].coords[0],players[socket.user].coords[1]);
   })
 
-  socket.on('paint', data => {
-    console.log(data.c);
+  socket.on('paint', data => {//client side needs to queue paint instead of sending every pixel
+                              //user clicks, code waits a moment to see if another click
+                              //then sends list of pixels to be painted
     //x, y, subX, subY, c (color)
     if (data.btn === "right"){
       map.Map[data.y][data.x].data.pixels[data.subY][data.subX]=-1;
@@ -476,7 +487,13 @@ io.on('connection', (socket) => {
 
   socket.on('saveMap', () => {
     map.Fxn.save(map.Map);
-  })
+  });
+
+  socket.on("getInventory", async () => {
+    console.log("playerName on socket:", socket.user);
+    const name = socket.user;
+    await syncInventory(name);
+  });
 
   socket.on('disconnect', () => {
     console.log(`User logged out: ${socket.user}`);
@@ -490,9 +507,8 @@ io.on('connection', (socket) => {
 
 //really we need a global interval for all game synapses?
 setInterval(mapUpdate, 200);
-setInterval(mapPersist, 60000);//5 for local, 15 to 60 min server
+setInterval(mapPersist, 60000);//save map every minute
 
-const PORT = process.env.PORT || 3000;
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
