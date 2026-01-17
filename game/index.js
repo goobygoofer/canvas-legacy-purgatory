@@ -133,7 +133,7 @@ function drawPaintPalette() {
 
     // highlight active color
     if (Number(key) === activePaintColor) {
-      invCtx.strokeStyle = "#fff";
+      invCtx.strokeStyle = "#000000ff";
       invCtx.lineWidth = 2;
       invCtx.strokeRect(x - 1, y - 1, PALETTE_CELL_SIZE + 2, PALETTE_CELL_SIZE + 2);
     }
@@ -193,26 +193,45 @@ const keystate = {
 };
 
 const COLOR_PALETTE = {
+  // neutrals
   0:  { name: "Black",        hex: "#000000" },
   1:  { name: "White",        hex: "#ffffff" },
-  2:  { name: "Red",          hex: "#ff0000" },
-  3:  { name: "Green",        hex: "#008000" },
-  4:  { name: "Blue",         hex: "#0000ff" },
-  5:  { name: "Yellow",       hex: "#ffff00" },
-  6:  { name: "Magenta",      hex: "#ff00ff" },
-  7:  { name: "Cyan",         hex: "#00ffff" },
-  8:  { name: "Brown",        hex: "#804000" },
-  9:  { name: "Orange",       hex: "#ff8000" },
-  10: { name: "Purple",       hex: "#8000ff" },
-  11: { name: "Teal",         hex: "#008080" },
-  12: { name: "Gray",         hex: "#808080" },
+  2:  { name: "Gray",         hex: "#808080" },
+  3:  { name: "Light Gray",   hex: "#c0c0c0" },
 
-  13: { name: "Pink",         hex: "#ffb6c1" },
-  14: { name: "Lime",         hex: "#7cff00" },
-  15: { name: "Navy",         hex: "#000080" },
-  16: { name: "Light Brown",  hex: "#b87333" },
-  17: { name: "Light Gray",   hex: "#c0c0c0" },
-  18: { name: "Sky Blue",     hex: "#87ceeb" }
+  // reds / pinks
+  4:  { name: "Red",          hex: "#ff0000" },
+  5:  { name: "Pink",         hex: "#ffb6c1" },
+  6:  { name: "Coral",        hex: "#ff7f50" },
+  7:  { name: "Gold",         hex: "#ffd700" },
+
+  // oranges / browns
+  8:  { name: "Orange",       hex: "#ff8000" },
+  9:  { name: "Brown",        hex: "#804000" },
+  10: { name: "Light Brown",  hex: "#b87333" },
+
+  // yellows / lime
+  11: { name: "Yellow",       hex: "#ffff00" },
+  12: { name: "Lime",         hex: "#7cff00" },
+
+  // greens
+  13: { name: "Green",        hex: "#008000" },
+  14: { name: "Olive",        hex: "#808000" },
+  15: { name: "Teal",         hex: "#008080" },
+
+  // blues / cyan
+  16: { name: "Blue",         hex: "#0000ff" },
+  17: { name: "Sky Blue",     hex: "#87ceeb" },
+  18: { name: "Navy",         hex: "#000080" },
+  19: { name: "Turquoise",    hex: "#40e0d0" },
+
+  // purples / violet / magenta
+  20: { name: "Purple",       hex: "#8000ff" },
+  21: { name: "Violet",       hex: "#ee82ee" },
+  22: { name: "Magenta",      hex: "#ff00ff" },
+
+  // new 24th color
+  23: { name: "Beige",        hex: "#fdfdb0ff" } // soft neutral for balance
 };
 form.addEventListener('submit', (e) => {
     e.preventDefault();
