@@ -526,6 +526,7 @@ function togglePaint(){
   }
 }
 
+/*
 Object.keys(COLOR_PALETTE).forEach(key => {
   const color = COLOR_PALETTE[key];
   const option = document.createElement("option");
@@ -534,6 +535,7 @@ Object.keys(COLOR_PALETTE).forEach(key => {
   option.textContent = color.name;
   palette.appendChild(option);
 });
+*/
 
 //admin only! use only for production, do not deploy this code to server
 //however if players are going to build stuff, some of this code
