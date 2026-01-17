@@ -17,7 +17,7 @@ const messages = document.getElementById('messages');
 let typingTimeout;
 let isTyping=false;
 let emitInputSwitch = false;
-let currentButton = "left"; // Track left or right mouse button
+let currentButton = "left";//Track left or right mouse button
 let ispainting = false;
 let latestView = null;
 let animating = false;
@@ -28,13 +28,145 @@ const interval = 1000 / FPS;
 let painting = false;
 const palette = document.getElementById("colorSelect");
 const preview = document.getElementById("colorPreview");
-//preview.style.backgroundColor = palette.value;
 let playerData = {
   x: null,
   y: null,
   name: null,//get from login? don't use this  yet
   inventory: {}//[{id:1, amt:1}, {id:5, amt:16}
 };
+
+//id's for items, name from base_tiles to disp in inv
+let itemId = {
+  1: "axeItem"
+}
+
+//stuff for inv, paint etc tabs
+const tabs = [
+  { id: "inventory", label: "Inventory" },
+  { id: "paint", label: "Paint" },
+];
+let activeTab = "inventory";
+const TAB_HEIGHT = 14;
+const TAB_PADDING = 10;
+
+function drawTabs() {
+  invCtx.clearRect(0, 0, invCanvas.width, invCanvas.height);
+  invCtx.setTransform(1, 0, 0, 1, 0, 0);
+
+  invCtx.font = "12px sans-serif";
+  invCtx.textBaseline = "middle";
+
+  let x = 0;
+  for (const tab of tabs) {
+    const width = invCtx.measureText(tab.label).width + TAB_PADDING * 2;
+
+    invCtx.fillStyle = tab.id === activeTab ? "#333" : "#111";
+    invCtx.fillRect(x, 0, width, TAB_HEIGHT);
+
+    invCtx.strokeStyle = "#555";
+    invCtx.strokeRect(x, 0, width, TAB_HEIGHT);
+
+    invCtx.fillStyle = "#fff";
+    invCtx.fillText(tab.label, x + TAB_PADDING, TAB_HEIGHT / 2);
+
+    x += width;
+  }
+}
+drawTabs();
+
+invCanvas.addEventListener("mousedown", e => {
+  const rect = invCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  if (my <= TAB_HEIGHT) {
+    invCtx.font = "14px sans-serif";
+
+    let cursorX = 0;
+    for (const tab of tabs) {
+      const width = invCtx.measureText(tab.label).width + TAB_PADDING * 2;
+
+      if (mx >= cursorX && mx <= cursorX + width) {
+        activeTab = tab.id;
+        drawTabs();
+        togglePaint();
+        return;
+      }
+
+      cursorX += width;
+    }
+
+    // Clicked tab bar but not a tab, do nothing
+    return;
+  }
+  handleActiveTabClick(mx, my);
+});
+
+function handleActiveTabClick(x, y){
+  console.log(`clicked ${x},${y} in tabs container`);
+  if (activeTab==='paint'){
+    handlePaintClick(x, y);
+  }
+}
+
+const PALETTE_CELL_SIZE = 24;
+const PALETTE_PADDING = 4;
+const PALETTE_COLS = 6;
+const PALETTE_START_X = 8;
+const PALETTE_START_Y = TAB_HEIGHT + 8;
+
+let activePaintColor = 0;
+
+function drawPaintPalette() {
+  let i = 0;
+
+  for (const key in COLOR_PALETTE) {
+    const col = i % PALETTE_COLS;
+    const row = Math.floor(i / PALETTE_COLS);
+
+    const x = PALETTE_START_X + col * (PALETTE_CELL_SIZE + PALETTE_PADDING);
+    const y = PALETTE_START_Y + row * (PALETTE_CELL_SIZE + PALETTE_PADDING);
+
+    // draw color square
+    invCtx.fillStyle = COLOR_PALETTE[key].hex;
+    invCtx.fillRect(x, y, PALETTE_CELL_SIZE, PALETTE_CELL_SIZE);
+
+    // highlight active color
+    if (Number(key) === activePaintColor) {
+      invCtx.strokeStyle = "#fff";
+      invCtx.lineWidth = 2;
+      invCtx.strokeRect(x - 1, y - 1, PALETTE_CELL_SIZE + 2, PALETTE_CELL_SIZE + 2);
+    }
+
+    i++;
+  }
+}
+
+function handlePaintClick(mx, my) {
+  let i = 0;
+
+  for (const key in COLOR_PALETTE) {
+    const col = i % PALETTE_COLS;
+    const row = Math.floor(i / PALETTE_COLS);
+
+    const x = PALETTE_START_X + col * (PALETTE_CELL_SIZE + PALETTE_PADDING);
+    const y = PALETTE_START_Y + row * (PALETTE_CELL_SIZE + PALETTE_PADDING);
+
+    if (
+      mx >= x &&
+      mx <= x + PALETTE_CELL_SIZE &&
+      my >= y &&
+      my <= y + PALETTE_CELL_SIZE
+    ) {
+      activePaintColor = Number(key);
+      drawTabs();
+      drawPaintPalette();//make a general draw tabs container fxn
+      return;
+    }
+
+    i++;
+  }
+}
 
 const keys = {
   ArrowLeft:  "left",
@@ -99,10 +231,6 @@ input.addEventListener('input', () => {
     isTyping = false;
     socket.emit('stopTyping');
   }, 1000);
-});
-
-palette.addEventListener("change", () => {
-  preview.style.backgroundColor = COLOR_PALETTE[palette.value].hex;
 });
 
 document.addEventListener("keydown", onKeyDown);
@@ -228,7 +356,7 @@ function handleClick(mouseX, mouseY, leftRight) {
     y: worldTileY,
     subX: subX,
     subY: subY,
-    c: Number(palette.value),
+    c: activePaintColor,
     btn: leftRight
   };
   socket.emit("paint", data);
@@ -382,9 +510,10 @@ function sendInvSelect(id){
 }
 
 function togglePaint(){
-  if (painting===false){
+  if (activeTab==='paint'){
     painting=true;
     ctx.imageSmoothingEnabled = true;
+    drawPaintPalette();
   } else {
     painting=false;
     ctx.imageSmoothingEnabled = false;
