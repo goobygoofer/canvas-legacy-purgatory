@@ -59,23 +59,7 @@ const keystate = {
   down: false,
   lastInput: Date.now()
 };
-/*
-const COLOR_PALETTE = {
-  0: { name: "Black", hex: "#000000" },
-  1: { name: "White", hex: "#ffffff" },
-  2: { name: "Red", hex: "#ff0000" },
-  3: { name: "Green", hex: "#00ff00" },
-  4: { name: "Blue", hex: "#0000ff" },
-  5: { name: "Yellow", hex: "#ffff00" },
-  6: { name: "Magenta", hex: "#ff00ff" },
-  7: { name: "Cyan", hex: "#00ffff" },
-  8: { name: "Brown", hex: "#804000" },
-  9: { name: "Orange", hex: "#ff8000" },
-  10: { name: "Purple", hex: "#8000ff" },
-  11: { name: "Teal", hex: "#008080" },
-  12: { name: "Gray", hex: "#808080" }
-};
-*/
+
 const COLOR_PALETTE = {
   0:  { name: "Black",        hex: "#000000" },
   1:  { name: "White",        hex: "#ffffff" },
@@ -96,8 +80,6 @@ const COLOR_PALETTE = {
   15: { name: "Navy",         hex: "#000080" },
   16: { name: "Light Brown",  hex: "#b87333" },
   17: { name: "Light Gray",   hex: "#c0c0c0" },
-
-  // new 19th color
   18: { name: "Sky Blue",     hex: "#87ceeb" }
 };
 form.addEventListener('submit', (e) => {
@@ -283,6 +265,12 @@ socket.on('updateChunk', (data) => {
 socket.on('updateInventory', (data) => {
   console.log(`got inv data: ${data}`);
   updateInventory(data);//item name||id, amt
+});
+
+//DON'T PUSH THIS!!!
+var mapDownload = [];
+socket.on('mapDownload', (data) => {
+  mapDownload.push(data);
 });
 
 //draw everything here

@@ -495,6 +495,15 @@ io.on('connection', async (socket) => {
     await syncInventory(name);
   });
 
+  socket.on("downloadMap", () => {
+    //send map.Map[0-99] to client to be stored in a variable
+    //USE SPARINGLY!!!!! LOTS OF DATA!!!
+    //COMMENT THIS OUT BEFORE UPDATING VPS!!!
+    for (y in map.Map){
+      io.to(socket.id).emit("mapDownload", map.Map[y]);
+    }
+  })
+
   socket.on('disconnect', () => {
     console.log(`User logged out: ${socket.user}`);
     setActive(socket.user, 0);
