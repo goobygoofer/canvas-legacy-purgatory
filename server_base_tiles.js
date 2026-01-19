@@ -30,7 +30,36 @@ module.exports = {
     "grass2":{"x":160, "y":608},
     "cutGrass":{"x":128, "y":48},//when grass2 gets cut
     "snow":{"x":208, "y":528},//
-    "tree":{"x":16, "y":0, "collision":true},//
+    "tree":{
+      "x":16,
+      "y":0,
+      "collision":true
+    },
+    "tree0":{
+      "x":16,
+      "y":0,
+      "collision":true
+    },
+    "tree1":{
+      "x":32,
+      "y":0,
+      "collision":true
+    },
+    "tree2":{
+      "x":48,
+      "y":0,
+      "collision":true
+    },
+    "tree3":{
+      "x":64,
+      "y":0,
+      "collision":true
+    },
+    "tree4":{//same as stump1
+      "x":80,
+      "y":0,
+      "collision":false
+    },
     "oak":{"x":128, "y":1104, "collision":true},//
     "deadtree":{"x":48, "y":464, "collision":true},//
     "snowtree":{"x":176, "y":544, "collision":true},//
@@ -93,7 +122,7 @@ module.exports = {
     "cloud":{"x":240, "y":1264},
     "axeR":{"x":0, "y":192},
     "axeL":{"x":272, "y":192},
-    "axeItem":{"x":64, "y":64},
+    "axe":{"x":64, "y":64},
     "statDisp":{"x":80, "y":624},
     "log":{"x":96, "y":0},
     "splitlog":{"x":96, "y":1120},

@@ -129,6 +129,7 @@ async function initPlayer(name) {
     coords: p_coords,
     sock_id: null, // to be set in io.connection
     sprite: "ghostR",
+    facing: 'right',
     lastInput: Date.now(),
     lastMove: Date.now(),
     typing: { state: false, lastSpot: { x: 0, y: 0 } },
@@ -136,10 +137,13 @@ async function initPlayer(name) {
     lastChunkSum: null,
     lastChunkKey: null,
     activeInventory: 0,
-    inventory: []
+    inventory: [],//activeInventory used for position here
+    hand: null,//test axe item for now, needs to be sent in playerData, also saved to db
   };
   map.Map[p_coords[1]][p_coords[0]].data.players[name] = {
-    sprite: players[name].sprite
+    sprite: players[name].sprite,
+    facing: players[name].facing,
+    hand: players[name].hand
   };
   markTileChanged(p_coords[0], p_coords[1]);
   syncInventory(name);
@@ -258,6 +262,14 @@ function clearTile(x, y){//this for map building
                 "version": 0,
 */
 
+function emitPlayerState(player){
+      io.to(player.sock_id).emit('playerState', {//might remove this/put somewhere else
+        x: player.coords[0],
+        y: player.coords[1],
+        hand: player.hand,
+        facing: player.facing
+    });
+}
 
 function mapUpdate() {
   if (Object.keys(players).length === 0) return;
@@ -265,10 +277,13 @@ function mapUpdate() {
   for (const p in players) {
     const player = players[p];
     if (!player.sock_id) continue;
+    emitPlayerState(player);
+    /*
     io.to(players[p].sock_id).emit('playerState', {//might remove this/put somewhere else
         x: player.coords[0],
-        y: player.coords[1]
+        y: player.coords[1],
     });
+    */
     const chunk = map.Fxn.chunk(player.coords);
     let newSum = 0;
     for (const row of chunk) {
@@ -291,7 +306,7 @@ function mapUpdate() {
   }
 }
 
-function markTileChanged(x, y){
+async function markTileChanged(x, y){
   map.Map[y][x].data.version++;
   console.log(`${x}, ${y} changed`);
 }
@@ -318,12 +333,68 @@ function generateLiveChunk(player_chunk){
 
 
 function handlePlayerInput(name, data){
+  const directions = ['up', 'down', 'left', 'right'];
   if (Date.now()>players[name].lastInput+25){
     players[name].lastInput=Date.now();
-    //change to handle other types of input
-    //e.g. attack, special, etc...
-    movePlayer(name, data);
+    //check if move, use, etc
+    if (data['up'] || data['down'] || data['left'] || data['right']){//jesus christ
+      movePlayer(name, data);
+    }
+    if (data===' '){
+      useItem(name);
+    }
+    if (data==='e'){
+      //layTile
+    }
   }
+}
+
+//move this to another file?
+let itemId = {
+  1: "axeItem",
+  2: "log"
+}
+//and this in same other file lol
+let equipabbleItems = {
+  "axeItem": {
+    slot: "hand"
+  }
+};
+//consumableItems, activateItems etc...
+
+function useItem(name){
+  let player = players[name];
+  if (player.activeInventory+1 > player.inventory.length || player.activeInventory<0){
+    return;//might've tried to use an empty inv spot
+  }
+  console.log(`${name} trying to use active item ${players[name].activeInventory}`);
+  console.log(`Using ${itemId[players[name].inventory[players[name].activeInventory].id]}`);
+  //equip, activate, etc
+  if (equipabbleItems[itemId[players[name].inventory[players[name].activeInventory].id]]){
+    equip(name, players[name].inventory[players[name].activeInventory].id);
+  }
+}
+
+function equip(name, id){
+  //emitPlayerState(players[name]);
+  //markTileChanged(players[name].coords[0], players[name].coords[1]);
+  let player = players[name];
+  console.log(`id in equip fxn: ${id}`);
+  let itemSlot = equipabbleItems[itemId[players[name].inventory[players[name].activeInventory].id]].slot;
+  console.log(`itemSlot: ${itemSlot}`);
+  let holding = "unequipped";
+  if (players[name][itemSlot] === id){
+    players[name][itemSlot] = null;
+    map.Map[player.coords[1]][player.coords[0]].data.players[name].hand=null;
+  } else {
+    players[name][itemSlot] = id;
+    holding = "equipped";
+    map.Map[player.coords[1]][player.coords[0]].data.players[name].hand=id;
+  }
+  console.log(`${name} has ${holding} ${itemId[players[name].inventory[players[name].activeInventory].id]} in ${itemSlot}`);
+  emitPlayerState(players[name]);//might not need these?
+  markTileChanged(players[name].coords[0], players[name].coords[1]);
+  console.log(`hand: ${players[name].hand}`);
 }
 
 function movePlayer(name, data){
@@ -352,26 +423,31 @@ function movePlayer(name, data){
       //get new coordinates
       const [dx, dy] = dirOffsets[dir];
       modCoords = [pCoords[0] + dx, pCoords[1] + dy];
-      if (checkCollision(modCoords)) return;
+      if (checkCollision(name, modCoords)) return;//tile/obj/player interaction here?
 
       //update sprite if left/right
-      if (spriteMap[dir]) players[name].sprite = spriteMap[dir];
-      //delete old sprite
+      if (spriteMap[dir]){
+        players[name].sprite = spriteMap[dir];
+        players[name].facing = dir;
+      }
+      //delete old sprite (why doesn't this work on logout/timeout sometimes?)
       delete map.Map[players[name].coords[1]][players[name].coords[0]].data.players[name];
       markTileChanged(players[name].coords[0], players[name].coords[1]);
       players[name].coords = modCoords;
       //change to function addPlayerToTile();
       map.Map[modCoords[1]][modCoords[0]].data.players[name] = {
-        sprite : players[name].sprite
+        sprite : players[name].sprite,
+        facing : players[name].facing,
+        hand: players[name].hand,//then everygthing else
       }
       markTileChanged(players[name].coords[0], players[name].coords[1]);
     }
   });
 }
 
-function checkCollision(coords){
+function checkCollision(name, coords){
   //coords[0],[1]
-  if (coords[0]<10 || coords[0]>90){
+  if (coords[0]<10 || coords[0]>90){//FIX THIS. be able to use whole tilemap
     return true;
   }
   if (coords[1]<10 || coords[1]>90){
@@ -392,10 +468,45 @@ function checkCollision(coords){
   //come back to this when tiles have an object key
   for (obj in map.Map[coords[1]][coords[0]].data.objects){
         if (baseTiles[map.Map[coords[1]][coords[0]].data.objects[obj].name].collision===true){
+        let objName = map.Map[coords[1]][coords[0]].data.objects[obj].name
+        checkObjectCollision(name, coords, objName);
         return true;
       }
   }
   return false; 
+}
+
+var axeInteracts = [//this can go in another file
+  'tree0',
+  'tree1',
+  'tree2',
+  'tree3'
+]
+
+async function checkObjectCollision(name, coords, objName){
+  //check what player is holding
+  //check object to see what is done to it
+  let player = players[name];
+  if (itemId[player.hand]==='axeItem'){
+    if (axeInteracts.includes(objName)){
+      await axeWoodInteract(name, coords, objName);
+      console.log("player got a log");//send this to another fxn
+    }
+  }
+}
+
+async function axeWoodInteract(name, coords, objName){
+  await addItem(name, 2, 1);
+  await syncInventory(name);//maybe put this in axeWoodInteract
+  let newNum = Number(objName[objName.length-1])+1;//this prob really fucking bad lol
+  let newObjName = objName.slice(0, -1);//cut off last char
+  newObjName+=newNum;
+  console.log(`newObjName: ${newObjName}`);
+  delete map.Map[coords[1]][coords[0]].data.objects[objName];
+  map.Map[coords[1]][coords[0]].data.objects[newObjName] = {
+    name: newObjName
+  }
+  await markTileChanged(coords[0], coords[1]);
 }
 
 // Socket.IO connection handler
@@ -502,7 +613,16 @@ io.on('connection', async (socket) => {
     for (y in map.Map){
       io.to(socket.id).emit("mapDownload", map.Map[y]);
     }
-  })
+  });
+
+  socket.on('activeInvItem', async (data) => {
+    //check if valid
+    if (data>=0 || data<=31){
+      players[socket.user].activeInventory=data;
+    }
+    await syncInventory(socket.user);
+    console.log(`${socket.user} active item: ${players[socket.user].activeInventory}`);
+  });
 
   socket.on('disconnect', () => {
     console.log(`User logged out: ${socket.user}`);

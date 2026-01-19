@@ -31,13 +31,16 @@ const preview = document.getElementById("colorPreview");
 let playerData = {
   x: null,
   y: null,
+  facing: null,
   name: null,//get from login? don't use this  yet
-  inventory: {}//[{id:1, amt:1}, {id:5, amt:16}
+  inventory: {},//[{id:1, amt:1}, {id:5, amt:16}
+  hand: null
 };
 
 //id's for items, name from base_tiles to disp in inv
 let itemId = {
-  1: "axeItem"
+  1: "axe",
+  2: "log"
 }
 
 //stuff for inv, paint etc tabs
@@ -71,9 +74,12 @@ function drawTabs() {
 
     x += width;
   }
+  //should we draw all tabs here? they only draw within fxn if tab is active
 }
-drawTabs();
+drawTabs();//need to add stuff like this to a startup fxn or something
 
+invCanvas.addEventListener("contextmenu", (e) => e.preventDefault());
+//^^^can do other stuff inside this, right click menu for inv or something?
 invCanvas.addEventListener("mousedown", e => {
   const rect = invCanvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
@@ -89,7 +95,11 @@ invCanvas.addEventListener("mousedown", e => {
       if (mx >= cursorX && mx <= cursorX + width) {
         activeTab = tab.id;
         drawTabs();
-        togglePaint();
+        if (activeTab==="paint"){togglePaint()}
+        if (activeTab==="inventory"){
+          drawInventory();
+          if (painting===true){togglePaint()}//turns lines off?
+        }
         return;
       }
 
@@ -103,10 +113,91 @@ invCanvas.addEventListener("mousedown", e => {
 });
 
 function handleActiveTabClick(x, y){
-  console.log(`clicked ${x},${y} in tabs container`);
+  //console.log(`clicked ${x},${y} in tabs container`);
   if (activeTab==='paint'){
     handlePaintClick(x, y);
   }
+  if (activeTab==='inventory'){
+    handleInvClick(x, y);
+  }
+}
+
+//this is for invCanvas
+const CANVAS_WIDTH = 256;
+const CANVAS_HEIGHT = 128;
+//const TAB_HEIGHT = 16;
+const INV_COLS = 8;
+const INV_ROWS = 4;
+const SLOT_SIZE = (CANVAS_HEIGHT - TAB_HEIGHT) / INV_ROWS;
+
+function drawInventory() {
+  invCtx.clearRect(0, TAB_HEIGHT, invCanvas.width, invCanvas.height);
+  const slotSize = SLOT_SIZE;
+
+  for (let row = 0; row < INV_ROWS; row++) {
+    for (let col = 0; col < INV_COLS; col++) {
+      const slotIndex = row * INV_COLS + col;
+      const x = col * slotSize;
+      const y = TAB_HEIGHT + row * slotSize;
+      const item = playerData.inventory[slotIndex];
+      invCtx.fillStyle = "#663d00ff";
+      invCtx.fillRect(x, y, slotSize, slotSize);
+
+      invCtx.strokeStyle = "#442900ff";
+      invCtx.strokeRect(x, y, slotSize, slotSize);
+      if (item) {
+        // draw item (placeholder)
+        drawItemInSlot(item, x, y, slotSize, slotIndex);
+      }
+
+      // active slot highlight (optional)
+      if (slotIndex === activeInvItem) {
+        invCtx.strokeStyle = "#15ff00ff";
+        invCtx.lineWidth = 2;
+        invCtx.strokeRect(x + 1, y + 1, slotSize - 2, slotSize - 2);
+        invCtx.lineWidth = 1;
+      }
+    }
+  }
+}
+
+function drawItemInSlot(item, x, y, size, slotIndex) {
+  let name = base_tiles[itemId[item.id]];
+  const pad = size * 0.15;
+  const s = size - pad * 2;
+  invCtx.drawImage(
+    spriteSheet,
+    name.x, name.y,
+    16, 16,
+    x + pad, y + pad,
+    s, s
+  );
+  invCtx.font = "10px sans-serif";
+  invCtx.fillStyle = "yellow";
+  invCtx.fillText(`${playerData.inventory[slotIndex].amount}`, x + pad, y+ pad);
+}
+
+var activeInvItem = null;
+
+function handleInvClick(mx, my) {
+  // ignore tab area
+  if (my < TAB_HEIGHT) return null;
+
+  const invY = my - TAB_HEIGHT;
+
+  const col = Math.floor(mx / SLOT_SIZE);
+  const row = Math.floor(invY / SLOT_SIZE);
+
+  if (
+    col < 0 || col >= INV_COLS ||
+    row < 0 || row >= INV_ROWS
+  ) {
+    activeInvItem = null;
+  } else {
+    activeInvItem = row * INV_COLS + col; // 0–31
+  }
+  socket.emit('activeInvItem', activeInvItem);
+  drawInventory();
 }
 
 const PALETTE_CELL_SIZE = 24;
@@ -195,7 +286,7 @@ const keystate = {
 const COLOR_PALETTE = {
   0:  { name: "Black",        hex: "#000000" },
   1:  { name: "White",        hex: "#ffffff" },
-  2:  { name: "Red",          hex: "#ff0000" },
+  2:  { name: "Red",          hex: "#810000" },
   3:  { name: "Green",        hex: "#008000" },
   4:  { name: "Blue",         hex: "#0000ff" },
   5:  { name: "Yellow",       hex: "#ffff00" },
@@ -250,16 +341,16 @@ window.addEventListener("keydown", e => {
 
 function onKeyDown(e) {
   if (document.activeElement === input) return;
-  //remove for, for admin only
   if (e.key === ' ') {
     const active = document.activeElement;
     if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') {
       return;
     }
-    layTile();
+    //layTile();//put this back for map making
+    socket.emit('player input', e.key);
     return;
   }
-  
+  //just leave this and movement comes last?..
   const key = keys[e.key];
   if (!key) return;
   emitInputSwitch=true;
@@ -383,11 +474,14 @@ socket.on('server message', (data) => {
 socket.on('playerState', (data)=> {
   playerData.x=data.x;
   playerData.y=data.y;
+  playerData.hand=data.hand;
+  playerData.facing=data.facing;
 });
 
 socket.on('invData', (data) => {
   console.log("invData worked client side");
   playerData.inventory = data;
+  drawInventory();
 });
 
 socket.on('updateChunk', (data) => {
@@ -399,6 +493,7 @@ socket.on('updateChunk', (data) => {
 socket.on('updateInventory', (data) => {
   console.log(`got inv data: ${data}`);
   updateInventory(data);//item name||id, amt
+  drawInventory();
 });
 
 //DON'T PUSH THIS!!!
@@ -442,7 +537,7 @@ function updateView(data){
           }
         }
       }
-      //draw players
+      //draw objects on tile
       for (obj in data[i][j].data.objects){
         try {
           ctx.drawImage(
@@ -456,9 +551,11 @@ function updateView(data){
         }
       }
       if (Object.keys(data[i][j].data.players).length > 0) {
+        let players = data[i][j].data.players;
         for (p in data[i][j].data.players) {
-          let spriteName = data[i][j].data.players[p].sprite;
+          let spriteName = data[i][j].data.players[p].sprite;//needs to include worn items, glow, etc
           //p being name, ...data.players[p].sprite (draw that lol)
+          let equipToDraw = [];
           try {
             ctx.drawImage(
               spriteSheet,
@@ -466,6 +563,19 @@ function updateView(data){
               16, 16,
               j * 32, i * 32, 32, 32
             );
+            //draw any equipped items
+            if (players[p].hand!==null){
+              let handSprite = getEquipSprite(players[p].hand, players[p].facing);
+              equipToDraw.push(handSprite); 
+            }//load all equip slots, and any other glows etc, then loop/draw all
+            for (e in equipToDraw){
+                ctx.drawImage(
+                spriteSheet,
+                base_tiles[equipToDraw[e]].x, base_tiles[equipToDraw[e]].y,
+                16, 16,
+                j * 32, i * 32, 32, 32
+              );
+            }
           } catch (err) {
             //haha!
           }
@@ -484,6 +594,10 @@ function updateView(data){
   }
 }
 
+function getEquipSprite(item, facing){
+  return itemId[item] + facing[0].toUpperCase();
+}
+
 function updateDraw(now) {
   if (now - lastRender > interval) {
     chunkNeedsRender = false;
@@ -493,12 +607,6 @@ function updateDraw(now) {
   requestAnimationFrame(updateDraw);
 }
 requestAnimationFrame(updateDraw);
-
-invCanvas.addEventListener("contextmenu", (e) => e.preventDefault());
-invCanvas.addEventListener("click", (e) => {
-//calculate what number slot is clicked, send to server
-//server uses this number to check item from list
-});
 
 function updateInventory(data){
   //draw inventory from data sent from server
@@ -526,16 +634,6 @@ function togglePaint(){
   }
 }
 
-/*
-Object.keys(COLOR_PALETTE).forEach(key => {
-  const color = COLOR_PALETTE[key];
-  const option = document.createElement("option");
-  console.log(key);
-  option.value = key;
-  option.textContent = color.name;
-  palette.appendChild(option);
-});
-*/
 
 //admin only! use only for production, do not deploy this code to server
 //however if players are going to build stuff, some of this code
