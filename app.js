@@ -214,18 +214,24 @@ async function syncInventory(playerName) {
   const inventory = await getInventory(playerName);
   players[playerName].inventory = inventory;
   io.to(players[playerName].sock_id).emit("invData", inventory);
+  console.log(`inventory: ${inventory}`)
 }
 
 // Add player
-function addPlayer(name, pass, callback) {
+function addPlayer(name, pass) {
   db.query("INSERT INTO players (player_name, pass, x, y) VALUES (?, ?, ?, ?)", [name, pass, 49, 49], (err) => {
     if (err) {
       console.error(err.message);
       return;
     }
     console.log("Player added:", name);
-    callback();
   });
+  db.query("INSERT IGNORE INTO inventories (player_name, id, amount) SELECT player_name, 1, 1 FROM players;", [name], (err) => {
+    if (err){
+      console.error(err.message);
+      return;
+    }
+  })
 }
 //replace with hashing
 function checkPassword(input, actual) {
@@ -477,21 +483,28 @@ function checkCollision(name, coords){
   return false; 
 }
 
+var resources = {
+  "tree" : 1//log
+}
+
 var axeInteracts = [//this can go in another file
-  'tree0',
+  'tree0',//all different trees/wood stuff here
   'tree1',
   'tree2',
-  'tree3'
+  'tree3',
+  'axeItem'//put all different axes here
+]
+
+var itemInteracts = [
+  axeInteracts
 ]
 
 async function checkObjectCollision(name, coords, objName){
-  //check what player is holding
-  //check object to see what is done to it
   let player = players[name];
-  if (itemId[player.hand]==='axeItem'){
-    if (axeInteracts.includes(objName)){
+  for (interact in itemInteracts){
+    let list = itemInteracts[interact];
+    if (list.includes(itemId[player.hand]) && list.includes(objName)){
       await resourceInteract(name, coords, objName);
-      console.log("player got a log");//send this to another fxn
     }
   }
 }
@@ -502,12 +515,12 @@ async function resourceInteract(name, coords, objName){
     return;
   }
   players[name].lastGather=Date.now();
-  await addItem(name, 2, 1);
-  await syncInventory(name);//maybe put this in axeWoodInteract
-  let newNum = Number(objName[objName.length-1])+1;//this prob really fucking bad lol
   let newObjName = objName.slice(0, -1);//cut off last char
-  newObjName+=newNum;//this makes tree1, tree 2, tree3, etc
-  console.log(`newObjName: ${newObjName}`);
+  let resourceId = resources[newObjName]+1;//because itemId's doesn't start with 0
+  await addItem(name, resourceId, 1);//need dynamic id, log, rock, etc
+  await syncInventory(name);
+  let newNum = Number(objName[objName.length-1])+1;//this prob really fucking bad lol
+  newObjName+=newNum;//this makes tree1, tree 2, rock1, rock2, etc
   delete map.Map[coords[1]][coords[0]].data.objects[objName];
   map.Map[coords[1]][coords[0]].data.objects[newObjName] = {
     name: newObjName
@@ -633,6 +646,7 @@ io.on('connection', async (socket) => {
   socket.on('disconnect', () => {
     console.log(`User logged out: ${socket.user}`);
     setActive(socket.user, 0);
+    cleanupPlayer(socket.user);
     socket.request.session.destroy();
     io.emit('server message', {
       message: `${socket.user} logged out...`
