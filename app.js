@@ -139,6 +139,7 @@ async function initPlayer(name) {
     activeInventory: 0,
     inventory: [],//activeInventory used for position here
     hand: null,//test axe item for now, needs to be sent in playerData, also saved to db
+    lastGather: Date.now()
   };
   map.Map[p_coords[1]][p_coords[0]].data.players[name] = {
     sprite: players[name].sprite,
@@ -489,18 +490,23 @@ async function checkObjectCollision(name, coords, objName){
   let player = players[name];
   if (itemId[player.hand]==='axeItem'){
     if (axeInteracts.includes(objName)){
-      await axeWoodInteract(name, coords, objName);
+      await resourceInteract(name, coords, objName);
       console.log("player got a log");//send this to another fxn
     }
   }
 }
 
-async function axeWoodInteract(name, coords, objName){
+//need function to replenish natural resources every so often (24 hrs?)
+async function resourceInteract(name, coords, objName){
+  if (Date.now() < players[name].lastGather+1000){//account for respective lvl (wc, mining etc)
+    return;
+  }
+  players[name].lastGather=Date.now();
   await addItem(name, 2, 1);
   await syncInventory(name);//maybe put this in axeWoodInteract
   let newNum = Number(objName[objName.length-1])+1;//this prob really fucking bad lol
   let newObjName = objName.slice(0, -1);//cut off last char
-  newObjName+=newNum;
+  newObjName+=newNum;//this makes tree1, tree 2, tree3, etc
   console.log(`newObjName: ${newObjName}`);
   delete map.Map[coords[1]][coords[0]].data.objects[objName];
   map.Map[coords[1]][coords[0]].data.objects[newObjName] = {
