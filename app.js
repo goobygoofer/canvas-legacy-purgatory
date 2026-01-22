@@ -1,3 +1,6 @@
+//TURN THIS THE FUCK OFF BEFORE SHIPPING LOL
+var devMode = false;//might not need this here (yet)
+var noCollision = false;//TURN OFF WHEN PUSHING TO GITHUB
 //app stuff
 const baseTiles = require('./server_base_tiles.js');
 const _player = require('./player.js');
@@ -36,7 +39,6 @@ const querystring = require('querystring');
 
 //GLOBAL VARS
 var players = {};
-var noCollision = false;//TURN OFF WHEN PUSHING TO GITHUB
 const PORT = process.env.PORT || 3000;
 
 //Serve static files from /public
@@ -45,7 +47,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 //Serve game files securely after successful login
 app.use('/game', (req, res, next) => {
   if (!req.session.user) {
-    return res.redirect('/?error=403');
+    return res.redirect('/?error=403GET_OUT_OF_HERE');
   }
   next();
 }, express.static(path.join(__dirname, 'game')));
@@ -53,6 +55,10 @@ app.use('/game', (req, res, next) => {
 // Handle login POST from your HTML form
 app.post('/login', async (req, res) => {
   const { name, pass } = req.body;
+  if (name.length>30 || pass.length>99){
+    res.redirect('/?please_dont_do_that');
+    return;
+  }
   try {
     await queryPassword(name, pass);
     await setActive(name, 1); // make sure this is also promise-based
@@ -64,27 +70,32 @@ app.post('/login', async (req, res) => {
   }
 });
 
-function query(sql, params = []) {//apply this to other bits in code
+function query(sql, params = []) {
   return new Promise((resolve, reject) => {
-    db.query(sql, params, (err, result) => {
-      if (err) return reject(err);
-      resolve(result);
+    db.query(sql, params, (err, results) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(results);
+      }
     });
   });
 }
-
 async function queryPassword(name, pass) {
+  console.log("queryPassword start");
+  if (name.length>30 || pass.length > 99) return;
+  console.log("got past name and pass length");
   const sql = "SELECT * FROM players WHERE player_name = ?";
 
   const result = await query(sql, [name]);
 
   // New player
+  console.log(`result ${result}`);
   if (!result || result.length === 0) {
     console.log("New player!");
-
+    await initPlayer(name);
     await addPlayer(name, pass);
     await setActive(name, 1);
-
     return { created: true };
   }
 
@@ -141,7 +152,7 @@ async function initPlayer(name) {
     hand: null,//test axe item for now, needs to be sent in playerData, also saved to db
     lastGather: Date.now()
   };
-  map.Map[p_coords[1]][p_coords[0]].data.players[name] = {
+  map.Map[p_coords[1]][p_coords[0]].players[name] = {
     sprite: players[name].sprite,
     facing: players[name].facing,
     hand: players[name].hand
@@ -153,7 +164,7 @@ async function initPlayer(name) {
 function cleanupPlayer(name){
   console.log("cleaning up disc'd player");
   //remove sprite from tile
-  delete map.Map[players[name].coords[1]][players[name].coords[0]].data.players[name];
+  delete map.Map[players[name].coords[1]][players[name].coords[0]].players[name];
   markTileChanged(players[name].coords[0], players[name].coords[1]);
   //save players coords to database
   dbPlayerCoords(name);
@@ -183,7 +194,20 @@ async function getInventory(playerName) {
   return await query(sql, [playerName]);
 }
 
+async function getItemAmount(playerName, itemId) {
+  const sql = `
+    SELECT amount
+    FROM inventories
+    WHERE player_name = ? AND id = ?
+    LIMIT 1
+  `;
+
+  const rows = await query(sql, [playerName, itemId]);
+  return rows.length ? rows[0].amount : 0;
+}
+
 async function addItem(playerName, itemId, amount) {
+  console.log(`amount: ${amount}`);
   const sql = `
     INSERT INTO inventories (player_name, id, amount)
     VALUES (?, ?, ?)
@@ -217,8 +241,21 @@ async function syncInventory(playerName) {
   console.log(`inventory: ${inventory}`)
 }
 
+async function addPlayerToDb(name, pass){
+  console.log("trying to addPlayerToDb");
+  db.query("INSERT INTO players (player_name, pass, x, y) VALUES (?, ?, ?, ?)", [name, pass, 49, 49], (err) => {
+    if (err) {
+      console.error(err.message);
+      return;
+    }
+    console.log("Player added:", name);
+  });
+}
+
 // Add player
-function addPlayer(name, pass) {
+/*
+async function addPlayer(name, pass) {
+  //await addPlayerToDb(name, pass);
   db.query("INSERT INTO players (player_name, pass, x, y) VALUES (?, ?, ?, ?)", [name, pass, 49, 49], (err) => {
     if (err) {
       console.error(err.message);
@@ -227,11 +264,38 @@ function addPlayer(name, pass) {
     console.log("Player added:", name);
   });
   db.query("INSERT IGNORE INTO inventories (player_name, id, amount) SELECT player_name, 1, 1 FROM players;", [name], (err) => {
+    console.log("doesn't seem like this is working");
     if (err){
       console.error(err.message);
       return;
     }
   })
+  //await addItem(name, 1, 1);
+  syncInventory(name);
+}
+  */
+async function addPlayer(name, pass) {
+  console.log("addPlayer fxn");
+  await addPlayerToDb(name, pass);
+  /*
+  await query(
+    "INSERT INTO players (player_name, pass, x, y) VALUES (?, ?, ?, ?)",
+    [name, pass, 49, 49]
+  );
+  */
+ /*
+  await query(
+    `INSERT IGNORE INTO inventories (player_name, id, amount)
+     VALUES (?, 1, 1)`,
+    [name]
+  );
+  */
+
+  await syncInventory(name);
+  await addItem(name, 1, 1);
+  await syncInventory(name);
+
+  console.log("Player added:", name);
 }
 //replace with hashing
 function checkPassword(input, actual) {
@@ -243,7 +307,31 @@ function mapPersist(){
   //loop through active players and save their coords to db
   for (p in players){
     console.log(`${p}'s coords saved...`);
+    addPlayerToTile(p)//cause they got took off lol
     dbPlayerCoords(p);
+  }
+}
+
+var depletedList = [
+  'tree4',
+  'rock4'
+]
+
+function replenishResources(){
+  for (y in map.Map){
+    for (x in map.Map[y]){//change >> object name minus last char, to 0
+                          //this implies natural resources go 0 to 4 (or more)
+      for (i in depletedList){
+        if (map.Map[y][x].data.objects[depletedList[i]]) {
+          removeObjFromMap(x, y);
+          //cut last char, add '0'
+          let newName = depletedList[i].slice(0, -1) + '0';
+          map.Map[y][x].data.objects[newName] = { "name": newName };
+          markTileChanged(x, y);
+        }
+      }
+
+    }
   }
 }
 
@@ -350,20 +438,34 @@ function handlePlayerInput(name, data){
     if (data===' '){
       useItem(name);
     }
-    if (data==='e'){
-      //layTile
-    }
   }
 }
 
 //move this to another file?
 let itemId = {
-  1: "axeItem",
-  2: "log"
+  1: "axe",
+  2: "log",
+  3: "pickaxe",
+  4: "rock",
+  5: "stoneSword"
+}
+
+let idItem = {
+  "axe": 1,
+  "log":2,
+  "pickaxe":3,
+  "rock":4,
+  "stoneSword":5
 }
 //and this in same other file lol
 let equipabbleItems = {
-  "axeItem": {
+  "axe": {
+    slot: "hand"
+  },
+  "pickaxe": {
+    slot: "hand"
+  },
+  "stoneSword": {
     slot: "hand"
   }
 };
@@ -383,22 +485,17 @@ function useItem(name){
 }
 
 function equip(name, id){
-  //emitPlayerState(players[name]);
-  //markTileChanged(players[name].coords[0], players[name].coords[1]);
   let player = players[name];
-  console.log(`id in equip fxn: ${id}`);
   let itemSlot = equipabbleItems[itemId[players[name].inventory[players[name].activeInventory].id]].slot;
-  console.log(`itemSlot: ${itemSlot}`);
   let holding = "unequipped";
   if (players[name][itemSlot] === id){
     players[name][itemSlot] = null;
-    map.Map[player.coords[1]][player.coords[0]].data.players[name].hand=null;
+    map.Map[player.coords[1]][player.coords[0]].players[name].hand=null;
   } else {
     players[name][itemSlot] = id;
     holding = "equipped";
-    map.Map[player.coords[1]][player.coords[0]].data.players[name].hand=id;
+    map.Map[player.coords[1]][player.coords[0]].players[name].hand=id;
   }
-  console.log(`${name} has ${holding} ${itemId[players[name].inventory[players[name].activeInventory].id]} in ${itemSlot}`);
   emitPlayerState(players[name]);//might not need these?
   markTileChanged(players[name].coords[0], players[name].coords[1]);
   console.log(`hand: ${players[name].hand}`);
@@ -438,22 +535,39 @@ function movePlayer(name, data){
         players[name].facing = dir;
       }
       //delete old sprite (why doesn't this work on logout/timeout sometimes?)
-      delete map.Map[players[name].coords[1]][players[name].coords[0]].data.players[name];
+      delete map.Map[players[name].coords[1]][players[name].coords[0]].players[name];
       markTileChanged(players[name].coords[0], players[name].coords[1]);
       players[name].coords = modCoords;
       //change to function addPlayerToTile();
-      map.Map[modCoords[1]][modCoords[0]].data.players[name] = {
+      addPlayerToTile(name, modCoords[0], modCoords[1]);
+      /*
+      map.Map[modCoords[1]][modCoords[0]].players[name] = {
         sprite : players[name].sprite,
         facing : players[name].facing,
         hand: players[name].hand,//then everygthing else
       }
+      */
       markTileChanged(players[name].coords[0], players[name].coords[1]);
     }
   });
 }
 
+function addPlayerToTile(name, x=null, y=null){//x and y for mod coords etc
+  if (x===null){
+    x = players[name].coords[0];
+  }
+  if (y===null){
+    y = players[name].coords[1];
+  }
+  map.Map[y][x].players[name] = {
+    sprite: players[name].sprite,
+    facing: players[name].facing,
+    hand: players[name].hand,//then everygthing else
+  }
+  markTileChanged(x, y);
+}
+
 function checkCollision(name, coords){
-  //coords[0],[1]
   if (coords[0]<10 || coords[0]>90){//FIX THIS. be able to use whole tilemap
     return true;
   }
@@ -484,7 +598,11 @@ function checkCollision(name, coords){
 }
 
 var resources = {
-  "tree" : 1//log
+  "tree" : 2,//log
+  "log" : 2,
+  "pickaxe": 3,
+  "rock": 4,
+  "stoneSword": 5
 }
 
 var axeInteracts = [//this can go in another file
@@ -492,11 +610,20 @@ var axeInteracts = [//this can go in another file
   'tree1',
   'tree2',
   'tree3',
-  'axeItem'//put all different axes here
+  'axe'//put all different axes here
+]
+
+var pickaxeInteracts = [
+  'rock0',
+  'rock1',
+  'rock2',
+  'rock3',
+  'pickaxe'//all diff pickaxes here
 ]
 
 var itemInteracts = [
-  axeInteracts
+  axeInteracts,
+  pickaxeInteracts
 ]
 
 async function checkObjectCollision(name, coords, objName){
@@ -516,7 +643,7 @@ async function resourceInteract(name, coords, objName){
   }
   players[name].lastGather=Date.now();
   let newObjName = objName.slice(0, -1);//cut off last char
-  let resourceId = resources[newObjName]+1;//because itemId's doesn't start with 0
+  let resourceId = resources[newObjName];//because itemId's doesn't start with 0
   await addItem(name, resourceId, 1);//need dynamic id, log, rock, etc
   await syncInventory(name);
   let newNum = Number(objName[objName.length-1])+1;//this prob really fucking bad lol
@@ -526,6 +653,125 @@ async function resourceInteract(name, coords, objName){
     name: newObjName
   }
   await markTileChanged(coords[0], coords[1]);
+}
+
+async function dropItem(name, item){
+  let player = players[name];
+  try {
+    if (itemId[player.inventory[item].id]==="axe"){
+      return;//take this out when get axe on death or whatever
+    }
+  } catch(err){
+    return;
+  }
+  if (itemId[player.inventory[item].id]==="axe"){
+    return;//take this out when get axe on death or whatever
+  }
+  //data is activeInvItem
+  console.log(item);
+  console.log(`dropping ${itemId[players[name].inventory[item].id]}`);
+  if (Object.keys(map.Map[player.coords[1]][player.coords[0]].data.objects).length!==0){
+    return;//only one object on tile
+  }
+  map.Map[player.coords[1]][player.coords[0]].data.objects[itemId[player.inventory[item].id]] = {"name": itemId[player.inventory[item].id]};
+  await removeItem(name, players[name].inventory[item].id, 1);
+  markTileChanged(player.coords[0], player.coords[1]);
+  await syncInventory(name);
+}
+
+var dropItems = [//also has to go in resources with it's id? that's kinda messy
+  'axe',
+  'log',
+  'pickaxe',
+  'rock',
+  'stoneSword'
+]
+
+var interactItems = [
+  'craftTable'
+]
+
+async function pickUpItem(name){
+  let player = players[name];
+  let mapObjects = map.Map[player.coords[1]][player.coords[0]].data.objects;
+  if (Object.keys(mapObjects).length===0){
+    return;
+  }
+  let id = resources[Object.keys(mapObjects)[0]];
+  if (dropItems.includes(itemId[id])){
+    await removeObjFromMap(player.coords);
+    markTileChanged(player.coords[0], player.coords[1]);
+    await addItem(name, id, 1);
+    await syncInventory(name);
+    return;
+  }
+  if (interactItems.includes(Object.keys(mapObjects)[0])){
+    checkInteract(name, Object.keys(mapObjects)[0]);
+  }
+}
+
+function checkInteract(name, objName){
+  //check surrounding tiles for something to interact with (bank, crafttable etc)
+  console.log(`checking interaction with ${objName}`);
+  if (objName==='craftTable'){
+    console.log("player interacting with craftTable");
+    //when actually trying to craft something, will check if craftTable still there hehe
+    io.to(players[name].sock_id).emit('crafting');//opens up crafting for player
+  }
+}
+
+async function craftItem(name, item) {
+  if (item===null) return;
+  const coords = players[name].coords;
+  const tileObjects = map.Map[coords[1]][coords[0]].data.objects;
+
+  if (!tileObjects['craftTable']) {
+    console.log("no longer at crafting table");
+    return;
+  }
+  console.log(`attempting to craft ${item}`);
+
+  // Check if player has enough materials
+  for (const material in craftItems[item]) {
+    console.log(`material: ${material}`);
+    const materialId = idItem[material];          // lookup correct material
+    const requiredAmount = craftItems[item][material];
+    console.log(`reqdAmount: ${craftItems[item][material]}`)
+    console.log(`materialId: ${materialId}`)
+    const playerAmount = await getItemAmount(name, materialId);
+
+    console.log(`Checking ${material} (id ${materialId}): have ${playerAmount}, need ${requiredAmount}`);
+
+    if (playerAmount < requiredAmount) {
+      console.log(`Not enough ${material}`);
+      return;
+    }
+  }
+
+  console.log("had enough items");
+
+  // Remove materials
+  for (const material in craftItems[item]) {
+    const materialId = idItem[material];
+    const removeAmount = craftItems[item][material];
+    console.log(`Removing ${removeAmount} of ${material} (id ${materialId})`);
+    await removeItem(name, materialId, removeAmount);
+  }
+
+  // Add crafted item
+  await addItem(name, idItem[item], 1);
+  console.log("got past addItem");
+
+  await syncInventory(name);
+}
+
+var craftItems = {
+  "pickaxe": {"log":5},
+  "stoneSword": {"log":1, "rock":2}
+}
+
+async function removeObjFromMap(coords){
+  map.Map[coords[1]][coords[0]].data.objects = {}
 }
 
 // Socket.IO connection handler
@@ -579,7 +825,7 @@ io.on('connection', async (socket) => {
     //add chat bubble to map
     map.Map[players[socket.user].coords[1]][players[socket.user].coords[0]].data.typing=true;
     markTileChanged(players[socket.user].coords[0],players[socket.user].coords[1]);
-  })
+  });
 
   socket.on('stopTyping', () => {
     players[socket.user].typing.state=false;
@@ -602,6 +848,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on("layTile", data => {
+    if (!devMode) return;
     console.log(data);
     let x = players[socket.user].coords[0];
     let y = players[socket.user].coords[1]
@@ -609,6 +856,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on("clearTile", data => {
+    if (!devMode) return;
     console.log(data);
     let x = players[socket.user].coords[0];
     let y = players[socket.user].coords[1]
@@ -616,6 +864,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('saveMap', () => {
+    if (!devMode) return;
     map.Fxn.save(map.Map);
   });
 
@@ -626,6 +875,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on("downloadMap", () => {
+    if (!devMode) return;
     //send map.Map[0-99] to client to be stored in a variable
     //USE SPARINGLY!!!!! LOTS OF DATA!!!
     //COMMENT THIS OUT BEFORE UPDATING VPS!!!
@@ -643,6 +893,21 @@ io.on('connection', async (socket) => {
     console.log(`${socket.user} active item: ${players[socket.user].activeInventory}`);
   });
 
+  socket.on('dropItem', async (data) => {
+    await dropItem(socket.user, data);
+    await syncInventory(socket.user);
+  });
+
+  socket.on('action', () => {
+    console.log(`${socket.user} trying to pick something up...`);
+    pickUpItem(socket.user);
+  });
+
+  socket.on('craftItem', async (data) => {
+    await craftItem(socket.user, data);
+    await syncInventory(socket.user);
+  })
+
   socket.on('disconnect', () => {
     console.log(`User logged out: ${socket.user}`);
     setActive(socket.user, 0);
@@ -655,8 +920,10 @@ io.on('connection', async (socket) => {
 });
 
 //really we need a global interval for all game synapses?
+setInterval(replenishResources, 60000*30);//every 30 minutes
 setInterval(mapUpdate, 200);
 setInterval(mapPersist, 60000);//save map every minute
+
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);

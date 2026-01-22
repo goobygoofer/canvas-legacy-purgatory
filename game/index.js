@@ -1,3 +1,5 @@
+var devMode = false;
+
 const spriteSheet = new Image();
 spriteSheet.src = 'spritesheet-0.5.18.png';
 const canvas = document.getElementById('disp');
@@ -40,7 +42,18 @@ let playerData = {
 //id's for items, name from base_tiles to disp in inv
 let itemId = {
   1: "axe",
-  2: "log"
+  2: "log",
+  3: "pickaxe",
+  4: "rock",
+  5: "stoneSword"
+}
+
+let idItem = {
+  "axe": 1,
+  "log":2,
+  "pickaxe":3,
+  "rock":4,
+  "stoneSword":5
 }
 
 //stuff for inv, paint etc tabs
@@ -78,9 +91,16 @@ function drawTabs() {
 }
 drawTabs();//need to add stuff like this to a startup fxn or something
 
-invCanvas.addEventListener("contextmenu", (e) => e.preventDefault());
+invCanvas.addEventListener("contextmenu", (e) => {
+  e.preventDefault();
+  handleInvCanvClick(e, 'right');
+});
 //^^^can do other stuff inside this, right click menu for inv or something?
 invCanvas.addEventListener("mousedown", e => {
+  handleInvCanvClick(e, 'left');
+});
+
+function handleInvCanvClick(e, leftRight){
   const rect = invCanvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
@@ -92,7 +112,7 @@ invCanvas.addEventListener("mousedown", e => {
     for (const tab of tabs) {
       const width = invCtx.measureText(tab.label).width + TAB_PADDING * 2;
 
-      if (mx >= cursorX && mx <= cursorX + width) {
+      if (mx >= cursorX && mx <= cursorX + width) {//this part messy
         activeTab = tab.id;
         drawTabs();
         if (activeTab==="paint"){togglePaint()}
@@ -105,20 +125,18 @@ invCanvas.addEventListener("mousedown", e => {
 
       cursorX += width;
     }
-
     // Clicked tab bar but not a tab, do nothing
     return;
   }
-  handleActiveTabClick(mx, my);
-});
+  handleActiveTabClick(mx, my, leftRight);
+}
 
-function handleActiveTabClick(x, y){
-  //console.log(`clicked ${x},${y} in tabs container`);
+function handleActiveTabClick(x, y, leftRight){
   if (activeTab==='paint'){
     handlePaintClick(x, y);
   }
   if (activeTab==='inventory'){
-    handleInvClick(x, y);
+    handleInvClick(x, y, leftRight);
   }
 }
 
@@ -179,7 +197,7 @@ function drawItemInSlot(item, x, y, size, slotIndex) {
 
 var activeInvItem = null;
 
-function handleInvClick(mx, my) {
+function handleInvClick(mx, my, leftRight) {
   // ignore tab area
   if (my < TAB_HEIGHT) return null;
 
@@ -196,7 +214,12 @@ function handleInvClick(mx, my) {
   } else {
     activeInvItem = row * INV_COLS + col; // 0–31
   }
-  socket.emit('activeInvItem', activeInvItem);
+  if (leftRight==='left'){
+    socket.emit('activeInvItem', activeInvItem);
+  }
+  if (leftRight==='right'){
+    socket.emit('dropItem', activeInvItem);
+  }
   drawInventory();
 }
 
@@ -254,7 +277,6 @@ function handlePaintClick(mx, my) {
       drawPaintPalette();//make a general draw tabs container fxn
       return;
     }
-
     i++;
   }
 }
@@ -341,13 +363,21 @@ window.addEventListener("keydown", e => {
 
 function onKeyDown(e) {
   if (document.activeElement === input) return;
+  if (e.key === 'Shift'){
+    handleShiftKey();
+    return;
+  }
   if (e.key === ' ') {
     const active = document.activeElement;
     if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') {
       return;
     }
-    //layTile();//put this back for map making
-    socket.emit('player input', e.key);
+    if (devMode){
+      layTile();//put this back for map making
+    } else {
+      socket.emit('player input', e.key);
+    }
+    crafting = false;
     return;
   }
   //just leave this and movement comes last?..
@@ -356,6 +386,7 @@ function onKeyDown(e) {
   emitInputSwitch=true;
   keystate[key] = true;
   keystate.lastInput = Date.now();
+  crafting = false;//need universal to close any similar popups
 }
 
 function onKeyUp(e) {
@@ -364,6 +395,14 @@ function onKeyUp(e) {
   emitInputSwitch=false;
   keystate[key] = false;
   emitInput();
+}
+
+function handleShiftKey(){
+  if (crafting){
+    craftItem();
+    return;//need to add craft item to this (Shift to craft)
+  }
+  socket.emit('action');
 }
 
 function emitInput() {
@@ -391,26 +430,32 @@ function logout(){
 //When mouse button is pressed
 canvas.addEventListener("mousedown", (e) => {
   e.preventDefault(); // prevent right-click menu
-  ispainting = true;
+  if (painting){
+    ispainting = true;
+  }
+  
   currentButton = e.button === 2 ? "right" : "left"; // 0 = left, 2 = right
-  paintAtMouse(e);
+  coordsInCanvas(e);
 });
 
 //When mouse moves
 canvas.addEventListener("mousemove", (e) => {
-  if (!ispainting) return;
-  paintAtMouse(e);
+  if (ispainting){//this will work for now
+    coordsInCanvas(e);
+  }
 });
 
 //When mouse button is released
 canvas.addEventListener("mouseup", () => {
-  ispainting = false;
+  if (painting){
+    ispainting = false;
+  }
 });
 
 //Prevent right-click menu
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
-function paintAtMouse(e) {
+function coordsInCanvas(e) {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
@@ -418,11 +463,11 @@ function paintAtMouse(e) {
   const mouseX = (e.clientX - rect.left) * scaleX;
   const mouseY = (e.clientY - rect.top) * scaleY;
 
-  handleClick(mouseX, mouseY, currentButton);
+  coordsOnMap(mouseX, mouseY, currentButton);
 }
 
-//need to fix this, clicking canvas will be for other stuff too
-function handleClick(mouseX, mouseY, leftRight) {
+  //worldTilex, worldTileY
+function coordsOnMap(mouseX, mouseY, leftRight) {//first part gets tile on map.Map
   const tilesAcross = 20;
   const tilesDown = 10;
 
@@ -438,19 +483,96 @@ function handleClick(mouseX, mouseY, leftRight) {
   const worldTileX = topLeftTileX + tileOffsetX;
   const worldTileY = topLeftTileY + tileOffsetY;
 
-  if (painting===false){
-    return;//need to fix this later
-  }
-
+  //subtile subX, subY
   const pixelInTileX = mouseX % 32;
   const pixelInTileY = mouseY % 32;
 
   const subX = Math.floor(pixelInTileX / 8);
   const subY = Math.floor(pixelInTileY / 8);
+  //now determine what to do with click
+  handleMainClick(mouseX, mouseY, worldTileX, worldTileY, subX, subY, leftRight);
+}
 
+//c canvas coord, m map coord, subX/Y sub coord in map coord
+function handleMainClick(cX, cY, mX, mY, subX, subY, leftRight){
+  if (ispainting) {
+    sendPaint(mX, mY, subX, subY, leftRight);
+  }
+  if (crafting){
+    handleCraftMenuClick(cX, cY);
+  }
+}
+
+var craftItems = {
+  "pickaxe": {"log":5},
+  "stoneSword": {"log":1, "rock":2}
+}
+
+let activeCraftItem = null;
+
+const CRAFT_X = 100;
+const CRAFT_Y = 50;
+const CRAFT_W = 400;
+const CRAFT_H = 200;
+
+const ICON_SIZE = 16;
+const ICON_PADDING = 8;
+
+const craftableList = Object.keys(craftItems);
+
+const CRAFT_COLS = Math.floor(
+  CRAFT_W / (ICON_SIZE + ICON_PADDING)
+);
+
+const CRAFT_BTN_W = 64;
+const CRAFT_BTN_H = 24;
+
+const CRAFT_BTN_X = CRAFT_X + CRAFT_W - CRAFT_BTN_W - 8;
+const CRAFT_BTN_Y = CRAFT_Y + CRAFT_H - CRAFT_BTN_H - 8;
+
+function isCraftButtonClicked(mx, my) {
+  return (
+    mx >= CRAFT_BTN_X &&
+    mx <= CRAFT_BTN_X + CRAFT_BTN_W &&
+    my >= CRAFT_BTN_Y &&
+    my <= CRAFT_BTN_Y + CRAFT_BTN_H
+  );
+}
+
+function craftItem(){
+  socket.emit('craftItem', activeCraftItem);
+}
+
+function handleCraftMenuClick(mx, my){
+  if (isCraftButtonClicked(mx, my)){
+    craftItem();
+  }
+  if (
+    mx < CRAFT_X || mx > CRAFT_X + CRAFT_W ||
+    my < CRAFT_Y || my > CRAFT_Y + CRAFT_H
+  ) {
+    return;
+  }
+
+  // local coordinates
+  const lx = mx - CRAFT_X;
+  const ly = my - CRAFT_Y;
+
+  const cellW = ICON_SIZE + ICON_PADDING;
+  const col = Math.floor(lx / cellW);
+  const row = Math.floor(ly / cellW);
+
+  const index = row * CRAFT_COLS + col;
+
+  if (index < 0 || index >= craftableList.length) return;
+
+  activeCraftItem = craftableList[index];
+}
+
+function sendPaint(x, y, subX, subY, leftRight){
   let data = {
-    x: worldTileX,
-    y: worldTileY,
+    x: x,
+    y: y,
     subX: subX,
     subY: subY,
     c: activePaintColor,
@@ -479,21 +601,24 @@ socket.on('playerState', (data)=> {
 });
 
 socket.on('invData', (data) => {
-  console.log("invData worked client side");
   playerData.inventory = data;
-  drawInventory();
+  if (activeTab==="inventory"){
+    drawInventory();
+  }
 });
 
 socket.on('updateChunk', (data) => {
-    console.log("received new chunk");
     latestView = data;
     chunkNeedsRender = true;
 });
 
 socket.on('updateInventory', (data) => {
-  console.log(`got inv data: ${data}`);
   updateInventory(data);//item name||id, amt
   drawInventory();
+});
+
+socket.on('crafting', (data) => {
+  toggleCrafting();
 });
 
 //DON'T PUSH THIS!!!
@@ -550,11 +675,11 @@ function updateView(data){
           //haha!
         }
       }
-      if (Object.keys(data[i][j].data.players).length > 0) {
-        let players = data[i][j].data.players;
-        for (p in data[i][j].data.players) {
-          let spriteName = data[i][j].data.players[p].sprite;//needs to include worn items, glow, etc
-          //p being name, ...data.players[p].sprite (draw that lol)
+      if (Object.keys(data[i][j].players).length > 0) {
+        let players = data[i][j].players;
+        for (p in data[i][j].players) {
+          let spriteName = data[i][j].players[p].sprite;//needs to include worn items, glow, etc
+          //p being name, ...players[p].sprite (draw that lol)
           let equipToDraw = [];
           try {
             ctx.drawImage(
@@ -603,6 +728,7 @@ function updateDraw(now) {
     chunkNeedsRender = false;
     lastRender = now;
     updateView(latestView);
+    drawCrafting();
   }
   requestAnimationFrame(updateDraw);
 }
@@ -613,6 +739,7 @@ function updateInventory(data){
   //only updates if player clicks in it
   //or something on server changes inv
   playerData.inventory = data;
+  drawInventory();
 }
 
 function sendInvSelect(id){
@@ -634,21 +761,84 @@ function togglePaint(){
   }
 }
 
+var crafting = false;
+function toggleCrafting(){
+  activeTab = "inventory";
+  if (painting===true){
+    togglePaint();
+    drawInventory();
+  }
+  crafting = true;
+  //add if crafting true, drawCrafting() to requestAnimation frame thingy
+}
+
+function drawCrafting(){
+  if (!crafting) return;
+  //overlays main canvas ele
+  //only displays items player has enough req'd items to create in a grid
+  //hilight selected craftable item
+  //Shift to craftItem(...)
+  ctx.fillStyle = "#ffae4485"
+  ctx.fillRect(100, 50, 400, 200);//just test
+  craftableList.forEach((item, i) => {
+    const col = i % CRAFT_COLS;
+    const row = Math.floor(i / CRAFT_COLS);
+
+    const x = CRAFT_X + col * (ICON_SIZE + ICON_PADDING);
+    const y = CRAFT_Y + row * (ICON_SIZE + ICON_PADDING);
+
+    // draw icon here (16x16)
+    ctx.drawImage(
+      spriteSheet,
+      base_tiles[item].x, base_tiles[item].y,
+      16, 16,
+      x, y,
+      16, 16
+    );
+
+    if (item === activeCraftItem) {
+      ctx.strokeStyle = "#ffff00";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - 1, y - 1, ICON_SIZE + 2, ICON_SIZE + 2);
+    }
+  });
+  //DRAFT CRAFT BUTTON
+  ctx.fillStyle = "#6d3500ff";
+  ctx.fillRect(CRAFT_BTN_X, CRAFT_BTN_Y, CRAFT_BTN_W, CRAFT_BTN_H);
+  ctx.strokeStyle = "#000";
+  ctx.strokeRect(CRAFT_BTN_X, CRAFT_BTN_Y, CRAFT_BTN_W, CRAFT_BTN_H);
+  ctx.fillStyle = "#fff";
+  ctx.font = "14px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    "Craft Item",
+    CRAFT_BTN_X + CRAFT_BTN_W / 2,
+    CRAFT_BTN_Y + CRAFT_BTN_H / 2
+  );
+}
+
+
 
 //admin only! use only for production, do not deploy this code to server
 //however if players are going to build stuff, some of this code
 //will probably be useful for user client
 /*
-const select = document.getElementById("tileSelect");
+var select;
+if (devMode){
+  select = document.createElement('select');
+  document.getElementById('side-column').appendChild(select);
 
-Object.keys(base_tiles).forEach(key => {
-  const option = document.createElement("option");
-  option.value = key;
-  option.textContent = key;
-  select.appendChild(option);
-});
+  Object.keys(base_tiles).forEach(key => {
+    const option = document.createElement("option");
+    option.value = key;
+    option.textContent = key;
+    select.appendChild(option);
+  });
+}
 
 function layTile(){
+  if (!devMode) return;
   //put object or base-tile on tile on player coords on map
   //when done world building, emit save map, server saves map to local json file
   //gets base-tile name from selected in dropdown list
@@ -659,6 +849,6 @@ function layTile(){
 }
 
 function saveMap(){//need to take this out for server lol
-  socket.emit('saveMap');
+  socket.emit('saveMap');//or can just wait for server to save
 }
 */

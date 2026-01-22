@@ -1,5 +1,8 @@
 
 module.exports = {
+    "stoneSword":{"x": 272, "y": 16},
+    "stoneSwordL":{"x": 192, "y": 192},
+    "stoneSwordR":{"x": 80, "y": 192},
     "chatDots":{"x":80, "y":626},
     "spiderL":{"x":112, "y":240},
     "heartContainer":{"x":128, "y":528},
@@ -63,7 +66,12 @@ module.exports = {
     "oak":{"x":128, "y":1104, "collision":true},//
     "deadtree":{"x":48, "y":464, "collision":true},//
     "snowtree":{"x":176, "y":544, "collision":true},//
-    "rock":{"x":176, "y":0, "collision":true},//
+    "rock0":{"x":176, "y":0, "collision":true},//
+    "rock1":{"x":192, "y":0, "collision":true},//
+    "rock2":{"x":208, "y":0, "collision":true},//
+    "rock3":{"x":224, "y":0, "collision":true},//
+    "rock4":{"x":240, "y":0, "collision":false},//
+    "rock":{"x":256, "y":0, "collision":false},//
     "water":{"x":0, "y":48, "collision":true},//
     "flower1":{"x":16, "y":48},//
     "flower2":{"x":64, "y":48},//
@@ -123,6 +131,9 @@ module.exports = {
     "axeR":{"x":0, "y":192},
     "axeL":{"x":272, "y":192},
     "axe":{"x":64, "y":64},
+    "pickaxeR":{"x": 16, "y": 192},
+    "pickaxeL":{"x": 256, "y": 192},
+    "pickaxe":{"x": 32, "y": 64},
     "statDisp":{"x":80, "y":624},
     "log":{"x":96, "y":0},
     "splitlog":{"x":96, "y":1120},
@@ -136,7 +147,11 @@ module.exports = {
     "ironsword":{"x":272, "y":16},
     "ironswordL":{"x":192, "y":192},
     "ironswordR":{"x":80, "y":192},
-    "craftTable":{"x":192, "y":528},//just this for now as a click point
+    "craftTable":{
+      "x":192, 
+      "y":528,
+      "collision":false
+    },//just this for now as a click point
     "lootbag":{"x":192, "y":240},
     "abyss":{"x":160, "y":384},
     "void":{"x":240, "y":1232},//just blank space for event tiles (like map e"x"it or dungeon stairs)

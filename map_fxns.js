@@ -12,7 +12,16 @@ function save_map(map) {
 }
 
 function persist_map(map){
-  var jsonMap = JSON.stringify(map);
+  var rawMap=[];
+  for (y in map){
+    for (x in map[y]){
+      if (Object.keys(map[y][x].players).length!==0){
+        map[y][x].players={};
+      }
+    }
+    rawMap.push(map[y]);
+  }
+  var jsonMap = JSON.stringify(rawMap);
   const filePath = 'blank_map.json';
   try {
     fs.writeFileSync(filePath, jsonMap);
