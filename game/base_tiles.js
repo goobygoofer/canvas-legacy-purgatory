@@ -1,6 +1,136 @@
 
 base_tiles = {
-    "stoneSword":{"x": 272, "y": 16},
+  "axe": {
+    "x":64, "y":64,
+    kind: "item",
+    id: 1,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" }
+  },
+    "log": {
+    "x":96, "y":0,
+    kind: "item",
+    id: 2,
+    container: "objects",
+    collision: false
+  },
+  "pickaxe": {
+    "x": 32, "y": 64,
+    kind: "item",
+    id: 3,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { log: 5}
+  },
+   "rock": {
+    "x":256, "y":0,
+    kind: "item",
+    id: 4,
+    container: "objects",
+    collision: false
+  },
+  "stoneSword": {
+    "x": 272, "y": 16,
+    kind: "item",
+    id: 5,
+    container: "objects",
+    collision: false,
+    roof: false,
+    equip: { slot: "hand" },
+    craft: { log: 1, rock: 2 }
+  },
+    "woodblock": {
+    "x":112, "y":0,
+    kind: "item",
+    id: 6,
+    container: "objects",
+    collision: true,
+    craft: { log: 10}
+  },
+   "stoneblock":{
+    "x":288, "y":0,
+      kind: "item",
+      id: 7,
+      container: "objects",
+      collision: true,
+      craft: { rock: 10},
+      dropChange: "stoneblock0"
+    },
+    "ironore":{
+      "x":272, "y":32,
+      kind: "item",
+      id: 8,
+      container: "objects",
+      collision: false,
+      smelt: "ironbar"
+    },
+    "ironbar":{
+      "x":272, "y":0,
+      kind: "item",
+      id: 9,
+      container: "objects",
+      collision: false,
+      craft: {ironore:5}
+    },
+    "ironsword":{
+      "x":304, "y":976,
+      kind: "item",
+      id: 10,
+      container: "objects",
+      collision: false,
+      craft: {ironbar:4, log:2},
+    },
+    "ironswordL":{"x":288, "y":976},
+    "ironswordR":{"x":272, "y":976},
+    "forge":{
+     "x":176, "y":992,
+     kind: "interactable",
+     container: "objects",
+     collision: false
+    },
+     "stoneblock0":{
+      "x":288, "y":0,
+      kind: "resource",
+      container: "objects",
+      collision: true,
+      roof: false,
+      drops: { rock: 1 },
+      depletesTo: "stoneblock1",
+      requiresTool: "pickaxe"
+      },
+  "stoneblock1":{
+      "x":112,"y":64,
+      kind: "resource",
+      container: "objects",
+      collision: true,
+      roof: false,
+      drops: { rock: 1 },
+      depletesTo: "stoneblock2",
+      requiresTool: "pickaxe"
+      },
+  "stoneblock2":{
+    "x":128,"y":64,
+      kind: "resource",
+      container: "objects",
+      collision: true,
+      roof: false,
+      drops: { rock: 1 },
+      depletesTo: "stoneblock3",
+      requiresTool: "pickaxe"
+      },
+  "stoneblock3":{
+    "x":144,"y":64,
+      kind: "resource",
+      container: "objects",
+      collision: true,
+      roof: false,
+      drops: { rock: 1 },
+      depletesTo: null,
+      requiresTool: "pickaxe"
+      },
+    //"stoneSword":{"x": 272, "y": 16, 'roof':false, 'type':'objects', 'collision':false},
     "stoneSwordL":{"x": 192, "y": 192},
     "stoneSwordR":{"x": 80, "y": 192},
     "chatDots":{"x":80, "y":626},
@@ -29,50 +159,102 @@ base_tiles = {
     "empty-heart":{"x":160, "y":528},
     "ghostR":{"x":48, "y":80},//
     "ghostL":{"x":64, "y":96},
-    "grass":{"x":0, "y":0},//plain, "y":green grass
+    "grass":{"x":0, "y":0, 'roof':false, 'type':'base-tile', 'collision':false},//plain, "y":green grass
     "grass2":{"x":160, "y":608},
     "cutGrass":{"x":128, "y":48},//when grass2 gets cut
-    "snow":{"x":208, "y":528},//
-    "tree":{
+    "snow":{"x":208, "y":528, 'roof':false, 'type':'base-tile', 'collision':false},//
+    "tree":{//deprecated
       "x":16, 
       "y":0, 
-      "collision":true
+      "collision":true,
     },
     "tree0":{
       "x":16, 
       "y":0, 
-      "collision":true
+      "collision":true,
+      'type':'objects',
     },
     "tree1":{
       "x":32,
       "y":0,
-      "collision":true
+      "collision":true,
+      'type':'objects'
     },
     "tree2":{
       "x":48,
       "y":0,
-      "collision":true
+      "collision":true,
+      'type':'objects'
     },
     "tree3":{
       "x":64,
       "y":0,
-      "collision":true
+      "collision":true,
+      'type':'objects'
     },
     "tree4":{//same as stump1
       "x":80,
       "y":0,
-      "collision":false
+      "collision":false,
+      'type':'depletedResource'
     },
+    "ironrock0":{
+      "x":176, "y":0,
+  kind: "resource",
+  container: "objects",
+  collision: true,
+  roof: true,
+  drops: { ironore: 1},
+  depletesTo: "ironrock1",
+  requiresTool: "pickaxe"
+ },
+  "ironrock1":{
+    "x":224,"y":992,
+  kind: "resource",
+  container: "objects",
+  collision: true,
+  roof: true,
+  drops: { ironore: 1},
+  depletesTo: "ironrock2",
+  requiresTool: "pickaxe"
+ },
+  "ironrock2":{
+    "x":240,"y":992,
+  kind: "resource",
+  container: "objects",
+  collision: true,
+  roof: true,
+  drops: { ironore: 1},
+  depletesTo: "ironrock3",
+  requiresTool: "pickaxe"
+ },
+  "ironrock3":{
+    "x":256,"y":992,
+  kind: "resource",
+  container: "objects",
+  collision: true,
+  roof: true,
+  drops: { ironore: 1},
+  depletesTo: "ironrock4",
+  requiresTool: "pickaxe"
+ },
+ "ironrock4":{
+    "x":272,"y":992,
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: "rock0"
+ },
     "oak":{"x":128, "y":1104, "collision":true},//
     "deadtree":{"x":48, "y":464},//
     "snowtree":{"x":176, "y":544},//
-    "rock0":{"x":176, "y":0, "collision":true},//
-    "rock1":{"x":192, "y":0, "collision":true},//
-    "rock2":{"x":208, "y":0, "collision":true},//
-    "rock3":{"x":224, "y":0, "collision":true},//
-    "rock4":{"x":240, "y":0, "collision":false},//
-    "rock":{"x":256, "y":0, "collision":false},//
-    "water":{"x":0, "y":48, "collision":true},//
+    "rock0":{"x":176, "y":0, "collision":true, 'roof':true, 'type':'objects'},//
+    "rock1":{"x":192, "y":0, "collision":true, 'roof':false, 'type':'objects'},//
+    "rock2":{"x":208, "y":0, "collision":true, 'roof':false, 'type':'objects'},//
+    "rock3":{"x":224, "y":0, "collision":true, 'roof':false, 'type':'objects'},//
+    "rock4":{"x":240, "y":0, "collision":false, 'roof':false, 'type':'depletedResource'},//
+    //"rock":{"x":256, "y":0, "collision":false},//
+    "water":{"x":0, "y":48, "collision":true, 'roof':false, 'type':'base-tile'},//
     "flower1":{"x":16, "y":48},//
     "flower2":{"x":64, "y":48},//
     "flower3":{"x":112, "y":48},//
@@ -92,16 +274,37 @@ base_tiles = {
     "pathCRV4":{"x":160, "y":544},//
     //stuff
     "grave":{"x":32, "y":160},//
-    "stoneblock":{"x":288, "y":0},//
-    "woodblock":{"x":112, "y":0},//
-    "stump1":{"x":192, "y":448},
+    //"stoneblock":{"x":288, "y":0},//
+    /*
+    "woodblock":{
+      "x":112, 
+      "y":0,
+    },
+    */
+    "woodblock0":{
+      "x":112,
+      "y":0
+    },
+    "woodblock1":{
+      "x":128,
+      "y":0
+    },
+    "woodblock2":{
+      "x":144,
+      "y":0
+    },
+    "woodblock3":{
+      "x":160,
+      "y":0
+    },
+    "stump1":{"x":192, "y":448, 'roof':false, 'type':'depletedResource', 'collision':false},
     "stump2":{"x":64, "y":1120},
     "stump3":{"x":80, "y":1120},
     "campfire":{"x":32, "y":384},//
     "rain":{"x":144, "y":432},//
     "fenceV":{"x":0, "y":160},
     "fenceH":{"x":16, "y":160},
-    "sand":{"x":16, "y":64},
+    "sand":{"x":16, "y":64, 'roof':false, 'type':'base-tile', 'collision':false},
     "boulder":{"x":144, "y":1232},
     "rockpile":{"x":304, "y":1072},
     "mapsign":{"x":16, "y":176},
@@ -109,7 +312,7 @@ base_tiles = {
     "cactus":{"x":160, "y":48},
     "ankh":{"x":128, "y":96},
     "chest":{"x":32, "y":128},
-    "woodplate":{"x":112, "y":80},
+    "woodplate":{"x":112, "y":80, 'roof':true, 'type':'base-tile', 'collision':false},
     "stoneplate":{"x":128, "y":80},
     "door":{"x":288, "y":96},
     "door2":{"x":192, "y":816},
@@ -130,27 +333,24 @@ base_tiles = {
     "cloud":{"x":240, "y":1264},
     "axeR":{"x":0, "y":192},
     "axeL":{"x":272, "y":192},
-    "axe":{"x":64, "y":64},
+    //"axe":{"x":64, "y":64, 'roof':false, 'type':'objects', 'collision':false},
     "pickaxeR":{"x": 16, "y": 192},
     "pickaxeL":{"x": 256, "y": 192},
-    "pickaxe":{"x": 32, "y": 64},
+    //"pickaxe":{"x": 32, "y": 64, 'roof':false, 'type':'objects', 'collision':false},
     "statDisp":{"x":80, "y":624},
-    "log":{"x":96, "y":0},
+    //"log":{"x":96, "y":0, 'roof':false, 'type':'objects', 'collision':false},
     "splitlog":{"x":96, "y":1120},
     "upArrow":{"x":80, "y":975},
     "downArrow":{"x":96, "y":975},
     "hpIcon":{"x":160, "y":832},
-    "string":{"x":80, "y":240},//probabl"y" another object like logs where no actual object (like A"x"e), "y":just inv obj and sprite obj
+    "string":{"x":80, "y":240},//probabl"y" another objects like logs where no actual objects (like A"x"e), "y":just inv obj and sprite obj
     "fPoleR":{"x":0, "y":496},
     "fPoleL":{"x":16, "y":495},
     "fPole":{"x":288, "y":480},
-    "ironsword":{"x":272, "y":16},
-    "ironswordL":{"x":192, "y":192},
-    "ironswordR":{"x":80, "y":192},
-    "craftTable":{"x":192, "y":528},//just this for now as a click point
+    "craftTable":{"x":192, "y":528, 'roof':false, 'type':'objects', 'collision':false},//just this for now as a click point
     "lootbag":{"x":192, "y":240},
-    "abyss":{"x":160, "y":384},
-    "void":{"x":240, "y":1232},//just blank space for event tiles (like map e"x"it or dungeon stairs)
+    "abyss":{"x":176, "y":32, 'roof':false, 'type':'base-tile', 'collision':true},
+    "void":{"x":240, "y":1232, 'roof':false, 'type':'base-tile', 'collision':true},//just blank space for event tiles (like map e"x"it or dungeon stairs)
     "dungeonStairs":{"x":0, "y":352},
     "fish":{"x":256, "y":480},
     "portalfish":{"x":224, "y":480},
@@ -162,7 +362,7 @@ base_tiles = {
     "sail":{"x":144, "y":1264},//draw raft > pla"y"er > sail
     "key":{"x":16, "y":848},
     "coin":{"x":176, "y":240},
-    "craftingtable":{"x":192, "y":528},
+    "craftingtable":{"x":192, "y":528, 'roof':false, 'type':'objects', 'collision':false},
     "scroll":{"x":160, "y":1264},
     "apple":{"x":304, "y":160},
     "trashcan":{"x":128, "y":752},

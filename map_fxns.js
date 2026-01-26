@@ -1,14 +1,7 @@
 const fs = require('fs');
 
 function save_map(map) {
-  var jsonMap = JSON.stringify(map);
-  const filePath = 'map_save.json';
-  try {
-    fs.writeFileSync(filePath, jsonMap);
-    console.log('JSON data saved to file successfully.');
-  } catch (error) {
-    console.error('Error writing JSON data to file:', error);
-  }
+ persist_map(map);
 }
 
 function persist_map(map){
