@@ -884,7 +884,7 @@ function replenishResources() {
   }
 }
 replenishResources();//run at server start to add random ores n shit
-setInterval(replenishResources, 60000);//every 30 minutes
+setInterval(replenishResources, 60000*30);//every 30 minutes
 setInterval(mapUpdate, 200);
 setInterval(mapPersist, 60000);//save map every minute
 
