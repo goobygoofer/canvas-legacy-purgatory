@@ -86,6 +86,33 @@ base_tiles = {
     "x":192, "y":1104,
     id:11  
   },
+  "woodplate":{
+      "x":112, 
+      "y":80, 
+      id:12,
+      craft: { log: 5 }
+  },
+  "stoneplate":{
+    "x":128, "y":80,
+    id:13,
+    craft: { rock: 5}
+  },
+  "woodroof":{
+    "x":112,
+    "y":80,
+    id:14,
+    craft: { log: 5}
+  },
+  "stoneroof":{
+    "x":128, "y":80,
+    id:15,
+    craft: { rock: 5}
+  },
+  "door":{
+    "x":288, "y":96,
+    id:16,
+    craft: {ironbar: 2, oaklog: 5}
+  },
     "ironswordL":{"x":288, "y":976},
     "ironswordR":{"x":272, "y":976},
     "forge":{
@@ -328,10 +355,6 @@ base_tiles = {
     "cactus":{"x":160, "y":48},
     "ankh":{"x":128, "y":96},
     "bankchest":{"x":32, "y":128},
-    "woodplate":{"x":112, "y":80,},
-    "woodroof":{"x":112, "y":80},
-    "stoneplate":{"x":128, "y":80},
-    "door":{"x":288, "y":96},
     "door2":{"x":192, "y":816},
     "door3":{"x":32, "y":848},
     "skull":{"x":304, "y":1024},

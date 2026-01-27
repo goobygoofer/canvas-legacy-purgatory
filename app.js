@@ -611,12 +611,23 @@ function checkCollision(name, coords){
   if (baseTiles[map.Map[coords[1]][coords[0]].data['base-tile']].collision===true){
     return true;
   }
-  for (obj in map.Map[coords[1]][coords[0]].data.objects){
-    if (baseTiles[map.Map[coords[1]][coords[0]].data.objects[obj].name].collision === true) {
-      let objName = map.Map[coords[1]][coords[0]].data.objects[obj].name
-      checkObjectCollision(name, coords, objName);
-      return true;
+  const objects = map.Map[coords[1]][coords[0]].data.objects ?? {};
+
+  for (const objKey in objects) {
+    const obj = objects[objKey];
+    const def = baseTiles[obj.name];
+
+    if (!def || def.collision !== true) continue;
+
+    if (obj.name==="door" && obj.locked===false) continue;
+    // Special: allow owners to walk through their own doors
+    if (obj.name === "door" && obj.owner === name) {
+      continue; // skip collision for this object
     }
+
+    // Normal collision otherwise
+    checkObjectCollision(name, coords, obj.name);
+    return true;
   }
   return false; 
 }
@@ -656,8 +667,8 @@ async function interactTile(playerName) {
   const objName = objNames[0]; // interact with the first object
   const objDef = baseTiles[objName];
   if (!objDef) return;
-
   // ---------- auto-drop items ----------
+  if (checkInteract(playerName, objName)) return;//was a thing in checkInteract...
   if (objDef.kind === "item" && objDef.container === "objects") {
     await removeObjFromMap(player.coords); // remove object from map
     markTileChanged(player.coords[0], player.coords[1]);
@@ -669,23 +680,78 @@ async function interactTile(playerName) {
     }
     return;
   }
-
   // ---------- special interactable objects ----------
+  /*
   if (objDef.kind === "objects" || objDef.kind === "interactable") {
     checkInteract(playerName, objName);
   }
+  */
 }
 
 function checkInteract(name, objName){
   if (objName==='craftTable'){
     io.to(players[name].sock_id).emit('crafting');//opens up crafting for player
+    return true;
   }
   if (objName==='forge'){
     smeltOre(name);//tries to smelt whatever player has selected in inventory
+    return true;
   }
   if (objName==='bankchest'){
     playerBank(name);
+    return true;
   }
+  if (objName==='door'){
+    useDoor(name);
+    return true;
+  }
+  return false;
+}
+
+async function useDoor(name) {
+  const player = players[name];
+  const x = player.coords[0];
+  const y = player.coords[1];
+  const tile = map.Map[y]?.[x];
+  if (!tile) return;
+
+  const objects = tile.data?.objects;
+  if (!objects) return;
+
+  const door = objects["door"];
+  if (!door) return; // no door here
+
+  // If holding pickaxe, pick up the door (ignore ownership)
+  if (player.hand === 3) {
+    delete objects["door"];
+
+    // give door back to inventory
+    await addItem(name, baseTiles.door.id, 1);
+
+    markTileChanged(x, y);
+    await syncInventory(name);
+    return;
+  }
+
+  // Only owner can lock/unlock
+  if (door.owner !== name) {
+    return; // not your door
+  }
+
+  // Toggle lock state
+  door.locked = !door.locked;
+  let lockMsg;
+  if (door.locked){
+    lockMsg='locked';
+  } else {
+    lockMsg='unlocked';
+  }
+  io.to(players[name].sock_id).emit('server message',
+    {
+      message: `Door ${lockMsg}!`
+    }
+  )
+  markTileChanged(x, y);
 }
 
 async function resourceInteract(playerName, coords, objName) {
@@ -801,10 +867,30 @@ async function dropItem(name, item){
     return;//only one object on tile, need to change this
   }
   const invItem = player.inventory[item]; // current inventory slot
-const baseName = itemById[invItem.id];  // normal name from ID
-const dropName = baseTiles[baseName]?.dropChange ?? baseName; // use dropChange if it exists
+  const baseName = itemById[invItem.id];  // normal name from ID
+  const dropName = baseTiles[baseName]?.dropChange ?? baseName;
 
-map.Map[player.coords[1]][player.coords[0]].data.objects[dropName] = { name: dropName };
+  const tile = map.Map[player.coords[1]][player.coords[0]];
+  const container = baseTiles[dropName]?.container ?? "objects";
+
+  tile.data ??= {};
+  tile.data[container] ??= {};
+
+  //tile.data[container][dropName] = { name: dropName };
+  const tileItem = { name: dropName };
+
+  // only set owner if the base tile defines it
+  if ("owner" in baseTiles[dropName]) {
+    tileItem.owner = name; // player name
+    console.log(`name: ${baseName}`);
+    if (baseName==='door'){
+      tileItem.locked=true;
+    }
+  }
+
+  tile.data[container][dropName] = tileItem;
+
+  //markTileChanged(player.coords[0], player.coords[1]);
   //map.Map[player.coords[1]][player.coords[0]].data.objects[itemById[player.inventory[item].id]] = {"name": itemById[player.inventory[item].id]};
   await removeItem(name, players[name].inventory[item].id, 1);
   markTileChanged(player.coords[0], player.coords[1]);
@@ -954,7 +1040,7 @@ function replenishResources() {
   }
 }
 replenishResources();//run at server start to add random ores n shit
-setInterval(replenishResources, 60000);//every 30 minutes
+setInterval(replenishResources, 60000*30);//every 30 minutes
 setInterval(mapUpdate, 200);
 setInterval(mapPersist, 60000);//save map every minute
 

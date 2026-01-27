@@ -82,6 +82,55 @@ module.exports = {
     container: "objects",
     collision: false,
   },
+  /*
+    kind: "item",
+    id: 6,
+    container: "objects",
+    collision: true,
+    craft: { log: 10 },
+    dropChange: "woodblock0"
+  */
+  "woodplate": {
+    kind: 'item',
+    id: 12,
+    container:"floor",
+    collision: false,
+    roof: false,
+    craft: { log: 5 }
+  },
+  "stoneplate": {
+    kind: 'item',
+    id: 13,
+    container:'floor',
+    collision: false,
+    roof:false,
+    craft: { rock: 5}
+  },
+  "woodroof":{
+    kind: 'item',
+    id: 14,
+    container:"roof",
+    collision: false,
+    roof:true,
+    craft: { log: 5}
+  },
+  "stoneroof": {
+    kind: 'item',
+    id: 15,
+    container:'roof',
+    collision: false,
+    roof: true,
+    craft: { rock: 5}
+  },
+  "door": {
+    kind: 'item',
+    id: 16,
+    container:'objects',
+    collision: true,
+    roof: false,
+    craft: { ironbar: 2, oaklog: 5},
+    owner:null
+  },
   // -----------------------------------resources----------------------------------------
   "tree0": {
     kind: "resource",
@@ -419,16 +468,6 @@ module.exports = {
     container: "base-tile",
     collision:false
   },
-  "woodplate": {
-    'type': 'base-tile',
-    container:'floor',
-    'collision': false
-  },
-  "woodroof":{
-    'type': 'roof',
-    container: 'roof',
-    'collision':false
-  },
   "craftTable": {
     kind: "interactable",
     'roof': false,
@@ -457,6 +496,67 @@ module.exports = {
     'type': 'base-tile',
     'collision': true
   },//just blank space for event tiles (like map exit or dungeon stairs)
+    //paths
+  "pathHORIZ": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathVERT": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathTDWN": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathTUP": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathTRT": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathTLT": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathCRS": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathCRV1": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathCRV2": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathCRV3": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+  "pathCRV4": {
+    kind: 'base-tile',
+    container:'floor',
+    'collision': false
+  },
+    "bridge": {
+    kind: "base-tile",
+    container: "base-tile",
+    collision:false
+  },
   "cutGrass": {/*when grass2 gets cut*/ },
   "stoneSwordL": {},
   "stoneSwordR": {},
@@ -464,7 +564,6 @@ module.exports = {
   "spiderL": {},
   "heartContainer": {},
   "staminaPot": {},
-  "bridge": {},
   "heartPiece": {},
   "switch": {},
   "hookshot": {},
@@ -493,18 +592,6 @@ module.exports = {
   "flower3": {},
   "mushroom": {},
   "rupee": {},
-  //paths
-  "pathHORIZ": {},
-  "pathVERT": {},
-  "pathTDWN": {},
-  "pathTUP": {},
-  "pathTRT": {},
-  "pathTLT": {},
-  "pathCRS": {},
-  "pathCRV1": {},
-  "pathCRV2": {},
-  "pathCRV3": {},
-  "pathCRV4": {},
   "grave": {},
   //"stoneblock": {},
   "stump2": {},
@@ -519,10 +606,8 @@ module.exports = {
   "bed": {},
   "cactus": {},
   "ankh": {},
-  "stoneplate": {},
-  "door": {},
-  "door2": {},
-  "door3": {},
+  //"door2": {},
+  //"door3": {},
   "skull": {},
   "table": {},
   "chair": {},

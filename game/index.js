@@ -192,7 +192,7 @@ const settingsButtons = [
 
 var mapDownload = [];
 
-var music = "on";
+var music = "off";
 var sfx = "on";
 var select;
 
@@ -244,10 +244,24 @@ function loadSounds() {
   }
 }
 
+/*
 function playSound(name, loop = false) {
   if (!sounds[name]) return;
   const audio = sounds[name];
   audio.loop = loop;
+  audio.currentTime = 0;
+  audio.play().catch(e => console.warn("Sound play failed:", e));
+}
+*/
+
+//sounds.rain.volume = 0.2;   // muffle rain
+//sounds.music.volume = 0.6; // lower music
+function playSound(name, loop = false, volume = 1) {
+  const audio = sounds[name];
+  if (!audio) return;
+
+  audio.loop = loop;
+  audio.volume = volume;
   audio.currentTime = 0;
   audio.play().catch(e => console.warn("Sound play failed:", e));
 }
@@ -260,6 +274,38 @@ function stopSound(name) {
   audio.currentTime = 0;
   audio.loop = false;
 }
+
+let lastUnderRoof = false;
+function updateRainAudio() {
+  if (!latestView) return;
+  const tile = latestView[5]?.[10];
+  const roof = tile?.data?.roof;
+  const underRoof = roof && Object.keys(roof).length > 0;
+
+  // only react when the state changes
+  if (underRoof === lastUnderRoof) return;
+  lastUnderRoof = underRoof;
+
+  const rain = sounds.rain;
+  if (!rain) return;
+
+  // fade down indoors, fade back up outdoors
+  fadeVolume(rain, underRoof ? 0.5 : 0.9, 0.01);
+}
+
+function fadeVolume(audio, target, speed = 0.01) {
+  if (!audio) return;
+
+  const interval = setInterval(() => {
+    if (Math.abs(audio.volume - target) < speed) {
+      audio.volume = target;
+      clearInterval(interval);
+    } else {
+      audio.volume += audio.volume < target ? speed : -speed;
+    }
+  }, 16); // ~60fps
+}
+
 
 invCanvas.addEventListener("contextmenu", (e) => {
   e.preventDefault();
@@ -715,6 +761,8 @@ socket.on('invData', (data) => {
 socket.on('updateChunk', (data) => {
     latestView = data;
     chunkNeedsRender = true;
+    //check if player under roof to muffle weather sounds
+    //checkForEvents();
 });
 
 socket.on('updateInventory', (data) => {
@@ -843,18 +891,35 @@ function drawVignette(ctx, w, h, strength = 0.8) {
   ctx.fillRect(0, 0, w, h);
 }
 
-function drawRain(x, y){
+function drawRain() {
   if (!rain) return;
-  for (i=0; i<canvas.width/32; i++){
-    for (j=0; j<canvas.height/32; j++){
-      if (Math.floor(Math.random()*20)>1) continue;
+  if (!latestView) return;
+  // player tile is fixed in the view
+  const playerTile = latestView[5]?.[10];
+  const playerRoof = playerTile?.data?.roof;
+  const playerUnderRoof =
+    playerRoof && Object.keys(playerRoof).length > 0;
+
+  for (let i = 0; i < latestView.length; i++) {
+    for (let j = 0; j < latestView[i].length; j++) {
+
+      const tile = latestView[i][j];
+      const roof = tile?.data?.roof;
+      const hasRoof = roof && Object.keys(roof).length > 0;
+
+      // if player is indoors, don't draw rain on roofed tiles
+      if (playerUnderRoof && hasRoof) {
+        continue;
+      }
+      if (Math.floor(Math.random() * 20) > 1) continue;
+
       ctx.drawImage(
         spriteSheet,
-        base_tiles['rain'].x, base_tiles['rain'].y,
+        base_tiles.rain.x, base_tiles.rain.y,
         16, 16,
-        i*32, j*32,
+        j * 32, i * 32,
         32, 32
-      )
+      );
     }
   }
 }
@@ -1101,6 +1166,7 @@ function updateDraw(now) {
     chunkNeedsRender = false;
     lastRender = now;
     updateView(latestView);
+    updateRainAudio();
     drawCrafting();
     drawSettings();
   }
