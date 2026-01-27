@@ -1,4 +1,4 @@
-var devMode = false;
+var devMode = false;//or if Admin in code
 var noCollision = false;
 
 const baseTiles = require('./server_base_tiles.js');
@@ -247,19 +247,42 @@ function addPlayerToTile(name, x=null, y=null){//x and y for mod coords etc
 async function markTileChanged(x, y){
   map.Map[y][x].data.version++;
 }
-
+/*
 function addToMap(name, x, y) {
   const tile = map.Map[y][x];
   const type = baseTiles[name].container;
-
   tile.data ??= {};
   tile.data[type] ??= {};
   tile.data[type][name] = { name };
-  if (baseTiles[name].roof){
-    tile.data.roof ??= {};
-    tile.data.roof[name] = { name };
+  console.log(`tile data: ${tile.data[type]}`);
+  markTileChanged(x, y);
+}
+*/
+function addToMap(name, x, y) {
+  const tile = map.Map[y]?.[x];
+  if (!tile) {
+    console.error(`Tile at (${x},${y}) does not exist`);
+    return;
   }
 
+  tile.data ??= {};
+
+  const type = baseTiles[name]?.container;
+  if (!type) {
+    console.error(`Tile ${name} does not have a container`);
+    return;
+  }
+
+  if (type === "base-tile") {
+    // Replace the existing base-tile string
+    tile.data["base-tile"] = name;
+  } else {
+    // Ensure the container object exists for objects or roof
+    tile.data[type] ??= {};
+    tile.data[type][name] = { name };
+  }
+
+  console.log(`Placed ${name} in ${type} at (${x},${y})`);
   markTileChanged(x, y);
 }
 
@@ -268,9 +291,11 @@ async function removeObjFromMap(coords){
 }
 
 function clearTile(x, y){
+  console.log("cleared tile");
   map.Map[y][x].data['base-tile']="grass";
   map.Map[y][x].data['collision']=false;
   map.Map[y][x].data.objects = {};
+  map.Map[y][x].data.floor={};
   map.Map[y][x].data.roof={};
   markTileChanged(x, y);
   console.log(map.Map[y][x].data.objects);
@@ -395,6 +420,7 @@ io.on('connection', async (socket) => {
                               //user clicks, code waits a moment to see if another click
                               //then sends list of pixels to be painted
     //x, y, subX, subY, c (color)
+    if (data.y<0 || data.y>499 || data.x <0 || data.x>499) return;
     if (data.btn === "right"){
       map.Map[data.y][data.x].data.pixels[data.subY][data.subX]=-1;
     } else {
@@ -404,7 +430,11 @@ io.on('connection', async (socket) => {
   });
 
   socket.on("layTile", data => {
-    if (!devMode) return;
+    console.log(socket.user);
+    if (!devMode && socket.user!=="Admin"){
+      console.log("not Admin or devmode");
+      return;
+    } 
     console.log(data);
     let x = players[socket.user].coords[0];
     let y = players[socket.user].coords[1]
@@ -412,7 +442,9 @@ io.on('connection', async (socket) => {
   });
 
   socket.on("clearTile", data => {
-    if (!devMode) return;
+    console.log(socket.user);
+    if (!devMode && socket.user!=="Admin") return;
+    console.log("clearing tile");
     console.log(data);
     let x = players[socket.user].coords[0];
     let y = players[socket.user].coords[1]
@@ -420,7 +452,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('saveMap', () => {
-    if (!devMode) return;
+    if (!devMode || socket.user!=="Admin") return;
     map.Fxn.save(map.Map);
   });
 
@@ -431,7 +463,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on("downloadMap", () => {
-    if (!devMode) return;
+    if (!devMode || socket.user!=="Admin") return;
     for (y in map.Map){
       io.to(socket.id).emit("mapDownload", map.Map[y]);
     }
@@ -533,14 +565,16 @@ function movePlayer(name, data){
   });
 }
 
+const tileMax = map.Map[0].length;
 function checkCollision(name, coords){
-  if (coords[0]<1 || coords[0]>99){  //need next map on collision with edge
+  console.log(tileMax);
+  if (coords[0]< 0 || coords[0]>499){  //need next map on collision with edge
     return true;
   }
-  if (coords[1]<1 || coords[1]>99){
+  if (coords[1]<0 || coords[1]>499){
     return true;
   }
-  if (noCollision){
+  if (noCollision || name==='Admin'){
     markTileChanged(coords[0], coords[1]);
     return false;
   }
@@ -621,6 +655,9 @@ function checkInteract(name, objName){
   }
   if (objName==='forge'){
     smeltOre(name);//tries to smelt whatever player has selected in inventory
+  }
+  if (objName==='bankchest'){
+    playerBank(name);
   }
 }
 
@@ -815,38 +852,44 @@ function pickWeighted(list) {
     if (r <= 0) return e.name;
   }
 }
-/*
-function replenishResources() {
-  console.log("replenishResources");
-  for (let y = 0; y < map.Map.length; y++) {
-    for (let x = 0; x < map.Map[y].length; x++) {
-      const tile = map.Map[y][x];
-      const depleted = tile.data.depletedResources ?? {};
 
-      for (const objName in depleted) {
-        const objDef = baseTiles[objName];
-        if (!objDef) continue;
+let test = {
+  "x": 0, "y": 0,
+  "data": {
+    "base-tile": "grass",
+    "collision": false,
+    "objects": {},
+    "typing": false,
+    "version": 0,
+    "pixels": [
+      [-1, -1, -1, -1],
+      [-1, -1, -1, -1],
+      [-1, -1, -1, -1],
+      [-1, -1, -1, -1]],
+    "roof": {}
+  }, "players": {
 
-        // only replenish if object has a regrowth (like a resource)
-        if (!objDef.regrowsTo) continue;
-
-        const newName = objDef.regrowsTo;
-        const newDef = baseTiles[newName];
-        if (!newDef) continue;
-
-        // remove from depletedResources
-        delete tile.data.depletedResources[objName];
-
-        // add back to objects container
-        tile.data.objects ??= {};
-        tile.data.objects[newName] = { name: newName };
-
-        markTileChanged(x, y);
-      }
-    }
   }
 }
-  */
+
+function playerBank(){
+  //open bank on player end, send view of all items in bank
+  //other fxn only lets player bank something if on bank
+  //just like forge or craftTable
+  //get bank select position for when removing items
+  //get inv select position for when adding items
+  //all this happens on front end
+  //player tries to open bank from client, popup with no items
+  //and server knows items cant be placed or removed
+  //so this fxn just io.to(players[name].sock_id).emit('openbank', data);
+  //data being the inventory
+  //and when player puts in an item, takes out an item, or changes selected
+  //cell in bank, it sends to the server so it has that data
+  //server only sends updated bank if item in or out
+  //client needs option for single item in/out or input for amt of item in/out
+  console.log("player opening bank");
+}
+
 function replenishResources() {
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
@@ -884,7 +927,7 @@ function replenishResources() {
   }
 }
 replenishResources();//run at server start to add random ores n shit
-setInterval(replenishResources, 60000*30);//every 30 minutes
+setInterval(replenishResources, 60000);//every 30 minutes
 setInterval(mapUpdate, 200);
 setInterval(mapPersist, 60000);//save map every minute
 

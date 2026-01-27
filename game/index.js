@@ -197,17 +197,30 @@ var sfx = "on";
 var select;
 
 //page setup stuff here
-if (devMode){
-  select = document.createElement('select');
-  document.getElementById('side-column').appendChild(select);
+function devModeActive(trueFalse){
+  if (trueFalse){
+    devMode=true;
+  } else {
+    devMode=false;
+  }
+  if (devMode) {
+    console.log("got here");
+    select = document.createElement('select');
+    document.getElementById('side-column').appendChild(select);
 
-  Object.keys(base_tiles).forEach(key => {
-    const option = document.createElement("option");
-    option.value = key;
-    option.textContent = key;
-    select.appendChild(option);
-  });
+    Object.keys(base_tiles).forEach(key => {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = key;
+      select.appendChild(option);
+    });
+  }
+  if (!devMode && select) {
+    select.remove();
+    select = null; // optional but tidy
+  }
 }
+
 
 function loadSounds() {
   const soundFiles = {
@@ -848,6 +861,28 @@ function drawBaseTile(chunk){
   );
 }
 
+function drawFloor(chunk) {
+    const floorObj = chunk.data?.floor;
+    if (!floorObj) return;
+
+    // Get the first key in the floor object
+    const floorName = Object.keys(floorObj)[0];
+    if (!floorName) return;
+
+    const tileData = floorObj[floorName];
+    if (!tileData) return;
+
+    // Make sure the tile exists in base_tiles
+    const tile = base_tiles[floorName];
+    if (!tile) return;
+    // Draw it
+    ctx.drawImage(
+        spriteSheet,
+        tile.x, tile.y, 16, 16,      // source rect
+        j * 32, i * 32, 32, 32       // destination rect
+    );
+}
+
 function drawPixels(chunk){
   let subTile = chunk.data.pixels;
   for (let y in subTile) {
@@ -1039,6 +1074,7 @@ function updateView(data){
       }
       let chunk = data[i][j];
       drawBaseTile(chunk);
+      drawFloor(chunk);
       drawDepletedResources(chunk);
       drawPixels(chunk);
       drawObjects(chunk);

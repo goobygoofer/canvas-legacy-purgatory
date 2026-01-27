@@ -82,6 +82,10 @@ base_tiles = {
       collision: false,
       craft: {ironbar:4, log:2},
     },
+  "oaklog":{
+    "x":192, "y":1104,
+    id:11  
+  },
     "ironswordL":{"x":288, "y":976},
     "ironswordR":{"x":272, "y":976},
     "forge":{
@@ -130,6 +134,18 @@ base_tiles = {
       depletesTo: null,
       requiresTool: "pickaxe"
       },
+  "oak0":{
+    "x":128, "y":1104
+  },
+  "oak1":{
+    "x":144, "y":1104
+  },
+  "oak2":{
+    "x":160, "y":1104
+  },
+  "oak3":{
+    "x":176, "y":1104
+  },
     //"stoneSword":{"x": 272, "y": 16, 'roof':false, 'type':'objects', 'collision':false},
     "stoneSwordL":{"x": 192, "y": 192},
     "stoneSwordR":{"x": 80, "y": 192},
@@ -311,8 +327,9 @@ base_tiles = {
     "bed":{"x":128, "y":112},
     "cactus":{"x":160, "y":48},
     "ankh":{"x":128, "y":96},
-    "chest":{"x":32, "y":128},
-    "woodplate":{"x":112, "y":80, 'roof':true, 'type':'base-tile', 'collision':false},
+    "bankchest":{"x":32, "y":128},
+    "woodplate":{"x":112, "y":80,},
+    "woodroof":{"x":112, "y":80},
     "stoneplate":{"x":128, "y":80},
     "door":{"x":288, "y":96},
     "door2":{"x":192, "y":816},

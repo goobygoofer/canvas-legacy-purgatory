@@ -1,13 +1,14 @@
 
 module.exports = {
-    "axe": {
+  //----------------------------ID'd items, in order--------------------------------
+  "axe": {
     kind: "item",
     id: 1,
     container: "objects",
     collision: false,
     equip: { slot: "hand" }
   },
-    "log": {
+  "log": {
     kind: "item",
     id: 2,
     container: "objects",
@@ -19,9 +20,9 @@ module.exports = {
     container: "objects",
     collision: false,
     equip: { slot: "hand" },
-    craft: { log: 5}
+    craft: { log: 5 }
   },
-   "rock": {
+  "rock": {
     kind: "item",
     id: 4,
     container: "objects",
@@ -36,38 +37,36 @@ module.exports = {
     equip: { slot: "hand" },
     craft: { log: 1, rock: 2 }
   },
-    "woodblock": {
+  "woodblock": {
     kind: "item",
     id: 6,
     container: "objects",
     collision: true,
-    craft: { log: 10},
+    craft: { log: 10 },
     dropChange: "woodblock0"
   },
-  "stoneblock":{
+  "stoneblock": {
     kind: "item",
     id: 7,
     container: "objects",
     collision: true,
-    craft: { rock: 10},
+    craft: { rock: 10 },
     dropChange: "stoneblock0"
   },
-      "ironore":{
-      "x":272, "y":32,
-      kind: "item",
-      id: 8,
-      container: "objects",
-      collision: false,
-      smelt: "ironbar"
-    },
-    "ironbar":{
-      "x":272, "y":0,
-      kind: "item",
-      id: 9,
-      container: "objects",
-      collision: false,
-      craft: {ironore:5},
-    },
+  "ironore": {
+    kind: "item",
+    id: 8,
+    container: "objects",
+    collision: false,
+    smelt: "ironbar"
+  },
+  "ironbar": {
+    kind: "item",
+    id: 9,
+    container: "objects",
+    collision: false,
+    craft: { ironore: 5 },
+  },
   "ironsword": {
     kind: "item",
     id: 10,
@@ -77,9 +76,74 @@ module.exports = {
     equip: { slot: "hand" },
     craft: { log: 1, ironbar: 2 }
   },
-    "ironswordL":{"x":288, "y":976},
-    "ironswordR":{"x":272, "y":976},
-   "stoneblock0":{
+  "oaklog": {
+    kind: "item",
+    id: 11,
+    container: "objects",
+    collision: false,
+  },
+  // -----------------------------------resources----------------------------------------
+  "tree0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { log: 2 },
+    depletesTo: "tree1",
+    requiresTool: "axe",
+    regrowsTo: [
+      { name: "tree0", weight: 9950 },
+      { name: "oak0", weight: 50 }
+    ]
+  },
+
+  "tree1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { log: 2 },
+    depletesTo: "tree2",
+    requiresTool: "axe",
+    regrowsTo: [
+      { name: "tree0", weight: 9950 },
+      { name: "oak0", weight: 50 }
+    ]
+  },
+  "tree2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { log: 2 },
+    depletesTo: "tree3",
+    requiresTool: "axe",
+    regrowsTo: [
+      { name: "tree0", weight: 9950 },
+      { name: "oak0", weight: 50 }
+    ]
+
+  },
+  "tree3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { log: 2 },
+    depletesTo: "tree4",
+    requiresTool: "axe",
+    regrowsTo: [
+      { name: "tree0", weight: 9950 },
+      { name: "oak0", weight: 50 }
+    ]
+  },
+
+  "tree4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "tree0", weight: 9950 },
+      { name: "oak0", weight: 50 }
+    ]
+  },
+  "stoneblock0": {
     kind: "resource",
     container: "objects",
     collision: true,
@@ -87,8 +151,8 @@ module.exports = {
     drops: { rock: 1 },
     depletesTo: "stoneblock1",
     requiresTool: "pickaxe"
-    },
-"stoneblock1":{
+  },
+  "stoneblock1": {
     kind: "resource",
     container: "objects",
     collision: true,
@@ -96,8 +160,8 @@ module.exports = {
     drops: { rock: 1 },
     depletesTo: "stoneblock2",
     requiresTool: "pickaxe"
-    },
-"stoneblock2":{
+  },
+  "stoneblock2": {
     kind: "resource",
     container: "objects",
     collision: true,
@@ -105,8 +169,8 @@ module.exports = {
     drops: { rock: 1 },
     depletesTo: "stoneblock3",
     requiresTool: "pickaxe"
-    },
-"stoneblock3":{
+  },
+  "stoneblock3": {
     kind: "resource",
     container: "objects",
     collision: true,
@@ -114,7 +178,223 @@ module.exports = {
     drops: { rock: 1 },
     depletesTo: null,
     requiresTool: "pickaxe"
-    },
+  },
+  "ironrock0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { ironore: 1 },
+    depletesTo: "ironrock1",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+  "ironrock1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { ironore: 1 },
+    depletesTo: "ironrock2",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+  "ironrock2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { ironore: 1 },
+    depletesTo: "ironrock3",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+  "ironrock3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { ironore: 1 },
+    depletesTo: "ironrock4",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+  "ironrock4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+  "rock0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { rock: 2 },
+    depletesTo: "rock1",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+
+  "rock1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { rock: 2 },
+    depletesTo: "rock2",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+  "rock2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { rock: 2 },
+    depletesTo: "rock3",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+  "rock3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { rock: 2 },
+    depletesTo: "rock4",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+  "rock4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "rock0", weight: 80 },
+      { name: "ironrock0", weight: 20 }
+    ]
+  },
+  "woodblock0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: false,
+    drops: { log: 1 },
+    depletesTo: "woodblock1",
+    requiresTool: "axe"
+  },
+  "woodblock1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: false,
+    drops: { log: 1 },
+    depletesTo: "woodblock2",
+    requiresTool: "axe"
+  },
+  "woodblock2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: false,
+    drops: { log: 1 },
+    depletesTo: "woodblock3",
+    requiresTool: "axe"
+  },
+  "woodblock3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: false,
+    drops: { log: 1 },
+    depletesTo: null,
+    requiresTool: "axe"
+  },
+  "stump1": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "tree0", weight: 80 },
+      { name: "oak0", weight: 20 }
+    ]
+  },
+  "oak0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { oaklog: 1 },
+    depletesTo: "oak1",
+    requiresTool: "axe",
+    regrowsTo: [
+      { name: "tree0", weight: 9950 },
+      { name: "oak0", weight: 50 }
+    ]
+  },
+  "oak1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { oaklog: 1 },
+    depletesTo: "oak2",
+    requiresTool: "axe"
+    ,
+    regrowsTo: [
+      { name: "tree0", weight: 9950 },
+      { name: "oak0", weight: 50 }
+    ]
+  },
+  "oak2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { oaklog: 1 },
+    depletesTo: "oak3",
+    requiresTool: "axe"
+    ,
+    regrowsTo: [
+      { name: "tree0", weight: 9950 },
+      { name: "oak0", weight: 50 }
+    ]
+  },
+  "oak3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { oaklog: 1 },
+    depletesTo: "tree4",
+    requiresTool: "axe"
+    ,
+    regrowsTo: [
+      { name: "tree0", weight: 9950 },
+      { name: "oak0", weight: 50 }
+    ]
+  },
   "grass": {
     kind: "base-tile",
     container: "base-tile",
@@ -126,240 +406,47 @@ module.exports = {
     container: "base-tile",
     collision: false
   },
-  "tree": {
-    "collision": true,
-  },
-  "tree0": {
-    kind: "resource",
-    container: "objects",
-    collision: true,
-    drops: { log: 2 },
-    depletesTo: "tree1",
-    requiresTool: "axe"
-  },
-
-  "tree1": {
-    kind: "resource",
-    container: "objects",
-    collision: true, 
-    drops: { log: 2 }, 
-    depletesTo: "tree2", 
-    requiresTool: "axe" 
-  },
-  "tree2": { 
-    kind: "resource", 
-    container: "objects", 
-    collision: true, 
-    drops: { log: 2 }, 
-    depletesTo: "tree3", 
-    requiresTool: "axe" 
-  },
-  "tree3": { 
-    kind: "resource", 
-    container: "objects", 
-    collision: true, 
-    drops: { log: 2 }, 
-    depletesTo: "tree4", 
-    requiresTool: "axe" 
-  },
-
-  "tree4": {
-    kind: "depletedResource",
-    container: "depletedResource",
-    collision: false,
-    regrowsTo: "tree0"
-  },
   "oak": {
     "collision": true
-  },
- "ironrock0":{
-  kind: "resource",
-  container: "objects",
-  collision: true,
-  roof: true,
-  drops: { ironore: 1},
-  depletesTo: "ironrock1",
-  requiresTool: "pickaxe",
-      regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
- },
-  "ironrock1":{
-  kind: "resource",
-  container: "objects",
-  collision: true,
-  roof: true,
-  drops: { ironore: 1},
-  depletesTo: "ironrock2",
-  requiresTool: "pickaxe",
-      regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
- },
-  "ironrock2":{
-  kind: "resource",
-  container: "objects",
-  collision: true,
-  roof: true,
-  drops: { ironore: 1},
-  depletesTo: "ironrock3",
-  requiresTool: "pickaxe",
-      regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
- },
-  "ironrock3":{
-  kind: "resource",
-  container: "objects",
-  collision: true,
-  roof: true,
-  drops: { ironore: 1},
-  depletesTo: "ironrock4",
-  requiresTool: "pickaxe",
-      regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
- },
- "ironrock4":{
-    kind: "depletedResource",
-    container: "depletedResource",
-    collision: false,
-        regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
- },
- "rock0": {
-    kind: "resource",
-    container: "objects",
-    collision: true,
-    roof: true,
-    drops: { rock: 2 },
-    depletesTo: "rock1",
-    requiresTool: "pickaxe",
-    regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
-  },
-
-  "rock1": { 
-    kind: "resource", 
-    container: "objects", 
-    collision: true, 
-    drops: { rock: 2 }, 
-    depletesTo: "rock2", 
-    requiresTool: "pickaxe",
-    regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
-  },
-  "rock2": { 
-    kind: "resource", 
-    container: "objects", 
-    collision: true, 
-    drops: { rock: 2 }, 
-    depletesTo: "rock3", 
-    requiresTool: "pickaxe",
-    regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
-  },
-  "rock3": { 
-    kind: "resource", 
-    container: "objects", 
-    collision: true, 
-    drops: { rock: 2 }, 
-    depletesTo: "rock4", 
-    requiresTool: "pickaxe",
-        regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
-  },
-  "rock4": {
-    kind: "depletedResource",
-    container: "depletedResource",
-    collision: false,
-    regrowsTo: [
-      { name: "rock0", weight:80 },
-      { name: "ironrock0", weight: 20 }
-    ]
   },
   "water": {
     kind: "base-tile",
     container: "base-tile",
     collision: true
   },
-  "woodblock0":{
-    kind: "resource",
-    container: "objects",
-    collision: true,
-    roof: false,
-    drops: { log: 1 },
-    depletesTo: "woodblock1",
-    requiresTool: "axe"
-    },
-"woodblock1":{
-    kind: "resource",
-    container: "objects",
-    collision: true,
-    roof: false,
-    drops: { log: 1 },
-    depletesTo: "woodblock2",
-    requiresTool: "axe"
-    },
-"woodblock2":{
-    kind: "resource",
-    container: "objects",
-    collision: true,
-    roof: false,
-    drops: { log: 1 },
-    depletesTo: "woodblock3",
-    requiresTool: "axe"
-    },
-"woodblock3":{
-    kind: "resource",
-    container: "objects",
-    collision: true,
-    roof: false,
-    drops: { log: 1 },
-    depletesTo: null,
-    requiresTool: "axe"
-    },
-  "stump1": {
-    'roof': false,
-    'type': 'depletedResource',
-    'collision': false
-  },
   "sand": {
-    'roof': false,
-    'type': 'base-tile',
-    'collision': false
+    kind: "base-tile",
+    container: "base-tile",
+    collision:false
   },
   "woodplate": {
-    'roof': true,
     'type': 'base-tile',
+    container:'floor',
     'collision': false
+  },
+  "woodroof":{
+    'type': 'roof',
+    container: 'roof',
+    'collision':false
   },
   "craftTable": {
     kind: "interactable",
     'roof': false,
-    'type': 'objects',
-    'collision': false
+    'collision': false,
+    'container':"objects",
   },
-    "forge":{
-     "x":176, "y":992,
-     kind: "interactable",
-     container: "objects",
-     collision: false
-    },
+  "forge": {
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    'roof':false,
+  },
+  "bankchest": {
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
   "abyss": {
     'roof': false,
     'type': 'base-tile',
@@ -370,11 +457,6 @@ module.exports = {
     'type': 'base-tile',
     'collision': true
   },//just blank space for event tiles (like map exit or dungeon stairs)
-  "craftingtable": {
-    'roof': false,
-    'type': 'objects',
-    'collision': false
-  },
   "cutGrass": {/*when grass2 gets cut*/ },
   "stoneSwordL": {},
   "stoneSwordR": {},
@@ -437,7 +519,6 @@ module.exports = {
   "bed": {},
   "cactus": {},
   "ankh": {},
-  "chest": {},
   "stoneplate": {},
   "door": {},
   "door2": {},
