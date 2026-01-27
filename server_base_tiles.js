@@ -82,14 +82,6 @@ module.exports = {
     container: "objects",
     collision: false,
   },
-  /*
-    kind: "item",
-    id: 6,
-    container: "objects",
-    collision: true,
-    craft: { log: 10 },
-    dropChange: "woodblock0"
-  */
   "woodplate": {
     kind: 'item',
     id: 12,
@@ -131,6 +123,33 @@ module.exports = {
     craft: { ironbar: 2, oaklog: 5},
     owner:null
   },
+  "flowerred": {
+    kind: 'item',
+    id: 17,
+    container: 'objects',
+    collision: false
+  },
+  "flowerwhite": {
+    kind: 'item',
+    id: 18,
+    container: 'objects',
+    collision: false
+  },
+  "floweryellow": {
+    kind: 'item',
+    id: 19,
+    container: 'objects',
+    collision: false
+  },
+  "flowercrown":{
+    kind: "item",
+    id: 20,
+    container: "objects",
+    collision: false,
+    equip: {slot: "head"},
+    craft: {'flowerred':1, 'flowerwhite':1, 'floweryellow':1}
+  },
+
   // -----------------------------------resources----------------------------------------
   "tree0": {
     kind: "resource",
@@ -468,6 +487,12 @@ module.exports = {
     container: "base-tile",
     collision:false
   },
+  "rockroof": {
+    kind: 'base-tile',
+    container:'roof',
+    collision: false,
+    roof: true,
+  },
   "craftTable": {
     kind: "interactable",
     'roof': false,
@@ -496,6 +521,12 @@ module.exports = {
     'type': 'base-tile',
     'collision': true
   },//just blank space for event tiles (like map exit or dungeon stairs)
+    "flowercrownL":{
+    "x":192, "y":1120
+  },
+  "flowercrownR":{
+    "x":176,"y":1120
+  },
     //paths
   "pathHORIZ": {
     kind: 'base-tile',
@@ -587,9 +618,6 @@ module.exports = {
   "ghostL": {},
   "deadtree": {},
   "snowtree": {},
-  "flower1": {},
-  "flower2": {},
-  "flower3": {},
   "mushroom": {},
   "rupee": {},
   "grave": {},

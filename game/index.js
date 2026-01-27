@@ -37,7 +37,8 @@ let playerData = {
   facing: null,
   name: null,//get from login? don't use this  yet
   inventory: {},//[{id:1, amt:1}, {id:5, amt:16}
-  hand: null
+  hand: null,
+  head: null
 };
 
 /*
@@ -748,6 +749,7 @@ socket.on('playerState', (data)=> {
   playerData.x=data.x;
   playerData.y=data.y;
   playerData.hand=data.hand;
+  playerData.head=data.head;
   playerData.facing=data.facing;
 });
 
@@ -1024,6 +1026,10 @@ function drawPlayers(chunk){
         if (players[p].hand !== null) {
           let handSprite = getEquipSprite(players[p].hand, players[p].facing);
           equipToDraw.push(handSprite);
+        }//load all equip slots, and any other glows etc, then loop/draw all
+        if (players[p].head !== null) {
+          let headSprite = getEquipSprite(players[p].head, players[p].facing);
+          equipToDraw.push(headSprite);
         }//load all equip slots, and any other glows etc, then loop/draw all
         for (e in equipToDraw) {
           ctx.drawImage(

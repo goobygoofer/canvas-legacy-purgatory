@@ -129,6 +129,7 @@ async function initPlayer(name) {
     activeInventory: 0,
     inventory: [],//activeInventory used for position here
     hand: null,
+    head: null,
     lastGather: Date.now(),
 
   };
@@ -240,6 +241,7 @@ function addPlayerToTile(name, x=null, y=null){//x and y for mod coords etc
     sprite: players[name].sprite,
     facing: players[name].facing,
     hand: players[name].hand,//then everything else
+    head: players[name].head
   }
   markTileChanged(x, y);
 }
@@ -247,35 +249,7 @@ function addPlayerToTile(name, x=null, y=null){//x and y for mod coords etc
 async function markTileChanged(x, y){
   map.Map[y][x].data.version++;
 }
-/*
-function addToMap(name, x, y) {
-  const tile = map.Map[y]?.[x];
-  if (!tile) {
-    console.error(`Tile at (${x},${y}) does not exist`);
-    return;
-  }
 
-  tile.data ??= {};
-
-  const type = baseTiles[name]?.container;
-  if (!type) {
-    console.error(`Tile ${name} does not have a container`);
-    return;
-  }
-
-  if (type === "base-tile") {
-    // Replace the existing base-tile string
-    tile.data["base-tile"] = name;
-  } else {
-    // Ensure the container object exists for objects or roof
-    tile.data[type] ??= {};
-    tile.data[type][name] = { name };
-  }
-
-  console.log(`Placed ${name} in ${type} at (${x},${y})`);
-  markTileChanged(x, y);
-}
-  */
  function addToMap(name, x, y) {
   const tile = map.Map[y]?.[x];
   if (!tile) {
@@ -333,6 +307,7 @@ function emitPlayerState(player){
         x: player.coords[0],
         y: player.coords[1],
         hand: player.hand,
+        head: player.head,
         facing: player.facing
     });
 }
@@ -488,6 +463,14 @@ io.on('connection', async (socket) => {
     const name = socket.user;
     await syncInventory(name);
   });
+
+  socket.on('adminMove', (data) => {
+    //data = [x,y]
+    if (!devMode && socket.user!=='Admin') return;
+    console.log('teleporting Admin');
+    players[socket.user].coords[0]=data[0];
+    players[socket.user].coords[1]=data[1];
+  })
 
   socket.on("downloadMap", () => {
     if (!devMode || socket.user!=="Admin") return;
@@ -840,11 +823,11 @@ function equip(playerName, id) {
   if (isEquipped) {
     player[slot] = null;
     map.Map[player.coords[1]][player.coords[0]]
-      .players[playerName].hand = null;
+      .players[playerName][slot] = null;
   } else {
     player[slot] = id;
     map.Map[player.coords[1]][player.coords[0]]
-      .players[playerName].hand = id;
+      .players[playerName][slot] = id;
   }
 
   emitPlayerState(player);
@@ -1007,7 +990,25 @@ function replenishResources() {
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
       const tile = map.Map[y][x];
-
+      const isEmpty = obj => !obj || Object.keys(obj).length === 0;
+      //delete all flowers first
+      //plant regens like this need separate fxns
+      Object.keys(tile.data?.objects ?? {}).forEach(k => k.startsWith("flower") && delete tile.data.objects[k]);
+      if (
+        isEmpty(tile.data?.objects) &&
+        isEmpty(tile.data?.floor) &&
+        isEmpty(tile.data?.roof) &&
+        isEmpty(tile.data?.depletedResources) &&
+        tile.data['base-tile']==='grass'
+        ) 
+      {
+        //random chance to grow a flower!
+        const flowers = ['flowerred', 'floweryellow', 'flowerwhite'];
+        let randFlower = Math.floor(Math.random()*1000);
+        if (randFlower<flowers.length){
+          addToMap(flowers[randFlower], x, y);
+        }
+      }
       // Loop over both containers so all stages are eligible
       for (const containerName of ["objects", "depletedResources"]) {
         const container = tile.data[containerName];
