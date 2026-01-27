@@ -249,16 +249,6 @@ async function markTileChanged(x, y){
 }
 /*
 function addToMap(name, x, y) {
-  const tile = map.Map[y][x];
-  const type = baseTiles[name].container;
-  tile.data ??= {};
-  tile.data[type] ??= {};
-  tile.data[type][name] = { name };
-  console.log(`tile data: ${tile.data[type]}`);
-  markTileChanged(x, y);
-}
-*/
-function addToMap(name, x, y) {
   const tile = map.Map[y]?.[x];
   if (!tile) {
     console.error(`Tile at (${x},${y}) does not exist`);
@@ -283,6 +273,43 @@ function addToMap(name, x, y) {
   }
 
   console.log(`Placed ${name} in ${type} at (${x},${y})`);
+  markTileChanged(x, y);
+}
+  */
+ function addToMap(name, x, y) {
+  const tile = map.Map[y]?.[x];
+  if (!tile) {
+    console.error(`Tile at (${x},${y}) does not exist`);
+    return;
+  }
+
+  tile.data ??= {};
+
+  const tileData = baseTiles[name];
+  if (!tileData || !tileData.container) {
+    console.error(`Tile ${name} does not have a container`);
+    return;
+  }
+
+  // 1️⃣ Replace base-tile if applicable
+  if (tileData.container === "base-tile") {
+    tile.data["base-tile"] = name;
+  }
+
+  // 2️⃣ Add to normal container (objects, resources, etc.) if not base-tile
+  if (tileData.container !== "base-tile") {
+    const type = tileData.container;
+    tile.data[type] ??= {};
+    tile.data[type][name] = { name };
+  }
+
+  // 3️⃣ Add to roof if flagged
+  if (tileData.roof === true) {
+    tile.data["roof"] ??= {};
+    tile.data["roof"][name] = { name };
+  }
+
+  console.log(`Placed ${name} in: base-tile=${tileData.container==='base-tile'?name:'-'} container=${tileData.container} roof=${tileData.roof}`);
   markTileChanged(x, y);
 }
 

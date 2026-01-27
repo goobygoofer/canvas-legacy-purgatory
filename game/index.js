@@ -196,9 +196,11 @@ var music = "on";
 var sfx = "on";
 var select;
 
+var clear;
+
 //page setup stuff here
-function devModeActive(trueFalse){
-  if (trueFalse){
+function devModeActive(){
+  if (!devMode){
     devMode=true;
   } else {
     devMode=false;
@@ -214,10 +216,17 @@ function devModeActive(trueFalse){
       option.textContent = key;
       select.appendChild(option);
     });
+
+    clear = document.createElement('button');
+    document.getElementById('side-column').appendChild(clear);
+    clear.textContent = "clear tile";
+    clear.onclick = () => {socket.emit('clearTile')};
   }
   if (!devMode && select) {
     select.remove();
     select = null; // optional but tidy
+    clear.remove();
+    clear = null;
   }
 }
 
