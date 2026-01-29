@@ -6,7 +6,8 @@ module.exports = {
     id: 1,
     container: "objects",
     collision: false,
-    equip: { slot: "hand" }
+    equip: { slot: "hand" },
+    attack: 0
   },
   "log": {
     kind: "item",
@@ -20,7 +21,8 @@ module.exports = {
     container: "objects",
     collision: false,
     equip: { slot: "hand" },
-    craft: { log: 5 }
+    craft: { log: 5 },
+    attack: 0
   },
   "rock": {
     kind: "item",
@@ -35,7 +37,8 @@ module.exports = {
     collision: false,
     roof: false,
     equip: { slot: "hand" },
-    craft: { log: 1, rock: 2 }
+    craft: { log: 1, rock: 2 },
+    attack: 5//may need to tweak these
   },
   "woodblock": {
     kind: "item",
@@ -74,7 +77,8 @@ module.exports = {
     collision: false,
     roof: false,
     equip: { slot: "hand" },
-    craft: { log: 1, ironbar: 2 }
+    craft: { log: 1, ironbar: 2 },
+    attack: 7
   },
   "oaklog": {
     kind: "item",
@@ -586,6 +590,11 @@ module.exports = {
     "bridge": {
     kind: "base-tile",
     container: "base-tile",
+    collision:false
+  },
+  "safeTile": {
+    kind: "safeTile",
+    container: "safeTile",
     collision:false
   },
   "cutGrass": {/*when grass2 gets cut*/ },

@@ -76,6 +76,7 @@ function query(sql, params = []) {
     });
   });
 }
+
 async function queryPassword(name, pass) {
   if (name.length>30 || pass.length > 99) return;
   const sql = "SELECT * FROM players WHERE player_name = ?";
@@ -95,7 +96,7 @@ async function queryPassword(name, pass) {
   return { created: false };
 }
 
-function setActive(name, active) {
+function setActive(name, active) {//this really aint doin anything
   return query(
     "UPDATE players SET active = ? WHERE player_name = ?",
     [active, name]
@@ -131,7 +132,9 @@ async function initPlayer(name) {
     hand: null,
     head: null,
     lastGather: Date.now(),
-
+    hp:100,//change to null, get hp from db
+    lastMelee: Date.now(),
+    name: name
   };
   addPlayerToTile(name, p_coords[0], p_coords[1]);
   markTileChanged(p_coords[0], p_coords[1]);
@@ -209,6 +212,22 @@ async function addPlayerToDb(name, pass){
   const sql = "INSERT INTO players (player_name, pass, x, y) VALUES (?, ?, ?, ?)";
   const params = [name, pass, 49, 49];
   await query(sql, params);
+}
+
+async function getPlayerStat(name, stat){
+  //query player stats. hp, swordsmanship, archery, mage, and exp of those etc
+  //
+}
+
+async function setPlayerStat(name, stat, amount){
+  //really only used for hp for now
+  //later on -- stamina, mana, etc. 
+  //max hp/mana/stamina +10 per level?
+  //stat levels derived from xp, then can be stored in players[name]
+}
+
+async function addPlayerExp(name, stat, amount){
+  //
 }
 
 async function addPlayer(name, pass) {
@@ -298,18 +317,46 @@ function clearTile(x, y){
   map.Map[y][x].data.objects = {};
   map.Map[y][x].data.floor={};
   map.Map[y][x].data.roof={};
+  const data = map.Map[y][x].data;
+  if (data && data.safeTile !== undefined) {
+    data.safeTile = {};
+  }
   markTileChanged(x, y);
   console.log(map.Map[y][x].data.objects);
 }
 
+//this function to prevent certain actions if safe tile
+//use like
+//if (isSafeActive(tile)) return; blocks interaction
+const isSafeActive = tile => !!tile?.data?.safeTile && Object.keys(tile.data.safeTile).length > 0;
+
 function emitPlayerState(player){
-      io.to(player.sock_id).emit('playerState', {//might remove this/put somewhere else
-        x: player.coords[0],
-        y: player.coords[1],
-        hand: player.hand,
-        head: player.head,
-        facing: player.facing
-    });
+  if (player.hp<=0){
+    //player.coords[0]=26;
+    //player.coords[1]=54;
+    player.hp=100;//change to player level max hp
+    respawnPlayer(player.name);
+  }
+  io.to(player.sock_id).emit('playerState', {//might remove this/put somewhere else
+    x: player.coords[0],
+    y: player.coords[1],
+    hand: player.hand,
+    head: player.head,
+    facing: player.facing,
+    hp: player.hp
+  });
+}
+
+function respawnPlayer(name){
+  const playerX = players[name].coords[0];
+  const playerY = players[name].coords[1];
+  const tile = map.Map[playerY][playerX];
+  delete tile.players[name];
+  markTileChanged(playerX, playerY);
+  players[name].coords[0]=26;
+  players[name].coords[1]=54;
+  addPlayerToTile(name, 26, 54);
+  markTileChanged(26, 54);
 }
 
 function mapUpdate() {
@@ -538,7 +585,8 @@ function handlePlayerInput(name, data){
 
 function movePlayer(name, data){
   if (Date.now() < players[name].lastMove+150){
-    return;
+    return;//since this calls checkCollision, might have to add a lastHit
+           //as well, that number might be different? idk
   }
   players[name].lastMove = Date.now();
   const directions = ['up', 'down', 'left', 'right'];
@@ -589,13 +637,19 @@ function checkCollision(name, coords){
     return false;
   }
   if (map.Map[coords[1]][coords[0]].data.collision){//is this necessary?
-    return true;
+    return true;//don't think data.collision ever even gets used, take out of map?
   }
   if (baseTiles[map.Map[coords[1]][coords[0]].data['base-tile']].collision===true){
     return true;
   }
-  const objects = map.Map[coords[1]][coords[0]].data.objects ?? {};
+  //player melee here??
+  if (checkMelee(name, coords)){//basically stay in place if hitting somebody
+    console.log("skipped rest of checkCollision");
+    return true;
+  }
+  
 
+  const objects = map.Map[coords[1]][coords[0]].data.objects ?? {};
   for (const objKey in objects) {
     const obj = objects[objKey];
     const def = baseTiles[obj.name];
@@ -613,6 +667,45 @@ function checkCollision(name, coords){
     return true;
   }
   return false; 
+}
+
+//may or may not have to be async?
+function checkMelee(name, coords){//remember, coords here is modcoords, the checked tile
+  //this checks for melee on players, MOBS, or anything else attackable
+  //first player object or mob object etc whatever on tile gets hit
+  console.log("checkMelee");
+  if (players[name].hand===null){
+    console.log("not holding anything");
+    return false;//not holding anything, no collision/walks through target
+  }
+  const tile = map.Map[coords[1]][coords[0]];
+  const tilePlayerNames = Object.keys(tile.players);
+  const isSafe = isSafeActive(tile);
+  console.log(`isSafe: ${isSafe}`);
+  if (tilePlayerNames.length>0 && !isSafe){
+    const playerTarget = tilePlayerNames[0];
+    meleeAttack(name, playerTarget);
+    console.log("player on tile, attacked");
+    return true;
+  }
+  //then mobs?
+  return false;
+}
+
+async function meleeAttack(name, targetName){
+  //check players[name] max attack and random it
+  //check players[targetName] defense from worn items
+  //subtract attack from players[targetName].hp
+  if (Date.now()<players[name].lastMelee+1000){//change to -level?
+    return;
+  }
+  players[name].lastMelee=Date.now();
+  let damage = 0;
+  let weaponName = itemById[players[name].hand];
+  let weaponDmg = baseTiles[weaponName].attack;
+  damage+=weaponDmg;
+  players[targetName].hp-=damage;//change to playerattack-targetdefense etc
+  console.log(`Attacked ${targetName}!`);//check lastHit here or in checkMelee
 }
 
 async function checkObjectCollision(playerName, coords, objName) {
@@ -635,7 +728,10 @@ async function checkObjectCollision(playerName, coords, objName) {
     objDef.requiresTool &&
     objDef.requiresTool !== heldItemName
   ) return;
-
+  //check if safe tile first!
+  if (isSafeActive(map.Map[coords[1]][coords[0]])){
+    return;
+  } 
   await resourceInteract(playerName, coords, objName);
 }
 

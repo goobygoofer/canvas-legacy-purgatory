@@ -38,7 +38,8 @@ let playerData = {
   name: null,//get from login? don't use this  yet
   inventory: {},//[{id:1, amt:1}, {id:5, amt:16}
   hand: null,
-  head: null
+  head: null,
+  hp: null
 };
 
 /*
@@ -751,6 +752,7 @@ socket.on('playerState', (data)=> {
   playerData.hand=data.hand;
   playerData.head=data.head;
   playerData.facing=data.facing;
+  playerData.hp=data.hp;
 });
 
 socket.on('invData', (data) => {
@@ -1144,6 +1146,28 @@ function drawSettings() {
   });
 }
 
+function drawSafeTiles(chunk){
+  const safe = chunk.data?.safeTile;
+  if (!safe || Object.keys(safe).length===0) return;
+  if (!devMode) return;
+  ctx.drawImage(
+    spriteSheet,
+    base_tiles['safeTile'].x, base_tiles['safeTile'].y,
+    16, 16,
+    j * 32, i * 32, 32, 32
+  );
+}
+
+function drawHUD(){
+  //right now just hp in bottom left of screen
+  const hpPosX = 5;
+  const hpPosY = canvas.height-20;
+  ctx.strokeStyle = "black";
+  ctx.strokeRect(hpPosX, hpPosY, 100, 10);
+  ctx.fillStyle = "red";
+  ctx.fillRect(hpPosX+1, hpPosY+1, 100*(playerData.hp/100), 8);
+}
+
 //draw everything here
 function updateView(data){
   ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -1160,11 +1184,13 @@ function updateView(data){
       drawObjects(chunk);
       drawPlayers(chunk);
       drawRoofs(chunk);
+      drawSafeTiles(chunk);
       drawChatBubbles(chunk);
     }
   }
   drawRain();
   drawVignette(ctx, canvas.width, canvas.height);
+  drawHUD();
 }
 
 function updateDraw(now) {

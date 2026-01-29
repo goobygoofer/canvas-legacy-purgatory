@@ -203,6 +203,12 @@ base_tiles = {
   "stoneSwordL": { "x": 192, "y": 192 },
   "stoneSwordR": { "x": 80, "y": 192 },
   "chatDots": { "x": 80, "y": 626 },
+  "safeTile": {
+    "x":256, "y":1072,
+    kind: "safeTile",
+    container: "safeTile",
+    collision:false
+  },
   "spiderL": { "x": 112, "y": 240 },
   "heartContainer": { "x": 128, "y": 528 },
   "staminaPot": { "x": 64, "y": 1072 },
