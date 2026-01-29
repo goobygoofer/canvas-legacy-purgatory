@@ -42,22 +42,6 @@ let playerData = {
   hp: null
 };
 
-/*
-const ITEMS = {
-  axe:        { id: 1 },
-  log:        { id: 2 },
-  pickaxe:    { id: 3 },
-  rock:       { id: 4 },
-  stoneSword: { id: 5 }
-};
-
-const itemById = Object.fromEntries(
-  Object.entries(ITEMS).map(([name, data]) => [data.id, name])
-);
-
-//not even using this one, client may only need base_tiles and itemById
-const idByItem = name => ITEMS[name]?.id;
-*/
 const itemById = Object.fromEntries(
   Object.entries(base_tiles)
     .filter(([name, def]) => def.id != null)
@@ -145,15 +129,6 @@ const COLOR_PALETTE = {
 
 var showSettings = false;
 
-/*
-var craftItems = {
-  "pickaxe": {"log":5},
-  "stoneSword": {"log":1, "rock":2}
-}
-
-const craftableList = Object.keys(craftItems);
-*/
-
 const craftableList = Object.keys(base_tiles).filter(
   name => base_tiles[name]?.craft && Object.keys(base_tiles[name].craft).length > 0
 );
@@ -194,7 +169,7 @@ const settingsButtons = [
 
 var mapDownload = [];
 
-var music = "off";
+var music = "on";
 var sfx = "on";
 var select;
 
@@ -236,7 +211,13 @@ function devModeActive(){
 function loadSounds() {
   const soundFiles = {
     rain: "audio/rain.mp3",
-    hell: "audio/hell.mp3"
+    hell: "audio/hell.mp3",
+    hit: "audio/hit.mp3",
+    stepR: "audio/stepR.mp3",
+    stepL: "audio/stepL.mp3",
+    damage: "audio/damage.wav",
+    chop: "audio/chop.mp3",
+    pickaxe: "audio/pickaxe.wav"
   };
 
   for (const [key, url] of Object.entries(soundFiles)) {
@@ -780,6 +761,11 @@ socket.on('crafting', (data) => {
 
 socket.on('mapDownload', (data) => {
   mapDownload.push(data);
+});
+
+socket.on('playSound', (data) => {
+  if (sfx==="off") return;
+  playSound(data);
 });
 
 function drawTabs() {

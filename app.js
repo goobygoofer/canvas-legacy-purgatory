@@ -123,6 +123,7 @@ async function initPlayer(name) {
     lastInput: Date.now(),
     lastMove: Date.now(),
     lastDir: "right",//not using yet
+    step: 'stepR',
     typing: { state: false, lastSpot: { x: 0, y: 0 } },
     lastChunk: null,
     lastChunkSum: null,
@@ -616,6 +617,12 @@ function movePlayer(name, data){
       }
       delete map.Map[players[name].coords[1]][players[name].coords[0]].players[name];
       markTileChanged(players[name].coords[0], players[name].coords[1]);
+      io.to(players[name].sock_id).emit('playSound', players[name].step);
+      if (players[name].step==="stepR"){
+        players[name].step="stepL";
+      } else {
+        players[name].step="stepR";
+      }
       players[name].coords = modCoords;
       addPlayerToTile(name, modCoords[0], modCoords[1]);
       markTileChanged(players[name].coords[0], players[name].coords[1]);
@@ -706,6 +713,11 @@ async function meleeAttack(name, targetName){
   damage+=weaponDmg;
   players[targetName].hp-=damage;//change to playerattack-targetdefense etc
   console.log(`Attacked ${targetName}!`);//check lastHit here or in checkMelee
+  //need hitsplat added to map briefly (blood splatter?)
+  //send sound activate to player and target
+  io.to(players[name].sock_id).emit('playSound', 'hit');
+  io.to(players[targetName].sock_id).emit('playSound', 'hit');
+  io.to(players[targetName].sock_id).emit('playSound', 'damage');
 }
 
 async function checkObjectCollision(playerName, coords, objName) {
@@ -842,7 +854,12 @@ async function resourceInteract(playerName, coords, objName) {
 
   const objDef = baseTiles[objName];
   if (!objDef || objDef.kind !== "resource") return;
-
+  if (itemById[player.hand]==='axe'){
+    io.to(player.sock_id).emit('playSound', 'chop');
+  }
+  if (itemById[player.hand]==='pickaxe'){
+    io.to(player.sock_id).emit('playSound', 'pickaxe');
+  }
   /* ---------- drops ---------- */
   if (objDef.drops) {
     for (const [itemName, amount] of Object.entries(objDef.drops)) {
