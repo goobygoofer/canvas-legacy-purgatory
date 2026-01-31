@@ -153,13 +153,28 @@ module.exports = {
     equip: {slot: "head"},
     craft: {'flowerred':1, 'flowerwhite':1, 'floweryellow':1}
   },
-
+  "coin": {
+    kind: "item",
+    id: 21,
+    container: "objects",
+    collision: false
+  },
+    "apple": {
+      kind: "item",
+      id: 22,
+      container: "objects",
+      collision: false,
+      hp: 5,
+      consume: true
+    },
   // -----------------------------------resources----------------------------------------
   "tree0": {
     kind: "resource",
     container: "objects",
     collision: true,
     drops: { log: 2 },
+    rareDrop: { apple: 1 },
+    rarity: 50,//every 50 trees by chance
     depletesTo: "tree1",
     requiresTool: "axe",
     regrowsTo: [
@@ -173,6 +188,8 @@ module.exports = {
     container: "objects",
     collision: true,
     drops: { log: 2 },
+    rareDrop: { apple: 1 },
+    rarity: 50,
     depletesTo: "tree2",
     requiresTool: "axe",
     regrowsTo: [
@@ -185,6 +202,8 @@ module.exports = {
     container: "objects",
     collision: true,
     drops: { log: 2 },
+    rareDrop: { apple: 1 },
+    rarity: 50,
     depletesTo: "tree3",
     requiresTool: "axe",
     regrowsTo: [
@@ -198,6 +217,8 @@ module.exports = {
     container: "objects",
     collision: true,
     drops: { log: 2 },
+    rareDrop: { apple: 1 },
+    rarity: 50,
     depletesTo: "tree4",
     requiresTool: "axe",
     regrowsTo: [
@@ -597,6 +618,17 @@ module.exports = {
     container: "safeTile",
     collision:false
   },
+  "sign": {
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    text: null
+  },
+  "grave": {
+    kind: "base-tile",
+    container: "objects",
+    collision: false
+  },
   "cutGrass": {/*when grass2 gets cut*/ },
   "stoneSwordL": {},
   "stoneSwordR": {},
@@ -629,7 +661,6 @@ module.exports = {
   "snowtree": {},
   "mushroom": {},
   "rupee": {},
-  "grave": {},
   //"stoneblock": {},
   "stump2": {},
   "stump3": {},
@@ -648,7 +679,6 @@ module.exports = {
   "skull": {},
   "table": {},
   "chair": {},
-  "sign": {},
   "deskHORIZ": {},
   "deskVERT": {},
   "deskCRV1": {},
@@ -683,9 +713,7 @@ module.exports = {
   "raft": {},
   "sail": {},
   "key": {},
-  "coin": {},
   "scroll": {},
-  "apple": {},
   "trashcan": {},
   "F": {},
   "C": {},
@@ -736,8 +764,8 @@ module.exports = {
   "fireballright": {},
   "mapExit": {},
   "mobGenerator": {},
-  "skelR": {},
-  "skelL": {},
+  "skeletonR": {},
+  "skeletonL": {},
   "skelUp": {},
   "skelDown": {},
   "skelHit": {},

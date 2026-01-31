@@ -217,7 +217,8 @@ function loadSounds() {
     stepL: "audio/stepL.mp3",
     damage: "audio/damage.wav",
     chop: "audio/chop.mp3",
-    pickaxe: "audio/pickaxe.wav"
+    pickaxe: "audio/pickaxe.wav",
+    miss: "audio/miss.mp3"
   };
 
   for (const [key, url] of Object.entries(soundFiles)) {
@@ -768,6 +769,11 @@ socket.on('playSound', (data) => {
   playSound(data);
 });
 
+socket.on('readSign', (data) => {
+  messages.innerHTML += `<div><strong>${data}</div>`;
+  messages.scrollTop = messages.scrollHeight;
+})
+
 function drawTabs() {
   invCtx.clearRect(0, 0, invCanvas.width, invCanvas.height);
   invCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1034,6 +1040,16 @@ function drawPlayers(chunk){
   }
 }
 
+function drawMobs(chunk){
+  if (!chunk.mob) return;//server end, create or delete .mob as needed, only has name (ratL, etc)
+  ctx.drawImage(
+    spriteSheet,
+    base_tiles[chunk.mob.sprite].x, base_tiles[chunk.mob.sprite].y,
+    16, 16,
+    j*32, i*32, 32, 32
+  )
+}
+
 function drawChatBubbles(chunk){
   if (chunk.data.typing === true) {
     //draw chat bubbles
@@ -1168,6 +1184,7 @@ function updateView(data){
       drawDepletedResources(chunk);
       drawPixels(chunk);
       drawObjects(chunk);
+      drawMobs(chunk);
       drawPlayers(chunk);
       drawRoofs(chunk);
       drawSafeTiles(chunk);

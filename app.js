@@ -7,6 +7,13 @@ var map = {
   Map: require('./blank_map.json'),
   Fxn: require('./map_fxns.js')
 };
+//temporary to remove old mob sprites
+for (i in map.Map){
+  for (j in map.Map[i]){
+    delete map.Map[i][j].mob;
+  }
+}
+const { createMob } = require("./mobs");
 
 require('dotenv').config();
 const express = require('express');
@@ -518,6 +525,13 @@ io.on('connection', async (socket) => {
     console.log('teleporting Admin');
     players[socket.user].coords[0]=data[0];
     players[socket.user].coords[1]=data[1];
+  });
+
+  socket.on('setSign', (data) => {
+    if (!devMode && socket.user!=='Admin') return;
+    let coords = players[socket.user].coords;
+    let tile = map.Map[coords[1]][coords[0]];
+    tile.data.objects['sign'].text=data;
   })
 
   socket.on("downloadMap", () => {
@@ -676,33 +690,39 @@ function checkCollision(name, coords){
   return false; 
 }
 
-//may or may not have to be async?
-function checkMelee(name, coords){//remember, coords here is modcoords, the checked tile
-  //this checks for melee on players, MOBS, or anything else attackable
-  //first player object or mob object etc whatever on tile gets hit
-  console.log("checkMelee");
-  if (players[name].hand===null){
-    console.log("not holding anything");
-    return false;//not holding anything, no collision/walks through target
-  }
-  const tile = map.Map[coords[1]][coords[0]];
-  const tilePlayerNames = Object.keys(tile.players);
-  const isSafe = isSafeActive(tile);
-  console.log(`isSafe: ${isSafe}`);
-  if (tilePlayerNames.length>0 && !isSafe){
-    const playerTarget = tilePlayerNames[0];
-    meleeAttack(name, playerTarget);
-    console.log("player on tile, attacked");
-    return true;
-  }
-  //then mobs?
-  return false;
+function checkMelee(name, coords) {
+    console.log("checkMelee");
+
+    if (players[name].hand === null) {
+        console.log("not holding anything");
+        return false;
+    }
+
+    const tile = map.Map[coords[1]][coords[0]];
+    const isSafe = isSafeActive(tile);
+
+    // 1️⃣ Players first
+    const tilePlayerNames = Object.keys(tile.players || {});
+    if (tilePlayerNames.length > 0 && !isSafe) {
+        const playerTarget = tilePlayerNames[0];
+        meleeAttack(name, playerTarget);
+        console.log("player on tile, attacked");
+        return true;
+    }
+
+    // 2️⃣ Then mobs
+    if (tile.mob) {
+        const mob = mobs.get(tile.mob.id);
+        if (mob) {
+            meleeAttackMob(name, mob.id);
+            return true;
+        }
+    }
+
+    return false;
 }
 
 async function meleeAttack(name, targetName){
-  //check players[name] max attack and random it
-  //check players[targetName] defense from worn items
-  //subtract attack from players[targetName].hp
   if (Date.now()<players[name].lastMelee+1000){//change to -level?
     return;
   }
@@ -712,12 +732,52 @@ async function meleeAttack(name, targetName){
   let weaponDmg = baseTiles[weaponName].attack;
   damage+=weaponDmg;
   players[targetName].hp-=damage;//change to playerattack-targetdefense etc
-  console.log(`Attacked ${targetName}!`);//check lastHit here or in checkMelee
-  //need hitsplat added to map briefly (blood splatter?)
-  //send sound activate to player and target
-  io.to(players[name].sock_id).emit('playSound', 'hit');
-  io.to(players[targetName].sock_id).emit('playSound', 'hit');
-  io.to(players[targetName].sock_id).emit('playSound', 'damage');
+  console.log(`Attacked ${targetName}!`);
+  if (damage>0){
+    io.to(players[name].sock_id).emit('playSound', 'hit');
+    io.to(players[targetName].sock_id).emit('playSound', 'hit');
+    io.to(players[targetName].sock_id).emit('playSound', 'damage');
+  }
+  else {
+    io.to(players[name].sock_id).emit('playSound', 'miss');
+    io.to(players[targetName].sock_id).emit('playSound', 'miss');
+  }
+}
+
+function meleeAttackMob(playerName, mobId) {
+    const mob = mobs.get(mobId);
+    if (!mob) return;
+
+    if (Date.now() < players[playerName].lastMelee + 1000) return;
+    players[playerName].lastMelee = Date.now();
+
+    const weaponName = itemById[players[playerName].hand];
+    const damage = baseTiles[weaponName].attack || 0;
+
+    mob.hp -= damage;
+    io.to(players[playerName].sock_id).emit('playSound', 'hit');
+
+    console.log(`Player ${playerName} hit mob ${mob.type} for ${damage}`);
+
+    if (mob.hp <= 0) {
+        killMob(mob);
+    }
+}
+
+function killMob(mob) {
+    const tile = map.Map[mob.y][mob.x];
+    delete tile.mob;
+    addToMap(mob.drop, mob.x, mob.y);
+    mobs.delete(mob.id);
+    markTileChanged(mob.x, mob.y);
+
+    // ♻️ respawn
+    const spawn = mob.spawnRef;
+    if (spawn) {
+        setTimeout(() => {
+            spawnMob(spawn);
+        }, spawn.respawnTime);
+    }
 }
 
 async function checkObjectCollision(playerName, coords, objName) {
@@ -796,7 +856,19 @@ function checkInteract(name, objName){
     useDoor(name);
     return true;
   }
+  if (objName==='sign'){
+    readSign(name);
+  }
   return false;
+}
+
+function readSign(name){
+  let player = players[name];
+  let coords = players[name].coords;
+  let tile = map.Map[coords[1]][coords[0]];
+  let text = tile.data.objects['sign'].text;
+  console.log(tile.data.objects['sign'].text);
+  io.to(players[name].sock_id).emit('readSign', text);
 }
 
 async function useDoor(name) {
@@ -868,6 +940,16 @@ async function resourceInteract(playerName, coords, objName) {
     }
     await syncInventory(playerName);
   }
+  //rare drop
+  if (objDef.rareDrop) {//implies also has .rarity
+    if (Math.floor(Math.random() * 1000) < objDef.rarity){
+      for (const [itemName, amount] of Object.entries(objDef.rareDrop)) {
+        const itemId = idByItem(itemName);
+        if (itemId) await addItem(playerName, itemId, amount);
+      }
+      await syncInventory(playerName);
+    }
+  }
 
   /* ---------- depletion ---------- */
   const tileData = map.Map[coords[1]][coords[0]].data;
@@ -916,6 +998,10 @@ function useItem(playerName) {
     return;
   }
 
+  if (itemDef.consume) {
+    consume(playerName, invEntry.id);
+    return;
+  }
   // future: consumables, activatables, etc
   // if (itemDef.consume) consumeItem(playerName, itemName);
 }
@@ -945,6 +1031,24 @@ function equip(playerName, id) {
 
   emitPlayerState(player);
   markTileChanged(player.coords[0], player.coords[1]);
+}
+
+async function consume(playerName, id){
+  const player = players[playerName];
+
+  const itemName = itemById[id];
+  if (!itemName) return;
+
+  const itemDef = baseTiles[itemName];
+  if (!itemDef || !itemDef.consume) return;
+  if (itemDef.hp){
+    player.hp+=itemDef.hp;
+    if (player.hp>100){
+      player.hp=100;//change this to maxhp, need in db and in memory
+    }
+    await removeItem(playerName, itemDef.id, 1);
+    await syncInventory(playerName);
+  }
 }
 
 async function dropItem(name, item){
@@ -1051,6 +1155,7 @@ async function smeltOre(playerName) {
   // delegate to craftItem
   await craftItem(playerName, smeltItem, true);
 }
+
 function pickWeighted(list) {
   let total = 0;
   for (const e of list) total += e.weight;
@@ -1162,3 +1267,246 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
 replenishResources();
+
+//mob testing
+//create mob registry
+const mobs = new Map();
+//create a rat
+/*
+const rat1 = createMob('rat', 50, 50);
+//put rat1 in registry
+mobs.set(rat1.id, rat1);
+//put rat on tile
+map.Map[50][50].mob = {
+    id: rat1.id,
+    sprite: "ratL"
+};
+*/
+const mobSpawns = [
+    {//rats south of Old Haven
+        type: "rat",
+        x: 35,//remember client coord abstraction is backwards lol
+        y: 76,
+        count: 5,
+        respawnTime: 8000 // ms
+    },
+    {
+      type: "skeleton",
+      x:40, y:35,
+      count: 1,
+      respawnTime: 10000
+    },
+    {
+      type: "skeleton",
+      x:44, y:35,
+      count: 1,
+      respawnTime: 10000
+    },
+    {
+      type: "skeleton",
+      x:40, y:33,
+      count: 1,
+      respawnTime: 10000
+    },
+    {
+      type: "skeleton",
+      x:44, y:33,
+      count: 1,
+      respawnTime: 10000
+    }
+];
+
+function spawnMob(spawn) {
+    const mob = createMob(spawn.type, spawn.x, spawn.y);
+    mobs.set(mob.id, mob);
+
+    map.Map[mob.y][mob.x].mob = {
+        id: mob.id,
+        sprite: mob.type + "L"
+    };
+
+    mob.spawnRef = spawn; // 🔑 link back to spawn
+}
+
+for (const spawn of mobSpawns) {
+    for (let i = 0; i < spawn.count; i++) {
+        spawnMob(spawn);
+    }
+}
+
+function updateMob(mob, now) {
+  if (now < mob.nextThink) return;
+  mob.nextThink = now + 500;
+
+  if (mob.state === "return") {
+    if (mob.x === mob.spawnX && mob.y === mob.spawnY) {
+      mob.state = "idle";
+      return;
+    }
+    returnToSpawn(mob);
+    return;
+  }
+
+  const player = findPlayerInRange(mob);
+
+  if (player) {
+
+    // 🧷 leash check
+    if (distFromSpawn(mob) > mob.leashRadius) {
+      mob.state = "return";
+      mob.target = null;
+      return;
+    }
+
+    if (inAttackRange(mob, player)) {
+      attackPlayer(mob, player);
+      return;
+    }
+
+    moveToward(mob, player);
+    return;
+  }
+
+  wander(mob);
+}
+
+function findPlayerInRange(mob) {
+    for (const name in players) {
+        const player = players[name];
+        const px = player.coords[0];
+        const py = player.coords[1];
+        const dist = Math.abs(mob.x - px) + Math.abs(mob.y - py);
+        if (dist <= mob.aggroRadius) {
+            console.log(`Player ${name} detected by mob ${mob.id}`);
+            return player;
+        }
+    }
+    return null;
+}
+
+
+function tryMove(mob, newX, newY) {
+    const oldTile = map.Map[mob.y]?.[mob.x];
+    const newTile = map.Map[newY]?.[newX];
+
+    if (!newTile) return false;
+    if (newTile.mob) return false;
+    if (mobCollision(newTile)) return false;
+
+    // update facing
+    mob.facing = newX > mob.x ? "right" : "left";
+
+    // clear old tile
+    if (oldTile) delete oldTile.mob;
+
+    // update mob position
+    mob.x = newX;
+    mob.y = newY;
+
+    // set new tile
+    newTile.mob = {
+        id: mob.id,
+        sprite: mob.type + (mob.facing === "left" ? "L" : "R")
+    };
+
+    markTileChanged(mob.x, mob.y);
+    return true;
+}
+
+function mobCollision(tile){
+  for (obj in tile.data.objects){
+    if (baseTiles[tile.data.objects[obj].name].collision) return true;
+  }
+  if (baseTiles[tile.data['base-tile']].collision) return true;
+  return false;
+}
+
+function distance(a, b){
+    const ax = a.x ?? a.coords[0];
+    const ay = a.y ?? a.coords[1];
+
+    const bx = b.x ?? b.coords[0];
+    const by = b.y ?? b.coords[1];
+
+    return Math.abs(ax - bx) + Math.abs(ay - by);
+}
+
+function canSeePlayer(mob, player){
+    return distance(mob, player) <= mob.vision;
+}
+
+function distFromSpawn(mob) {
+    return Math.abs(mob.x - mob.spawnX) + Math.abs(mob.y - mob.spawnY);
+}
+
+function wander(mob) {
+
+    // 🚫 too far → go home instead
+    if (distFromSpawn(mob) >= mob.leashRadius) {
+        moveToward(mob, { coords: [mob.spawnX, mob.spawnY] });
+        return;
+    }
+
+    const dirs = [
+        { x: 0, y: -1 },
+        { x: 0, y: 1 },
+        { x: -1, y: 0 },
+        { x: 1, y: 0 }
+    ];
+
+    const choice = dirs[Math.floor(Math.random() * dirs.length)];
+    tryMove(mob, mob.x + choice.x, mob.y + choice.y);
+}
+
+function moveToward(mob, target) {
+    const px = target.coords[0];
+    const py = target.coords[1];
+
+    const dx = Math.sign(px - mob.x);
+    const dy = Math.sign(py - mob.y);
+
+    // try x first if farther away horizontally
+    if (Math.abs(px - mob.x) > Math.abs(py - mob.y)) {
+        if (dx !== 0 && tryMove(mob, mob.x + dx, mob.y)) return;
+        if (dy !== 0 && tryMove(mob, mob.x, mob.y + dy)) return;
+    } 
+    // otherwise try y first
+    else {
+        if (dy !== 0 && tryMove(mob, mob.x, mob.y + dy)) return;
+        if (dx !== 0 && tryMove(mob, mob.x + dx, mob.y)) return;
+    }
+
+    // if blocked → do nothing (NO wandering here)
+}
+
+function returnToSpawn(mob) {
+    moveToward(mob, { coords: [mob.spawnX, mob.spawnY] });
+}
+
+function inAttackRange(mob, player) {
+    const px = player.coords[0];
+    const py = player.coords[1];
+
+    const dist = Math.abs(mob.x - px) + Math.abs(mob.y - py);
+    return dist === 1; // adjacent tile
+}
+
+function attackPlayer(mob, player) {
+    //console.log(`Rat ${mob.id} attacks ${player.name || "player"}`);
+    // later:
+    if (Date.now()>mob.lastAttack+1000){
+      mob.lastAttack=Date.now();
+      player.hp -= mob.attack;
+      io.to(player.sock_id).emit('playSound', 'hit');
+      io.to(player.sock_id).emit('playSound', 'damage');
+    }
+}
+
+function updateMobs() {
+    const now = Date.now();
+    for (const mob of mobs.values()) {
+        updateMob(mob, now);
+    }
+}
+
+setInterval(updateMobs, 250);

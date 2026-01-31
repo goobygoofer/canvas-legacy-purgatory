@@ -130,6 +130,14 @@ base_tiles = {
     id: 20,
     craft: {'flowerred':1, 'flowerwhite':1, 'floweryellow':1}
   },
+  "coin": {
+    "x": 176, "y": 240,
+    id: 21
+  },
+    "apple": {
+      "x": 304, "y": 160,
+      id: 22
+    },
   "flowercrownL":{
     "x":192, "y":1120
   },
@@ -430,10 +438,8 @@ base_tiles = {
   "raft": { "x": 128, "y": 1264 },
   "sail": { "x": 144, "y": 1264 },//draw raft > pla"y"er > sail
   "key": { "x": 16, "y": 848 },
-  "coin": { "x": 176, "y": 240 },
   "craftingtable": { "x": 192, "y": 528, 'roof': false, 'type': 'objects', 'collision': false },
   "scroll": { "x": 160, "y": 1264 },
-  "apple": { "x": 304, "y": 160 },
   "trashcan": { "x": 128, "y": 752 },
   //letters here
   "F": { "x": 80, "y": 768 },
@@ -488,8 +494,8 @@ base_tiles = {
   "fireballright": { "x": 144, "y": 256 },
   "mapExit": { "x": 240, "y": 1232 },
   "mobGenerator": { "x": 240, "y": 1232 },
-  "skelR": { "x": 128, "y": 16 },///ma"y" need to remove from here
-  "skelL": { "x": 128, "y": 32 },
+  "skeletonR": { "x": 128, "y": 16 },///ma"y" need to remove from here
+  "skeletonL": { "x": 128, "y": 32 },
   "skelUp": { "x": 144, "y": 16 },
   "skelDown": { "x": 144, "y": 32 },
   "skelHit": { "x": 144, "y": 64 },
