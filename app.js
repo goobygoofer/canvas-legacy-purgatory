@@ -90,8 +90,10 @@ async function queryPassword(name, pass) {
   const result = await query(sql, [name]);
   if (!result || result.length === 0) {
     console.log("New player!");
-    await initPlayer(name);
     await addPlayer(name, pass);
+    await initPlayer(name);
+    await addItem(name, 1, 1);
+    await syncInventory(name);
     await setActive(name, 1);
     return { created: true };
   }
@@ -414,14 +416,9 @@ async function setPlayerStat(name, stat, amount){
   //stat levels derived from xp, then can be stored in players[name]
 }
 
-async function addPlayerExp(name, stat, amount){
-  //
-}
 
 async function addPlayer(name, pass) {
   await addPlayerToDb(name, pass);
-  await addItem(name, 1, 1);
-  await syncInventory(name);
   console.log("Player added:", name);
 }
 
