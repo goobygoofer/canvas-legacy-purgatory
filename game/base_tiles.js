@@ -134,10 +134,24 @@ base_tiles = {
     "x": 176, "y": 240,
     id: 21
   },
-    "apple": {
-      "x": 304, "y": 160,
-      id: 22
-    },
+  "apple": {
+    "x": 304, "y": 160,
+    id: 22
+  },
+  "hide": {
+    "x": 224, "y": 272,
+    id: 23
+  },
+  "goblinsword": {
+    "x":64, "y":656,
+    id: 24
+  },
+  "goblinswordL": {
+    "x":80, "y":656
+  },
+  "goblinswordR": {
+    "x":80,"y":640
+  },
   "flowercrownL":{
     "x":192, "y":1120
   },
@@ -216,6 +230,9 @@ base_tiles = {
     kind: "safeTile",
     container: "safeTile",
     collision:false
+  },
+  "craftTools":{
+    "x":64, "y":672
   },
   "spiderL": { "x": 112, "y": 240 },
   "heartContainer": { "x": 128, "y": 528 },
@@ -447,7 +464,6 @@ base_tiles = {
   //end letters
   "hitOutlineLeft": { "x": 112, "y": 176 },
   "hitOutlineRight": { "x": 62, "y": 176 },
-  "hide": { "x": 224, "y": 272 },
   "tunafish": { "x": 240, "y": 480 },
   "cookedtuna": { "x": 64, "y": 496 },
   "leatherArmorL": { "x": 159, "y": 272 },
@@ -512,6 +528,12 @@ base_tiles = {
   "rangeGoblinR": { "x": 80, "y": 336 },
   "rangeGoblinL": { "x": 96, "y": 336 },
   "mageLichR": { "x": 80, "y": 160, "collision": true },
-  "mageLichL": { "x": 64, "y": 160, "collision": true }//to here
+  "mageLichL": { "x": 64, "y": 160, "collision": true },//to here
+  "goblinR": {
+    "x":80,"y":16
+  },
+  "goblinL": {
+    "x":80,"y":32
+  }
 }
 

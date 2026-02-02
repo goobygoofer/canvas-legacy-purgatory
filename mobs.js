@@ -24,7 +24,10 @@ const mobTypes = {
         nextThink: 0,
         facing: "left",
 
-        drop: "coin"
+        drop: [
+            { name: "coin", min: 1, max: 3, weight: 100 },
+            { name: "hide", min: 1, max: 1, weight: 40 }
+        ]
     }),
     skeleton: (x, y) => ({
         id: getNextMobId(),
@@ -45,7 +48,36 @@ const mobTypes = {
         nextThink: 0,
         facing: "left",
 
-        drop: "ironbar"
+        drop: [
+            { name: "coin", min: 1, max: 10, weight: 100 },
+            { name: "ironbar", min: 1, max: 2, weight: 20 }
+        ]
+    }),
+    goblin: (x, y) => ({
+        id: getNextMobId(),
+        type: "goblin",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 75,
+        attack: 10,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 6,
+        leashRadius: 7,
+
+        nextThink: 0,
+        facing: "left",
+
+        drop: [
+            { name: "coin", min: 5, max: 25, weight: 1000 },
+            { name: "hide", min: 1, max: 2, weight: 200 },
+            { name: "flowercrown", min: 1, max: 2, weight: 100},
+            { name: "goblinsword", min: 1, max: 1, weight: 5}
+        ]
     })
 };
 

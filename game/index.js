@@ -54,6 +54,7 @@ const idByItem = name => base_tiles[name]?.id;
 const tabs = [
   { id: "inventory", label: "Inventory" },
   { id: "paint", label: "Paint" },
+  { id: "stats", label: "Stats" }
 ];
 let activeTab = "inventory";
 const TAB_HEIGHT = 14;
@@ -478,6 +479,10 @@ function handleInvCanvClick(e, leftRight){
           drawInventory();
           if (painting===true){togglePaint()}
         }
+        if (activeTab==="stats"){
+          drawStats();
+          if (painting===true){togglePaint()}
+        }
         return;
       }
 
@@ -735,6 +740,16 @@ socket.on('playerState', (data)=> {
   playerData.head=data.head;
   playerData.facing=data.facing;
   playerData.hp=data.hp;
+  playerData.hpLvl=data.hpLvl;
+  playerData.hpXpTotal=data.hpXpTotal;
+  playerData.swordLvl=data.swordLvl;
+  playerData.swordXpTotal=data.swordXpTotal;
+  playerData.craftLvl=data.craftLvl;
+  playerData.craftXpTotal=data.craftXpTotal;
+  playerData.woodcuttingLvl=data.woodcuttingLvl;
+  playerData.woodcuttingXpTotal=data.woodcuttingXpTotal;
+  playerData.miningLvl=data.miningLvl;
+  playerData.miningXpTotal=data.miningXpTotal;
 });
 
 socket.on('invData', (data) => {
@@ -770,8 +785,13 @@ socket.on('playSound', (data) => {
 });
 
 socket.on('readSign', (data) => {
-  messages.innerHTML += `<div><strong>${data}</div>`;
+  messages.innerHTML += `<div style="color: brown;">\n<strong>${data}\n</div>`;
   messages.scrollTop = messages.scrollHeight;
+})
+
+socket.on('openBank', (data) => {
+  console.log("opened bank");
+  console.log(data);
 })
 
 function drawTabs() {
@@ -867,6 +887,51 @@ function drawPaintPalette() {
     }
 
     i++;
+  }
+}
+
+const statsConfig = [
+  { key: "swordLvl", name: "Swordsmanship", sx: base_tiles['ironsword'].x, sy: base_tiles['ironsword'].y },       // icon at (0,0) in spritesheet
+  { key: "hpLvl", name: "HP", sx: base_tiles['heart'].x, sy: base_tiles['heart'].y }, // icon at (16,0)
+  { key: "craftLvl", name: "Crafting", sx: base_tiles['craftTools'].x, sy: base_tiles['craftTools'].y },
+  { key: "woodcuttingLvl", name: "Woodcutting", sx: base_tiles['axe'].x, sy: base_tiles['axe'].y },
+  { key: "miningLvl", name: "HP", sx: base_tiles['pickaxe'].x, sy: base_tiles['pickaxe'].y }
+  // Add more stats here as needed
+];
+
+function drawStats() {
+  if (!playerData) return;
+
+  const iconSize = 16;
+  const padding = 4;
+  const rowHeight = iconSize + 6;
+
+  let y = 14; // top of stats panel
+
+  for (const stat of statsConfig) {
+    if (!stat || !stat.key) continue;
+    if (!(stat.key in playerData)) continue;
+
+    const level = playerData[stat.key];
+
+    // icon (panel-relative)
+    invCtx.drawImage(
+      spriteSheet,
+      stat.sx, stat.sy, iconSize, iconSize,
+      0, y, iconSize, iconSize
+    );
+
+    // text
+    invCtx.fillStyle = "black";
+    invCtx.font = "12px Arial";
+    invCtx.textBaseline = "middle";
+    invCtx.fillText(
+      level,
+      iconSize + padding,
+      y + iconSize / 2
+    );
+
+    y += rowHeight;
   }
 }
 
@@ -1167,7 +1232,20 @@ function drawHUD(){
   ctx.strokeStyle = "black";
   ctx.strokeRect(hpPosX, hpPosY, 100, 10);
   ctx.fillStyle = "red";
-  ctx.fillRect(hpPosX+1, hpPosY+1, 100*(playerData.hp/100), 8);
+// determine the visual width of the full bar
+  const barWidth = 100; // keeps the same size on screen
+
+  // calculate max HP based on level
+  const maxHp = 100 + playerData.hpLvl * 2;
+
+  // scale current HP relative to max
+  const fillWidth = (playerData.hp / maxHp) * barWidth;
+
+  // clamp to prevent negative or overflowing bars
+  const safeWidth = Math.max(0, Math.min(barWidth, fillWidth));
+
+  // draw the HP bar
+  ctx.fillRect(hpPosX + 1, hpPosY + 1, safeWidth, 8);
 }
 
 //draw everything here

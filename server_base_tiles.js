@@ -159,7 +159,7 @@ module.exports = {
     container: "objects",
     collision: false
   },
-    "apple": {
+  "apple": {
       kind: "item",
       id: 22,
       container: "objects",
@@ -167,12 +167,36 @@ module.exports = {
       hp: 5,
       consume: true
     },
+  "hide": {
+    kind: "item",
+    id: 23,
+    container: "objects",
+    collision: false,
+  },
+  "goblinsword": {
+    kind: "item",
+    id: 24,
+    container: "objects",
+    collision: false,
+    roof: false,
+    equip: { slot: "hand" },
+    attack: 30
+  },
+  "lootbag": {
+      kind: "lootbag",
+      container: "objects",
+      collision: false,
+      items: {}
+      //mobs drop these with random items
+      //player drops all inventory on death
+      //{id:1, amt:1} etc
+    },
   // -----------------------------------resources----------------------------------------
   "tree0": {
     kind: "resource",
     container: "objects",
     collision: true,
-    drops: { log: 2 },
+    drops: { log: 1 },
     rareDrop: { apple: 1 },
     rarity: 50,//every 50 trees by chance
     depletesTo: "tree1",
@@ -187,7 +211,7 @@ module.exports = {
     kind: "resource",
     container: "objects",
     collision: true,
-    drops: { log: 2 },
+    drops: { log: 1 },
     rareDrop: { apple: 1 },
     rarity: 50,
     depletesTo: "tree2",
@@ -201,7 +225,7 @@ module.exports = {
     kind: "resource",
     container: "objects",
     collision: true,
-    drops: { log: 2 },
+    drops: { log: 1 },
     rareDrop: { apple: 1 },
     rarity: 50,
     depletesTo: "tree3",
@@ -216,7 +240,7 @@ module.exports = {
     kind: "resource",
     container: "objects",
     collision: true,
-    drops: { log: 2 },
+    drops: { log: 1 },
     rareDrop: { apple: 1 },
     rarity: 50,
     depletesTo: "tree4",
@@ -338,7 +362,7 @@ module.exports = {
     container: "objects",
     collision: true,
     roof: true,
-    drops: { rock: 2 },
+    drops: { rock: 1 },
     depletesTo: "rock1",
     requiresTool: "pickaxe",
     regrowsTo: [
@@ -351,7 +375,7 @@ module.exports = {
     kind: "resource",
     container: "objects",
     collision: true,
-    drops: { rock: 2 },
+    drops: { rock: 1 },
     depletesTo: "rock2",
     requiresTool: "pickaxe",
     regrowsTo: [
@@ -363,7 +387,7 @@ module.exports = {
     kind: "resource",
     container: "objects",
     collision: true,
-    drops: { rock: 2 },
+    drops: { rock: 1 },
     depletesTo: "rock3",
     requiresTool: "pickaxe",
     regrowsTo: [
@@ -375,7 +399,7 @@ module.exports = {
     kind: "resource",
     container: "objects",
     collision: true,
-    drops: { rock: 2 },
+    drops: { rock: 1 },
     depletesTo: "rock4",
     requiresTool: "pickaxe",
     regrowsTo: [
@@ -702,7 +726,6 @@ module.exports = {
   "fPoleR": {},
   "fPoleL": {},
   "fPole": {},
-  "lootbag": {},
   "dungeonStairs": {},
   "fish": {},
   "portalfish": {},
@@ -719,7 +742,6 @@ module.exports = {
   "C": {},
   "hitOutlineLeft": {},
   "hitOutlineRight": {},
-  "hide": {},
   "tunafish": {},
   "cookedtuna": {},
   "leatherArmorL": {},

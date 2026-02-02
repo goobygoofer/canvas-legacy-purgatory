@@ -110,8 +110,54 @@ function setActive(name, active) {//this really aint doin anything
   );
 }
 
+async function getPlayerXp(playerName, xpType) {
+  if (!['hpXp', 'swordXp', 'craftXp', 'woodcuttingXp', 'miningXp'].includes(xpType)) {
+    throw new Error(`Invalid xpType: ${xpType}`);
+  }
+
+  const rows = await query(
+    `SELECT ${xpType} FROM players WHERE player_name = ?`,
+    [playerName]
+  );
+
+  if (!rows.length) return 0;
+  return rows[0][xpType] ?? 0;
+}
+
+async function addPlayerXp(playerName, xpType, amount) {
+  if (amount <= 0) return;
+  if (!['hpXp', 'swordXp', 'craftXp', 'woodcuttingXp', 'miningXp'].includes(xpType)) {
+    throw new Error(`Invalid xpType: ${xpType}`);
+  }
+
+  await query(
+    `
+    UPDATE players
+    SET ${xpType} = ${xpType} + ?
+    WHERE player_name = ?
+    `,
+    [amount, playerName]
+  );
+}
+
 async function initPlayer(name) {
+  /*
   const sql = "SELECT JSON_ARRAY(x, y) AS coords FROM players WHERE player_name = ?";
+  const params = [name];
+  const result = await query(sql, params);
+  */
+  const sql = `
+    SELECT
+      JSON_ARRAY(x, y) AS coords,
+      hp,
+      swordXp,
+      hpXp,
+      woodcuttingXp,
+      miningXp,
+      craftXp
+    FROM players
+    WHERE player_name = ?
+  `;
   const params = [name];
   const result = await query(sql, params);
   let p_coords;
@@ -121,6 +167,19 @@ async function initPlayer(name) {
     p_coords = JSON.parse(result[0].coords);
   }
   console.log("Player coords:", p_coords);
+  let currHp = result[0].hp;
+  let hpXp = result[0].hpXp;
+  let swordXp = result[0].swordXp;
+  let craftXp = result[0].craftXp;
+  let miningXp = result[0].miningXp;
+  let woodcuttingXp=result[0].woodcuttingXp;
+  let hpLvl = await levelFromXp(hpXp);
+  let swordLvl = await levelFromXp(swordXp);
+  let craftLvl = await levelFromXp(craftXp);
+  let woodcuttingLvl = await levelFromXp(woodcuttingXp);
+  let miningLvl = await levelFromXp(miningXp);
+
+  console.log(`hp: ${currHp}`);
   players[name] = {// Initialize player object
     coords: p_coords,
     lastCoords: p_coords,//gets set in compartChunks
@@ -140,10 +199,25 @@ async function initPlayer(name) {
     hand: null,
     head: null,
     lastGather: Date.now(),
-    hp:100,//change to null, get hp from db
+    hp:currHp,//change to null, get hp from db
+    maxHp: 100+Math.floor(hpLvl*2),//300hp at lvl 100
     lastMelee: Date.now(),
-    name: name
+    name: name,
+    swordXpTotal: swordXp,
+    hpXpTotal: hpXp,
+    swordXp: 0,//these get written to the db every so often
+    hpXp: 0,   //then set back to 0
+    craftXpTotal: craftXp,
+    woodcuttingXpTotal: woodcuttingXp,
+    miningXpTotal: miningXp,
+    swordLvl: swordLvl,
+    hpLvl: hpLvl,
+    craftLvl: craftLvl,
+    woodcuttingLvl: woodcuttingLvl,
+    miningLvl: miningLvl,
+    lastState: null
   };
+  let player = players[name];
   addPlayerToTile(name, p_coords[0], p_coords[1]);
   markTileChanged(p_coords[0], p_coords[1]);
   syncInventory(name);
@@ -157,10 +231,41 @@ async function cleanupPlayer(name){
   delete players[name];
 }
 
+async function levelFromXp(xp) {
+  return Math.floor(Math.sqrt(xp / 10)) + 1;
+}
+
 async function dbPlayerCoords(name) {
-  const sql = `UPDATE players SET x = ?, y = ? WHERE player_name = ?`;
-  const params = [players[name].coords[0], players[name].coords[1], name];
+  const sql = `
+    UPDATE players SET 
+    x = ?, y = ?, 
+    hp = ?,
+    swordXp = ?,
+    hpXp = ?,
+    craftXp = ?,
+    woodcuttingXp = ?,
+    miningXp = ?
+    WHERE player_name = ?`;
+  const params = [
+    players[name].coords[0], players[name].coords[1], 
+    players[name].hp,
+    players[name].swordXpTotal,
+    players[name].hpXpTotal,
+    players[name].craftXpTotal,
+    players[name].woodcuttingXpTotal,
+    players[name].miningXpTotal,
+    name];
   await query(sql, params);
+  await setTempXpToZero(name);
+}
+
+async function setTempXpToZero(name){//prob don't need this
+  const player = players[name];
+  player.swordXp=0;
+  player.hpXp=0;
+  player.craftXp=0;
+  player.woodcuttingXp=0;
+  player.miningXp=0;
 }
 
 async function getInventory(playerName) {
@@ -183,13 +288,62 @@ async function getItemAmount(playerName, itemId) {
   return rows.length ? rows[0].amount : 0;
 }
 
+const MAX_SLOTS = 32;
+
 async function addItem(playerName, itemId, amount) {
-  const sql = `
+  // 1. Check if item already exists
+  const existing = await query(
+    `
+    SELECT amount
+    FROM inventories
+    WHERE player_name = ? AND id = ?
+    `,
+    [playerName, itemId]
+  );
+
+  // 2. If item exists, stack freely
+  if (existing.length > 0) {
+    await query(
+      `
+      UPDATE inventories
+      SET amount = amount + ?
+      WHERE player_name = ? AND id = ?
+      `,
+      [amount, playerName, itemId]
+    );
+    return amount;
+  }
+
+  // 3. Item is new → check slot count
+  const slotsUsed = await getInventoryCount(playerName);
+
+  if (slotsUsed >= MAX_SLOTS) {
+    return 0; // inventory full
+  }
+
+  // 4. Insert new slot
+  await query(
+    `
     INSERT INTO inventories (player_name, id, amount)
     VALUES (?, ?, ?)
-    ON DUPLICATE KEY UPDATE amount = amount + VALUES(amount)
-  `;
-  await query(sql, [playerName, itemId, amount]);
+    `,
+    [playerName, itemId, amount]
+  );
+
+  return amount;
+}
+
+async function getInventoryCount(playerName) {
+  const rows = await query(
+    `
+    SELECT COUNT(*) AS total
+    FROM inventories
+    WHERE player_name = ?
+      AND amount > 0
+    `,
+    [playerName]
+  );
+  return rows[0].total;
 }
 
 async function removeItem(playerName, itemId, amount) {
@@ -207,6 +361,32 @@ async function removeItem(playerName, itemId, amount) {
     AND amount <= 0
   `;
   await query(cleanup, [playerName, itemId]);
+}
+
+async function addBankItem(playerName, itemId, amount) {
+  if (amount <= 0) return; // ignore 0 or negative amounts
+  const sql = `
+    INSERT INTO bank (player_name, id, amount)
+    VALUES (?, ?, ?)
+    ON DUPLICATE KEY UPDATE amount = amount + VALUES(amount)
+  `;
+  await query(sql, [playerName, itemId, amount]);
+}
+
+async function removeBankItem(playerName, itemId, amount = 1) {
+  if (amount <= 0) return;
+  const sql = `
+    UPDATE bank
+    SET amount = amount - ?
+    WHERE player_name = ? AND id = ?
+  `;
+  await query(sql, [amount, playerName, itemId]);
+
+  // Delete rows that reach 0
+  await query(`
+    DELETE FROM bank
+    WHERE player_name = ? AND id = ? AND amount <= 0
+  `, [playerName, itemId]);
 }
 
 async function syncInventory(playerName) {
@@ -338,11 +518,13 @@ function clearTile(x, y){
 //if (isSafeActive(tile)) return; blocks interaction
 const isSafeActive = tile => !!tile?.data?.safeTile && Object.keys(tile.data.safeTile).length > 0;
 
-function emitPlayerState(player){
+async function emitPlayerState(player){
+  console.log("emitting player state");
   if (player.hp<=0){
     //player.coords[0]=26;
     //player.coords[1]=54;
-    player.hp=100;//change to player level max hp
+    player.hp=player.maxHp;//change to player level max hp
+    await dropPlayerLootbag(player.name, player.coords[0], player.coords[1]);
     respawnPlayer(player.name);
   }
   io.to(player.sock_id).emit('playerState', {//might remove this/put somewhere else
@@ -351,20 +533,160 @@ function emitPlayerState(player){
     hand: player.hand,
     head: player.head,
     facing: player.facing,
-    hp: player.hp
+    hp: player.hp,
+    hpLvl: player.hpLvl,
+    hpXpTotal: player.hpXpTotal,
+    swordLvl: player.swordLvl,
+    swordXpTotal: player.swordXpTotal,
+    craftLvl: player.craftLvl,
+    craftXpTotal: player.craftXpTotal,
+    woodcuttingLvl: player.woodcuttingLvl,
+    woodcuttingXpTotal: player.woodcuttingXpTotal,
+    miningLvl: player.miningLvl,
+    miningXpTotal: player.miningXpTotal
   });
+}//need player last state
+
+function getTilesInRadius(x, y, radius) {
+  const tiles = [];
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const nx = x + dx;
+      const ny = y + dy;
+      const dist = Math.abs(dx) + Math.abs(dy); // Manhattan distance
+      tiles.push({ nx, ny, dist });
+    }
+  }
+  // Sort by distance so closest tiles come first
+  tiles.sort((a, b) => a.dist - b.dist);
+  return tiles;
 }
 
-function respawnPlayer(name){
+/*
+async function dropPlayerLootbag(playerName) {
+  const player = players[playerName];
+  const inv = await getPlayerInventory(playerName);
+  if (!inv || !inv.length) return;
+
+  const lootbag = {
+    name: "lootbag",
+    items: {},
+    locked: false
+  };
+
+  for (const item of inv) {
+    lootbag.items[item.id] = { id: item.id, amt: item.amt };
+  }
+
+  await clearPlayerInventory(playerName);
+
+  const tilesToCheck = getTilesInRadius(player.coords[0], player.coords[1], 3);
+
+  for (const { nx, ny } of tilesToCheck) {
+    const nTile = map.Map[ny]?.[nx];
+    if (!nTile) continue;
+    if (!nTile.data.objects || Object.keys(nTile.data.objects).length === 0) {
+      nTile.data.objects = { lootbag };
+      markTileChanged(nx, ny);
+      break; // dropped successfully
+    }
+  }
+}
+  */
+
+async function dropPlayerLootbag(playerName) {
+  const player = players[playerName];
+  const inv = await getInventory(playerName);
+  if (!inv || !inv.length) return;
+
+  const lootbag = {
+    name: "lootbag",
+    items: {},
+    locked: false
+  };
+
+  // move items from inventory into lootbag keyed by name
+  for (const item of inv) {
+    const name = Object.keys(baseTiles).find(key => baseTiles[key].id === item.id);
+    if (!name) continue; // skip invalid items
+    lootbag.items[name] = { id: item.id, amt: item.amount };
+  }
+
+  // remove items from player inventory
+  for (const item of inv) {
+    await query(
+      `DELETE FROM inventories WHERE player_name = ? AND id = ?`,
+      [playerName, item.id]
+    );
+  }
+
+  // drop lootbag on first empty tile within 3 tiles
+  const tilesToCheck = getTilesInRadius(player.coords[0], player.coords[1], 3);
+
+  for (const { nx, ny } of tilesToCheck) {
+    const nTile = map.Map[ny]?.[nx];
+    if (!nTile) continue;
+    if (!nTile.data.objects || Object.keys(nTile.data.objects).length === 0) {
+      nTile.data.objects = { lootbag };
+      markTileChanged(nx, ny);
+      break; // dropped successfully
+    }
+  }
+}
+
+async function respawnPlayer(name){
   const playerX = players[name].coords[0];
   const playerY = players[name].coords[1];
   const tile = map.Map[playerY][playerX];
   delete tile.players[name];
   markTileChanged(playerX, playerY);
+  players[name].hand=null;
+  players[name].head=null;
   players[name].coords[0]=26;
   players[name].coords[1]=54;
   addPlayerToTile(name, 26, 54);
   markTileChanged(26, 54);
+  await addItem(name, 1, 1);
+  await syncInventory(name);
+}
+
+async function updatePlayerState(player) {
+  player.hpLvl = await levelFromXp(player.hpXpTotal);
+  player.swordLvl = await levelFromXp(player.swordXpTotal);
+  player.craftLvl = await levelFromXp(player.craftXpTotal);
+  player.woodcuttingLvl = await levelFromXp(player.woodcuttingXpTotal);
+  player.miningLvl = await levelFromXp(player.miningXpTotal);
+
+  const currState = {
+    x: player.coords[0],
+    y: player.coords[1],
+    hand: player.hand,
+    head: player.head,
+    facing: player.facing,
+    hp: player.hp,
+
+    hpLvl: player.hpLvl,
+    hpXpTotal: player.hpXpTotal,
+    swordLvl: player.swordLvl,
+    swordXpTotal: player.swordXpTotal,
+    craftLvl: player.craftLvl,
+    craftXpTotal: player.craftXpTotal,
+    woodcuttingLvl: player.woodcuttingLvl,
+    woodcuttingXpTotal: player.woodcuttingXpTotal,
+    miningLvl: player.miningLvl,
+    miningXpTotal: player.miningXpTotal
+  };
+
+  const last = player.lastState || {};
+
+  const changed = Object.keys(currState).some(
+    key => currState[key] !== last[key]
+  );
+
+  if (changed) {
+    emitPlayerState(player); // now player actually has new levels
+    player.lastState = { ...currState };
+  }
 }
 
 function mapUpdate() {
@@ -373,7 +695,8 @@ function mapUpdate() {
   for (const p in players) {
     const player = players[p];
     if (!player.sock_id) continue;
-    emitPlayerState(player);
+    //emitPlayerState(player);
+    updatePlayerState(player);
     const chunk = map.Fxn.chunk(player.coords);//generates a chunk of coords only
     let newSum = 0;
     for (const row of chunk) {
@@ -730,7 +1053,10 @@ async function meleeAttack(name, targetName){
   let damage = 0;
   let weaponName = itemById[players[name].hand];
   let weaponDmg = baseTiles[weaponName].attack;
-  damage+=weaponDmg;
+  if (weaponDmg!==0){
+    damage += Math.floor(Math.random() * weaponDmg);
+    damage += Math.floor(Math.random() * players[name].swordLvl);
+  }
   players[targetName].hp-=damage;//change to playerattack-targetdefense etc
   console.log(`Attacked ${targetName}!`);
   if (damage>0){
@@ -752,11 +1078,26 @@ function meleeAttackMob(playerName, mobId) {
     players[playerName].lastMelee = Date.now();
 
     const weaponName = itemById[players[playerName].hand];
-    const damage = baseTiles[weaponName].attack || 0;
-
-    mob.hp -= damage;
-    io.to(players[playerName].sock_id).emit('playSound', 'hit');
-
+    const weaponDmg = baseTiles[weaponName].attack || 0;
+    let damage = 0;
+    if (weaponDmg !== 0) {
+      damage += Math.floor(Math.random() * weaponDmg);
+      damage += Math.floor(Math.random() * players[playerName].swordLvl);
+    }
+    console.log(`reg damage: ${damage}`);
+    console.log(`floor damage: ${Math.floor(damage)}`)
+    if (damage!==0){
+      let giveXp = Math.floor(damage)/10;
+      if (giveXp<1){
+        giveXp=1;
+      }
+      players[playerName].swordXpTotal+=giveXp;//xp 10% of damage, can change
+      players[playerName].hpXpTotal+=giveXp;
+      mob.hp -= damage;
+      io.to(players[playerName].sock_id).emit('playSound', 'hit');
+    } else {
+      io.to(players[playerName.sock_id]).emit('playSound', 'miss');
+    }
     console.log(`Player ${playerName} hit mob ${mob.type} for ${damage}`);
 
     if (mob.hp <= 0) {
@@ -764,10 +1105,11 @@ function meleeAttackMob(playerName, mobId) {
     }
 }
 
-function killMob(mob) {
+async function killMob(mob) {
     const tile = map.Map[mob.y][mob.x];
     delete tile.mob;
-    addToMap(mob.drop, mob.x, mob.y);
+    //addToMap(mob.drop, mob.x, mob.y);
+    await dropMobLoot(mob.drop, mob.x, mob.y);//random bag o loot
     mobs.delete(mob.id);
     markTileChanged(mob.x, mob.y);
 
@@ -778,6 +1120,88 @@ function killMob(mob) {
             spawnMob(spawn);
         }, spawn.respawnTime);
     }
+}
+
+async function dropMobLoot(drops, x, y) {
+  if (!drops || !drops.length) return;
+
+  const lootbag = {
+    name: "lootbag",
+    items: {},
+    locked: false
+  };
+
+  const first = drops[0];
+  lootbag.items[first.name] = {
+    id: first.id,
+    amt: Math.floor(Math.random() * (first.max - first.min + 1)) + first.min
+  };
+
+  for (let i = 1; i < drops.length; i++) {
+    const drop = drops[i];
+    const chance = drop.weight / 100;
+    if (Math.random() < chance) {
+      lootbag.items[drop.name] = {
+        id: drop.id,
+        amt: Math.floor(Math.random() * (drop.max - drop.min + 1)) + drop.min
+      };
+    }
+  }
+
+  const tilesToCheck = getTilesInRadius(x, y, 3);
+
+  for (const { nx, ny } of tilesToCheck) {
+    const nTile = map.Map[ny]?.[nx];
+    if (!nTile) continue;
+    if (!nTile.data.objects || Object.keys(nTile.data.objects).length === 0) {
+      nTile.data.objects = { lootbag };
+      markTileChanged(nx, ny);
+      break; // dropped successfully
+    }
+  }
+}
+
+function rollWeighted(weight) {
+  return Math.random() * 100 < weight;
+}
+
+function placeOrMergeLootbag(x, y, newItems) {
+  const tile = map.Map[y][x];
+  tile.data ??= {};
+  tile.data.objects ??= {};
+
+  let lootbag = tile.data.objects.lootbag;
+
+  // 🔒 lock starts here
+  if (lootbag?.locked) return;
+
+  if (!lootbag) {
+    // create new lootbag
+    tile.data.objects.lootbag = {
+      name: "lootbag",
+      items: { ...newItems },
+      locked: false
+    };
+    markTileChanged(x, y);
+    return;
+  }
+
+  lootbag.locked = true;
+
+  try {
+    // merge into existing lootbag
+    for (const key in newItems) {
+      if (!lootbag.items[key]) {
+        lootbag.items[key] = newItems[key];
+      } else {
+        lootbag.items[key].amt += newItems[key].amt;
+      }
+    }
+  } finally {
+    lootbag.locked = false;
+  }
+
+  markTileChanged(x, y);
 }
 
 async function checkObjectCollision(playerName, coords, objName) {
@@ -807,6 +1231,7 @@ async function checkObjectCollision(playerName, coords, objName) {
   await resourceInteract(playerName, coords, objName);
 }
 
+
 async function interactTile(playerName) {
   const player = players[playerName];
   const tile = map.Map[player.coords[1]][player.coords[0]];
@@ -831,12 +1256,40 @@ async function interactTile(playerName) {
     }
     return;
   }
-  // ---------- special interactable objects ----------
-  /*
-  if (objDef.kind === "objects" || objDef.kind === "interactable") {
-    checkInteract(playerName, objName);
+  if (objDef.kind === 'lootbag' && objDef.container === "objects"){
+    await openLootbag(playerName, tile.data.objects['lootbag'], player.coords[0], player.coords[1]);//lootbag should have .items
+    await syncInventory(playerName);
   }
-  */
+}
+  
+
+async function openLootbag(playerName, lootbagObject, x, y) {
+  if (!lootbagObject || !lootbagObject.items) return;
+
+  if (lootbagObject.locked) return;
+  lootbagObject.locked = true;
+
+  try {
+    for (const name of Object.keys(lootbagObject.items)) {
+      const item = lootbagObject.items[name];
+      const itemId = baseTiles[name]?.id;
+      if (!itemId) continue;
+
+      const added = await addItem(playerName, itemId, item.amt);
+      item.amt -= added;
+
+      if (item.amt <= 0) delete lootbagObject.items[name];
+    }
+
+    // remove lootbag only if empty
+    if (Object.keys(lootbagObject.items).length === 0) {
+      const tile = map.Map[y][x];
+      delete tile.data.objects.lootbag;
+      markTileChanged(x, y);
+    }
+  } finally {
+    lootbagObject.locked = false;
+  }
 }
 
 function checkInteract(name, objName){
@@ -926,11 +1379,16 @@ async function resourceInteract(playerName, coords, objName) {
 
   const objDef = baseTiles[objName];
   if (!objDef || objDef.kind !== "resource") return;
+  let lvlBonus = 0;
   if (itemById[player.hand]==='axe'){
     io.to(player.sock_id).emit('playSound', 'chop');
+    player.woodcuttingXpTotal+=1;
+    lvlBonus=Math.floor(player.woodcuttingLvl/10);
   }
   if (itemById[player.hand]==='pickaxe'){
     io.to(player.sock_id).emit('playSound', 'pickaxe');
+    player.miningXpTotal+=1;
+    lvlBonus=Math.floor(player.miningLvl/10);
   }
   /* ---------- drops ---------- */
   if (objDef.drops) {
@@ -1043,8 +1501,8 @@ async function consume(playerName, id){
   if (!itemDef || !itemDef.consume) return;
   if (itemDef.hp){
     player.hp+=itemDef.hp;
-    if (player.hp>100){
-      player.hp=100;//change this to maxhp, need in db and in memory
+    if (player.hp>player.maxHp){
+      player.hp=player.maxHp;//change this to maxhp, need in db and in memory
     }
     await removeItem(playerName, itemDef.id, 1);
     await syncInventory(playerName);
@@ -1121,6 +1579,8 @@ async function craftItem(playerName, itemName, smelt = false) {
   for (const [materialName, requiredAmount] of Object.entries(itemDef.craft)) {
     const materialId = idByItem(materialName);
     await removeItem(playerName, materialId, requiredAmount);
+    console.log(`req'd amount: ${requiredAmount}`);
+    players[playerName].craftXpTotal+=requiredAmount;
   }
 
   // ---------- add crafted item ----------
@@ -1186,22 +1646,23 @@ let test = {
   }
 }
 
-function playerBank(){
-  //open bank on player end, send view of all items in bank
-  //other fxn only lets player bank something if on bank
-  //just like forge or craftTable
-  //get bank select position for when removing items
-  //get inv select position for when adding items
-  //all this happens on front end
-  //player tries to open bank from client, popup with no items
-  //and server knows items cant be placed or removed
-  //so this fxn just io.to(players[name].sock_id).emit('openbank', data);
-  //data being the inventory
-  //and when player puts in an item, takes out an item, or changes selected
-  //cell in bank, it sends to the server so it has that data
-  //server only sends updated bank if item in or out
-  //client needs option for single item in/out or input for amt of item in/out
-  console.log("player opening bank");
+async function playerBank(playerName) {
+  console.log("player opened bank");
+  const rows = await query(`
+    SELECT id, amount
+    FROM bank
+    WHERE player_name = ? AND amount > 0
+  `, [playerName]);
+
+  const bankItems = {};
+  for (const row of rows) {
+    bankItems[row.id] = { id: row.id, amt: row.amount };
+  }
+
+  const player = players[playerName];
+  io.to(players[playerName].sock_id).emit('openBank', bankItems);
+
+  return bankItems;
 }
 
 function replenishResources() {
@@ -1282,13 +1743,14 @@ map.Map[50][50].mob = {
     sprite: "ratL"
 };
 */
+
 const mobSpawns = [
     {//rats south of Old Haven
         type: "rat",
         x: 35,//remember client coord abstraction is backwards lol
         y: 76,
         count: 5,
-        respawnTime: 8000 // ms
+        respawnTime: 12000 // ms
     },
     {
       type: "skeleton",
@@ -1313,7 +1775,32 @@ const mobSpawns = [
       x:44, y:33,
       count: 1,
       respawnTime: 10000
+    },
+    {
+      type: "goblin",
+      x:77, y:17,
+      count: 1,
+      respawnTime: 10000
+    },
+    {
+      type: "goblin",
+      x:121, y:46,
+      count: 1,
+      respawnTime: 10000
+    },
+    {
+      type: "goblin",
+      x:70, y:36,
+      count: 1,
+      respawnTime: 10000
+    },
+    {
+      type: "goblin",
+      x:98, y:9,
+      count: 1,
+      respawnTime: 10000
     }
+      
 ];
 
 function spawnMob(spawn) {
@@ -1510,3 +1997,11 @@ function updateMobs() {
 }
 
 setInterval(updateMobs, 250);
+
+/*
+setInterval(() => {
+  if (players['Theunorg']){
+    players['Theunorg'].hp=100;
+  }
+}, 1000)
+*/
