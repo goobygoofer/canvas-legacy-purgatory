@@ -397,8 +397,8 @@ async function syncInventory(playerName) {
 
 async function addPlayerToDb(name, pass){
   console.log("trying to addPlayerToDb");
-  const sql = "INSERT INTO players (player_name, pass, x, y) VALUES (?, ?, ?, ?)";
-  const params = [name, pass, 49, 49];
+  const sql = "INSERT INTO players (player_name, pass, x, y, hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  const params = [name, pass, 49, 49, 100, 0, 0, 0, 0, 0];
   await query(sql, params);
 }
 
