@@ -10,6 +10,28 @@
     font-family: Arial, sans-serif;
     font-size: 10px;
   }
+#bankContainer {
+  display: none;          /* hidden by default */
+  position: fixed;        /* stick to viewport */
+  top: 10px;              /* distance from top */
+  left: 50%;              /* center horizontally */
+  transform: translateX(-50%); /* perfect horizontal centering */
+  background: #222;
+  border: 2px solid #555;
+  padding: 10px;
+  z-index: 999;
+  max-height: 80vh;       /* vertical scroll limit */
+  overflow-y: auto;       /* vertical scroll only */
+  overflow-x: hidden;     /* no horizontal scroll */
+}
+#bankContainer button#bankClose {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 2px 6px;
+  cursor: pointer;
+  z-index: 10; /* above the bank content */
+}
   #page {
   width: fit-content;
   margin: 0 auto;
@@ -93,10 +115,26 @@
     }
   </style>
 </head>
+  <div id="bankContainer">
+  <button id="bankClose">✕</button>
+
+  <!-- Bank grid -->
+  <div id="bankGrid" style="display:grid; grid-template-columns:repeat(8,48px); grid-auto-rows:48px; gap:4px; margin-top:8px; width:100%; max-height:60vh; overflow-y:auto;"></div>
+
+  <!-- Inventory grid -->
+  <div id="invGrid" style="display:grid; grid-template-columns:repeat(8,48px); grid-auto-rows:48px; gap:4px; margin-top:8px; width:100%; max-height:60vh; overflow-y:auto;"></div>
+
+  <!-- Controls -->
+  <div id="bankControls" style="margin-top:8px;">
+    <input type="number" id="bankAmount" value="1" min="1">
+    <button id="withdrawBtn">Withdraw</button>
+    <button id="depositBtn">Deposit</button>
+  </div>
+  </div>
+
 <body style="background-color:black">
   <div id="page">
 <canvas id="disp" width="640" height="320"></canvas>
-
 <div id="bottom-row" style="background-color:burlywood">
   <div id="chat-column">
     <ul id="messages"></ul>

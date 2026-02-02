@@ -789,11 +789,102 @@ socket.on('readSign', (data) => {
   messages.scrollTop = messages.scrollHeight;
 })
 
+var bankData;
 socket.on('openBank', (data) => {
-  console.log("opened bank");
-  console.log(data);
-})
+  bankData = data;
+  bankOpen = true;
+  openBank();
+});
 
+const bankContainer = document.getElementById("bankContainer");
+const bankGrid = document.getElementById("bankGrid");
+const amountInput = document.getElementById("bankAmount");
+
+let selectedBankItemId = null;
+
+// Open bank (server calls this)
+function openBank() {
+  bankContainer.style.display = "block";
+  renderBank();
+}
+
+// Close bank
+function closeBank() {
+  bankContainer.style.display = "none";
+  selectedBankItemId = null;
+}
+
+document.getElementById("bankClose").onclick = closeBank;
+
+// Render bank grid from global bankData
+function renderBank() {
+  bankGrid.innerHTML = "";
+
+  for (const key in bankData) {
+    const item = bankData[key]; // {id, amt}
+    const slot = document.createElement("div");
+    slot.style.border = "1px solid #666";
+    slot.style.display = "flex";
+    slot.style.flexDirection = "column";
+    slot.style.alignItems = "center";
+    slot.style.justifyContent = "center";
+    slot.style.cursor = "pointer";
+    slot.style.width = "32px"; // slot size
+    slot.style.height = "32px";
+
+    if (item.id === selectedBankItemId) slot.style.borderColor = "yellow";
+
+    // Get item name from id
+    const itemName = itemById[item.id];
+    const tileDef = base_tiles[itemName];
+
+    if (tileDef) {
+      // Create an img element for the sprite
+      const img = document.createElement("img");
+      img.src = tileDef.src || "spritesheet-0.5.18.png"; // your spritesheet
+      img.style.width = "16px";
+      img.style.height = "16px";
+
+      // If using a single spritesheet, use CSS to show the correct portion
+      if (tileDef.x != null && tileDef.y != null) {
+        img.style.objectFit = "none";
+        img.style.objectPosition = `-${tileDef.x}px -${tileDef.y}px`;
+      }
+
+      slot.appendChild(img);
+    }
+
+    // Show amount below icon
+    const amtLabel = document.createElement("div");
+    amtLabel.textContent = item.amt;
+    amtLabel.style.fontSize = "10px";
+    amtLabel.style.color = "white";
+    slot.appendChild(amtLabel);
+
+    slot.onclick = () => {
+      selectedBankItemId = item.id;
+      renderBank();
+    };
+
+    bankGrid.appendChild(slot);
+  }
+}
+
+// Withdraw button — emits to server
+document.getElementById("withdrawBtn").onclick = () => {
+  if (!selectedBankItemId) return;
+  const amt = parseInt(amountInput.value) || 1;
+  console.log(`attempting to withdraw ${amt} ${itemById[selectedBankItemId]}`);
+  socket.emit("bankWithdraw", { id: selectedBankItemId, amt: amt});
+};
+
+// Deposit button — emits to server using activeInvItem from inventory
+document.getElementById("depositBtn").onclick = () => {
+  if (!activeInvItem) return;
+  const amt = parseInt(amountInput.value) || 1;
+  console.log(`attempting to deposit ${amt} ${itemById[playerData.inventory[activeInvItem].id]}`);
+  socket.emit("bankDeposit", { id: playerData.inventory[activeInvItem].id, amt: amt });
+};
 function drawTabs() {
   invCtx.clearRect(0, 0, invCanvas.width, invCanvas.height);
   invCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1189,6 +1280,13 @@ function drawCrafting(){
     CRAFT_BTN_Y + CRAFT_BTN_H / 2
   );
 }
+
+var bankOpen=false;
+
+function drawBank(){
+  if (!bankOpen) return;
+}
+
 
 function drawSettings() {
   if (!showSettings) return;

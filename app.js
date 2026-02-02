@@ -883,7 +883,82 @@ io.on('connection', async (socket) => {
   socket.on('craftItem', async (data) => {
     await craftItem(socket.user, data);
     await syncInventory(socket.user);
-  })
+  });
+
+// Player withdraws from bank → goes into inventory
+socket.on('bankWithdraw', async (data) => {
+  let player = players[socket.user];
+  let tile = map.Map[player.coords[1]][player.coords[0]];
+  if (!tile.data.objects['bankchest']) return;
+  try {
+    const { id, amt } = data;
+    console.log(`player withdrawing ${id} x${amt}`);
+
+    // 1. Check how much is in the bank
+    const bankItems = await query(
+      `SELECT amount FROM bank WHERE player_name = ? AND id = ?`,
+      [player.name, id]
+    );
+
+    if (bankItems.length === 0) return; // nothing to withdraw
+
+    const bankAmount = bankItems[0].amount;
+    const toWithdraw = Math.min(amt, bankAmount);
+
+    if (toWithdraw <= 0) return;
+
+    // 2. Try to add to inventory
+    const added = await addItem(player.name, id, toWithdraw);
+
+    if (added > 0) {
+      // 3. Remove from bank only the amount actually added
+      await removeBankItem(player.name, id, added);
+      console.log(`Successfully withdrew ${added} of ID ${id}`);
+      playerBank(player.name);
+      syncInventory(player.name);
+    } else {
+      console.log(`Inventory full, cannot withdraw ${id}`);
+    }
+  } catch (err) {
+    console.error('Error handling bankWithdraw:', err);
+  }
+});
+
+// Player deposits into bank → removes from inventory
+socket.on('bankDeposit', async (data) => {
+  let player = players[socket.user];
+  let tile = map.Map[player.coords[1]][player.coords[0]];
+  if (!tile.data.objects['bankchest']) return;
+  try {
+    const { id, amt } = data;
+    console.log(`player depositing ${id} x${amt}`);
+
+    // 1. Check how much is in inventory
+    const invItems = await query(
+      `SELECT amount FROM inventories WHERE player_name = ? AND id = ?`,
+      [player.name, id]
+    );
+
+    if (invItems.length === 0) return; // nothing to deposit
+
+    const invAmount = invItems[0].amount;
+    const toDeposit = Math.min(amt, invAmount);
+
+    if (toDeposit <= 0) return;
+
+    // 2. Add to bank
+    await addBankItem(player.name, id, toDeposit);
+
+    // 3. Remove from inventory
+    await removeItem(player.name, id, toDeposit);
+
+    console.log(`Successfully deposited ${toDeposit} of ID ${id}`);
+    playerBank(player.name);
+    syncInventory(player.name);
+  } catch (err) {
+    console.error('Error handling bankDeposit:', err);
+  }
+});
 
   socket.on('disconnect', () => {
     console.log(`User logged out: ${socket.user}`);
@@ -1394,7 +1469,7 @@ async function resourceInteract(playerName, coords, objName) {
   if (objDef.drops) {
     for (const [itemName, amount] of Object.entries(objDef.drops)) {
       const itemId = idByItem(itemName);
-      if (itemId) await addItem(playerName, itemId, amount);
+      if (itemId) await addItem(playerName, itemId, amount+lvlBonus);
     }
     await syncInventory(playerName);
   }
@@ -1720,7 +1795,7 @@ function replenishResources() {
   }
 }
 replenishResources();//run at server start to add random ores n shit
-setInterval(replenishResources, 60000*30);//every 30 minutes
+setInterval(replenishResources, 60000*180);//every 3 hours
 setInterval(mapUpdate, 200);
 setInterval(mapPersist, 60000);//save map every minute
 
