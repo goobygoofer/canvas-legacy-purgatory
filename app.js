@@ -218,7 +218,8 @@ async function initPlayer(name) {
     craftLvl: craftLvl,
     woodcuttingLvl: woodcuttingLvl,
     miningLvl: miningLvl,
-    lastState: null
+    lastState: null,
+    isCrafting: false
   };
   let player = players[name];
   addPlayerToTile(name, p_coords[0], p_coords[1]);
@@ -293,6 +294,7 @@ async function getItemAmount(playerName, itemId) {
 
 const MAX_SLOTS = 32;
 
+/*
 async function addItem(playerName, itemId, amount) {
   // 1. Check if item already exists
   const existing = await query(
@@ -334,6 +336,54 @@ async function addItem(playerName, itemId, amount) {
   );
 
   return amount;
+}
+  */
+async function addItem(playerName, itemId, amount) {
+  // 1. Try stacking first (no slot cost)
+  const stackResult = await query(
+    `
+    UPDATE inventories
+    SET amount = amount + ?
+    WHERE player_name = ? AND id = ?
+    `,
+    [amount, playerName, itemId]
+  );
+
+  if (stackResult.affectedRows > 0) {
+    return amount;
+  }
+
+  // 2. Item does not exist → check slots
+  const slotsUsed = await getInventoryCount(playerName);
+  if (slotsUsed >= MAX_SLOTS) {
+    return 0;
+  }
+
+  // 3. Insert new slot (single winner under concurrency)
+  try {
+    await query(
+      `
+      INSERT INTO inventories (player_name, id, amount)
+      VALUES (?, ?, ?)
+      `,
+      [playerName, itemId, amount]
+    );
+    return amount;
+  } catch (err) {
+    // Another concurrent insert won — stack instead
+    if (err.code === 'ER_DUP_ENTRY') {
+      await query(
+        `
+        UPDATE inventories
+        SET amount = amount + ?
+        WHERE player_name = ? AND id = ?
+        `,
+        [amount, playerName, itemId]
+      );
+      return amount;
+    }
+    throw err;
+  }
 }
 
 async function getInventoryCount(playerName) {
@@ -1345,18 +1395,23 @@ async function interactTile(playerName) {
     const itemId = objDef.id;
     if (!itemId) return;
 
-    // Try to add item first
+    // 1. REMOVE OBJECT FIRST (atomic, synchronous)
+    const removed = removeObjFromMapSync(player.coords);
+    if (!removed) return; // someone else already took it
+
+    markTileChanged(player.coords[0], player.coords[1]);
+
+    // 2. TRY TO ADD TO INVENTORY
     const added = await addItem(playerName, itemId, 1);
 
-    // Inventory full AND item didn't stack → abort pickup
+    // 3. INVENTORY FULL → PUT IT BACK
     if (added === 0) {
+      restoreObjToMap(player.coords, removed);
+      markTileChanged(player.coords[0], player.coords[1]);
       return;
     }
 
-    // Pickup succeeded → now remove from map
-    await removeObjFromMap(player.coords);
-    markTileChanged(player.coords[0], player.coords[1]);
-
+    // 4. SUCCESS
     await syncInventory(playerName);
     return;
   }
@@ -1364,6 +1419,31 @@ async function interactTile(playerName) {
     await openLootbag(playerName, tile.data.objects['lootbag'], player.coords[0], player.coords[1]);//lootbag should have .items
     await syncInventory(playerName);
   }
+}
+
+function removeObjFromMapSync(coords) {
+  const tile = map.Map[coords[1]][coords[0]];
+  const objects = tile.data.objects;
+  if (!objects) return null;
+
+  const keys = Object.keys(objects);
+  if (keys.length === 0) return null;
+
+  const key = keys[0];
+  const obj = objects[key];
+
+  delete objects[key];
+
+  return { key, obj };
+}
+
+function restoreObjToMap(coords, removed) {
+  if (!removed) return;
+
+  const tile = map.Map[coords[1]][coords[0]];
+  tile.data.objects ??= {};
+
+  tile.data.objects[removed.key] = removed.obj;
 }
   
 
@@ -1674,6 +1754,7 @@ async function ifEquippedRemove(name, itemId){
 }
 
 //uncomment and remove old craftItem on 33rd item creation!
+/*
 async function craftItem(playerName, itemName, smelt = false) {
   if (!itemName) return;
 
@@ -1730,43 +1811,58 @@ async function craftItem(playerName, itemName, smelt = false) {
 
   await syncInventory(playerName);
 }
+*/
 
-/*
 async function craftItem(playerName, itemName, smelt = false) {
-  if (!itemName) return;
-
   const player = players[playerName];
-  const coords = player.coords;
-  const tileObjects = map.Map[coords[1]][coords[0]].data.objects;
 
-  // normal crafting requires craft table; smelting bypasses table check
-  if (!smelt && !tileObjects?.craftTable) return;
+  // ---- HARD LOCK ----
+  if (player.isCrafting) return;
+  player.isCrafting = true;
 
-  const itemDef = baseTiles[itemName];
-  if (!itemDef?.craft) return; // not craftable
+  try {
+    if (!itemName) return;
 
-  // ---------- check materials ----------
-  for (const [materialName, requiredAmount] of Object.entries(itemDef.craft)) {
-    const materialId = idByItem(materialName);
-    const playerAmount = await getItemAmount(playerName, materialId);
-    if (playerAmount < requiredAmount) return; // not enough
+    const coords = player.coords;
+    const tileObjects = map.Map[coords[1]][coords[0]].data.objects;
+
+    if (!smelt && !tileObjects?.craftTable) return;
+
+    const itemDef = baseTiles[itemName];
+    if (!itemDef?.craft) return;
+
+    // ---------- check materials ----------
+    for (const [materialName, requiredAmount] of Object.entries(itemDef.craft)) {
+      const materialId = idByItem(materialName);
+      const playerAmount = await getItemAmount(playerName, materialId);
+      if (playerAmount < requiredAmount) return;
+    }
+
+    // ---------- remove materials ----------
+    for (const [materialName, requiredAmount] of Object.entries(itemDef.craft)) {
+      const materialId = idByItem(materialName);
+      await removeItem(playerName, materialId, requiredAmount);
+      player.craftXpTotal += requiredAmount;
+    }
+
+    // ---------- add crafted item ----------
+    const craftedId = idByItem(itemName);
+    if (!craftedId) return;
+
+    const added = await addItem(playerName, craftedId, 1);
+
+    if (added === 0) {
+      await addBankItem(playerName, craftedId, 1);
+      console.log(`Inventory full — crafted ${itemName} sent to bank`);
+    }
+
+    await syncInventory(playerName);
+
+  } finally {
+    // ---- ALWAYS RELEASE LOCK ----
+    player.isCrafting = false;
   }
-
-  // ---------- remove materials ----------
-  for (const [materialName, requiredAmount] of Object.entries(itemDef.craft)) {
-    const materialId = idByItem(materialName);
-    await removeItem(playerName, materialId, requiredAmount);
-    console.log(`req'd amount: ${requiredAmount}`);
-    players[playerName].craftXpTotal+=requiredAmount;
-  }
-
-  // ---------- add crafted item ----------
-  const craftedId = idByItem(itemName);
-  if (craftedId) await addItem(playerName, craftedId, 1);
-
-  await syncInventory(playerName);
 }
-  */
 
 async function smeltOre(playerName) {
   const player = players[playerName];
@@ -2209,7 +2305,8 @@ function attackPlayer(mob, player) {
     // later:
     if (Date.now()>mob.lastAttack+1000){
       mob.lastAttack=Date.now();
-      let damage = Math.floor(Math.random()*mob.attack);
+      //let damage = Math.floor(Math.random()*mob.attack);
+      let damage = mob.attack;
       if (player.head!==null){
         let headName = itemById[player.head];
         damage-=Math.floor(Math.random()*baseTiles[headName].defense);
