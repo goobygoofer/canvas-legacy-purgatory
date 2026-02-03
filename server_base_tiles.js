@@ -151,7 +151,8 @@ module.exports = {
     container: "objects",
     collision: false,
     equip: {slot: "head"},
-    craft: {'flowerred':1, 'flowerwhite':1, 'floweryellow':1}
+    craft: {'flowerred':1, 'flowerwhite':1, 'floweryellow':1},
+    defense: 1
   },
   "coin": {
     kind: "item",
@@ -181,6 +182,80 @@ module.exports = {
     roof: false,
     equip: { slot: "hand" },
     attack: 30
+  },
+  "orangedust": {
+    kind: "item",
+    id: 25,
+    container: "objects",
+    collision: false
+  },
+  "bluedust": {
+    kind: "item",
+    id: 26,
+    container: "objects",
+    collision: false
+  },
+  "yellowdust": {
+    kind: "item",
+    id: 27,
+    container: "objects",
+    collision: false
+  },
+  "healthpotion":{
+    kind: "item",
+    id: 28,
+    container: "objects",
+    collision:false,
+    hp: 25,
+    consume: true,
+    craft: { orangedust: 10 }
+  },
+  "leatherarmor": {
+    kind: "item",
+    id: 29,
+    container: "objects",
+    collision: false,
+    roof: false,
+    equip: { slot: "body" },
+    craft: { hide: 5 },
+    defense: 3//may need to tweak these
+  },
+  "leatherhelmet": {
+    kind: "item",
+    id: 30,
+    container: "objects",
+    collision: false,
+    roof: false,
+    equip: { slot: "head" },
+    craft: { hide: 4 },
+    defense: 2
+  },
+  "ironarmor": {
+    kind: "item",
+    id:31,
+    container:"objects",
+    collision: false,
+    roof: false,
+    equip: { slot: "body" },
+    craft: { hide: 2, ironbar: 5 },
+    defense: 5
+  },
+  "ironhelmet": {
+    kind: "item",
+    id:32,
+    container:"objects",
+    collision: false,
+    roof: false,
+    equip: { slot: "head" },
+    craft: { hide: 1, ironbar: 2 },
+    defense: 3
+  },
+  "bucket": {
+    kind: "item",
+    id:33,
+    container:"objects",
+    collision: false,
+    craft: {log: 3, hide: 1, ironbar: 1}
   },
   "lootbag": {
       kind: "lootbag",

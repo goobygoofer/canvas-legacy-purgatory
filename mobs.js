@@ -50,7 +50,8 @@ const mobTypes = {
 
         drop: [
             { name: "coin", min: 1, max: 10, weight: 100 },
-            { name: "ironbar", min: 1, max: 2, weight: 20 }
+            { name: "ironbar", min: 1, max: 2, weight: 20 },
+            { name: "healthpotion", min: 1, max: 1, weight: 1}
         ]
     }),
     goblin: (x, y) => ({
@@ -75,8 +76,34 @@ const mobTypes = {
         drop: [
             { name: "coin", min: 5, max: 25, weight: 1000 },
             { name: "hide", min: 1, max: 2, weight: 200 },
-            { name: "flowercrown", min: 1, max: 2, weight: 100},
-            { name: "goblinsword", min: 1, max: 1, weight: 5}
+            { name: "flowercrown", min: 1, max: 2, weight: 100 },
+            { name: "goblinsword", min: 1, max: 1, weight: 1 },
+            { name: "healthpotion", min: 1, max: 2, weight: 100 }
+        ]
+    }),
+    mushroom: (x, y) => ({
+        id: getNextMobId(),
+        type: "mushroom",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 100,
+        attack: 0,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 0,
+        leashRadius: 0,
+
+        nextThink: 0,
+        facing: "left",
+
+        drop: [
+            { name: "orangedust", min: 1, max: 10, weight: 100 },
+            { name: "bluedust", min: 1, max: 10, weight: 50 },
+            { name: "yellowdust", min: 1, max: 10, weight: 25 },
         ]
     })
 };

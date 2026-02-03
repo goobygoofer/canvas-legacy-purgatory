@@ -344,6 +344,7 @@ canvas.addEventListener("mousedown", (e) => {
   );
 });
 
+/*
 canvas.addEventListener("mousemove", (e) => {
   if (ispainting){
     let canvCoords = coordsInCanvas(e);
@@ -354,6 +355,27 @@ canvas.addEventListener("mousemove", (e) => {
       mapCoords.sX, mapCoords.sY
     );
   }
+});
+*/
+let mouseX = 0;
+let mouseY = 0;
+
+canvas.addEventListener("mousemove", (e) => {
+  const canvCoords = coordsInCanvas(e);
+
+  // ALWAYS track mouse for hover
+  mouseX = canvCoords.x;
+  mouseY = canvCoords.y;
+
+  // ONLY do painting logic when painting
+  if (!ispainting) return;
+
+  const mapCoords = coordsOnMap(canvCoords.x, canvCoords.y);
+  handleMainClick(
+    canvCoords.x, canvCoords.y,
+    mapCoords.wX, mapCoords.wY,
+    mapCoords.sX, mapCoords.sY
+  );
 });
 
 canvas.addEventListener("mouseup", () => {
@@ -738,6 +760,7 @@ socket.on('playerState', (data)=> {
   playerData.y=data.y;
   playerData.hand=data.hand;
   playerData.head=data.head;
+  playerData.body=data.body;
   playerData.facing=data.facing;
   playerData.hp=data.hp;
   playerData.hpLvl=data.hpLvl;
@@ -1181,6 +1204,10 @@ function drawPlayers(chunk){
           let headSprite = getEquipSprite(players[p].head, players[p].facing);
           equipToDraw.push(headSprite);
         }//load all equip slots, and any other glows etc, then loop/draw all
+        if (players[p].body !== null){
+          let bodySprite = getEquipSprite(players[p].body, players[p].facing);
+          equipToDraw.push(bodySprite);
+        }
         for (e in equipToDraw) {
           ctx.drawImage(
             spriteSheet,
@@ -1241,30 +1268,46 @@ function getEquipSprite(item, facing){
 }
 
 function drawCrafting(){
+  if (ispainting || !crafting) return;
   if (!crafting) return;
   ctx.fillStyle = "#ffae4485"
   ctx.fillRect(100, 50, 400, 200);
-  craftableList.forEach((item, i) => {
-    const col = i % CRAFT_COLS;
-    const row = Math.floor(i / CRAFT_COLS);
+let hoveredCraftItem = null;
 
-    const x = CRAFT_X + col * (ICON_SIZE + ICON_PADDING);
-    const y = CRAFT_Y + row * (ICON_SIZE + ICON_PADDING);
+craftableList.forEach((item, i) => {
+  const col = i % CRAFT_COLS;
+  const row = Math.floor(i / CRAFT_COLS);
 
-    ctx.drawImage(
-      spriteSheet,
-      base_tiles[item].x, base_tiles[item].y,
-      16, 16,
-      x, y,
-      16, 16
-    );
+  const x = CRAFT_X + col * (ICON_SIZE + ICON_PADDING);
+  const y = CRAFT_Y + row * (ICON_SIZE + ICON_PADDING);
 
-    if (item === activeCraftItem) {
-      ctx.strokeStyle = "#ffff00";
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x - 1, y - 1, ICON_SIZE + 2, ICON_SIZE + 2);
-    }
-  });
+  ctx.drawImage(
+    spriteSheet,
+    base_tiles[item].x, base_tiles[item].y,
+    16, 16,
+    x, y,
+    16, 16
+  );
+
+  // hover check
+  if (
+    mouseX >= x &&
+    mouseX <= x + ICON_SIZE &&
+    mouseY >= y &&
+    mouseY <= y + ICON_SIZE
+  ) {
+    hoveredCraftItem = item;
+  }
+
+  if (item === activeCraftItem) {
+    ctx.strokeStyle = "#ffff00";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - 1, y - 1, ICON_SIZE + 2, ICON_SIZE + 2);
+  }
+});
+if (hoveredCraftItem) {
+  drawCraftTooltip(hoveredCraftItem, mouseX + 12, mouseY + 12);
+}
   //DRAFT CRAFT BUTTON
   ctx.fillStyle = "#6d3500ff";
   ctx.fillRect(CRAFT_BTN_X, CRAFT_BTN_Y, CRAFT_BTN_W, CRAFT_BTN_H);
@@ -1279,6 +1322,71 @@ function drawCrafting(){
     CRAFT_BTN_X + CRAFT_BTN_W / 2,
     CRAFT_BTN_Y + CRAFT_BTN_H / 2
   );
+}
+
+function drawCraftTooltip(itemName, x, y) {
+  const recipe = base_tiles[itemName]?.craft;
+  if (!recipe) return;
+
+  const padding = 6;
+  const iconSize = 16;
+  const lineHeight = 18;
+
+  ctx.font = "12px sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+
+  const ingredients = Object.entries(recipe);
+
+  const width = 140;
+  const height =
+    padding * 2 +
+    lineHeight + // title
+    ingredients.length * lineHeight;
+
+  // background
+  ctx.fillStyle = "#424242dd";
+  ctx.fillRect(x, y, width, height);
+  ctx.strokeStyle = "#888";
+  ctx.strokeRect(x, y, width, height);
+
+  // title
+  ctx.fillStyle = "#fff";
+  ctx.fillText(itemName, x + padding, y + padding + lineHeight / 2);
+
+ingredients.forEach(([matName, required], i) => {
+  const rowY =
+    y + padding + lineHeight + i * lineHeight + lineHeight / 2;
+
+  const tile = base_tiles[matName];
+  if (tile) {
+    ctx.drawImage(
+      spriteSheet,
+      tile.x, tile.y,
+      16, 16,
+      x + padding,
+      rowY - iconSize / 2,
+      iconSize, iconSize
+    );
+  }
+
+  const owned = getInventoryAmountByName(matName);
+
+ctx.fillStyle = owned < required ? "#ff4444" : "#09ff00";
+ctx.fillText(
+  `x${required}`,
+  x + padding + iconSize + 6,
+  rowY
+);
+});
+}
+
+function getInventoryAmountByName(itemName) {
+  const id = idByItem(itemName);
+  if (!id) return 0;
+
+  const entry = playerData.inventory.find(i => i.id === id);
+  return entry ? entry.amount : 0;
 }
 
 var bankOpen=false;

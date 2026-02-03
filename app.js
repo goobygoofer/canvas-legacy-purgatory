@@ -200,6 +200,7 @@ async function initPlayer(name) {
     inventory: [],//activeInventory used for position here
     hand: null,
     head: null,
+    body: null,
     lastGather: Date.now(),
     hp:currHp,//change to null, get hp from db
     maxHp: 100+Math.floor(hpLvl*2),//300hp at lvl 100
@@ -373,6 +374,7 @@ async function addBankItem(playerName, itemId, amount) {
     ON DUPLICATE KEY UPDATE amount = amount + VALUES(amount)
   `;
   await query(sql, [playerName, itemId, amount]);
+  await ifEquippedRemove(playerName, itemId);
 }
 
 async function removeBankItem(playerName, itemId, amount = 1) {
@@ -445,7 +447,8 @@ function addPlayerToTile(name, x=null, y=null){//x and y for mod coords etc
     sprite: players[name].sprite,
     facing: players[name].facing,
     hand: players[name].hand,//then everything else
-    head: players[name].head
+    head: players[name].head,
+    body: players[name].body
   }
   markTileChanged(x, y);
 }
@@ -529,6 +532,7 @@ async function emitPlayerState(player){
     y: player.coords[1],
     hand: player.hand,
     head: player.head,
+    body: player.body,
     facing: player.facing,
     hp: player.hp,
     hpLvl: player.hpLvl,
@@ -639,6 +643,7 @@ async function respawnPlayer(name){
   markTileChanged(playerX, playerY);
   players[name].hand=null;
   players[name].head=null;
+  players[name].body=null;
   players[name].coords[0]=26;
   players[name].coords[1]=54;
   addPlayerToTile(name, 26, 54);
@@ -659,6 +664,7 @@ async function updatePlayerState(player) {
     y: player.coords[1],
     hand: player.hand,
     head: player.head,
+    body: player.body,
     facing: player.facing,
     hp: player.hp,
 
@@ -1118,6 +1124,7 @@ function checkMelee(name, coords) {
 }
 
 async function meleeAttack(name, targetName){
+  let targetPlayer = players[targetName];
   if (Date.now()<players[name].lastMelee+1000){//change to -level?
     return;
   }
@@ -1128,6 +1135,17 @@ async function meleeAttack(name, targetName){
   if (weaponDmg!==0){
     damage += Math.floor(Math.random() * weaponDmg);
     damage += Math.floor(Math.random() * players[name].swordLvl);
+    if (targetPlayer.head!==null){
+      let headName = itemById[targetPlayer.head];
+      damage-=Math.floor(Math.random() * baseTiles[headName].defense);
+    }
+    if (players[targetName].body!==null){
+      let bodyName = itemById[targetPlayer.body];
+      damage-=Math.floor(Math.random() * baseTiles[bodyName].defense);
+    }
+  }
+  if (damage<0){
+    damage=0;
   }
   players[targetName].hp-=damage;//change to playerattack-targetdefense etc
   console.log(`Attacked ${targetName}!`);
@@ -1159,12 +1177,18 @@ function meleeAttackMob(playerName, mobId) {
     console.log(`reg damage: ${damage}`);
     console.log(`floor damage: ${Math.floor(damage)}`)
     if (damage!==0){
-      let giveXp = Math.floor(damage)/10;
+      let giveXp = Math.floor(damage/10);
+      if (mob.hp-damage<0){
+        giveXp=Math.floor(Math.floor(mob.hp/10));
+      }
       if (giveXp<1){
         giveXp=1;
       }
       players[playerName].swordXpTotal+=giveXp;//xp 10% of damage, can change
       players[playerName].hpXpTotal+=giveXp;
+      if (damage<0){
+        damage=0;//just a safeguard, might not need here
+      }
       mob.hp -= damage;
       io.to(players[playerName].sock_id).emit('playSound', 'hit');
     } else {
@@ -1318,14 +1342,22 @@ async function interactTile(playerName) {
   // ---------- auto-drop items ----------
   if (checkInteract(playerName, objName)) return;//was a thing in checkInteract...
   if (objDef.kind === "item" && objDef.container === "objects") {
-    await removeObjFromMap(player.coords); // remove object from map
+    const itemId = objDef.id;
+    if (!itemId) return;
+
+    // Try to add item first
+    const added = await addItem(playerName, itemId, 1);
+
+    // Inventory full AND item didn't stack → abort pickup
+    if (added === 0) {
+      return;
+    }
+
+    // Pickup succeeded → now remove from map
+    await removeObjFromMap(player.coords);
     markTileChanged(player.coords[0], player.coords[1]);
 
-    const itemId = objDef.id;
-    if (itemId) {
-      await addItem(playerName, itemId, 1);
-      await syncInventory(playerName);
-    }
+    await syncInventory(playerName);
     return;
   }
   if (objDef.kind === 'lootbag' && objDef.container === "objects"){
@@ -1623,10 +1655,83 @@ async function dropItem(name, item){
   //markTileChanged(player.coords[0], player.coords[1]);
   //map.Map[player.coords[1]][player.coords[0]].data.objects[itemById[player.inventory[item].id]] = {"name": itemById[player.inventory[item].id]};
   await removeItem(name, players[name].inventory[item].id, 1);
+  await ifEquippedRemove(name, players[name].inventory[item].id);
   markTileChanged(player.coords[0], player.coords[1]);
   await syncInventory(name);
 }
 
+async function ifEquippedRemove(name, itemId){
+  let player = players[name];
+  if (player.hand===itemId){
+    player.hand=null;
+  }
+  if (player.head===itemId){
+    player.head=null;
+  }
+  if (player.body===itemId){
+    player.body=null;
+  }
+}
+
+//uncomment and remove old craftItem on 33rd item creation!
+async function craftItem(playerName, itemName, smelt = false) {
+  if (!itemName) return;
+
+  const player = players[playerName];
+  const coords = player.coords;
+  const tileObjects = map.Map[coords[1]][coords[0]].data.objects;
+
+  // normal crafting requires craft table; smelting bypasses table check
+  if (!smelt && !tileObjects?.craftTable) return;
+
+  const itemDef = baseTiles[itemName];
+  if (!itemDef?.craft) return; // not craftable
+
+  // ---------- check materials ----------
+  for (const [materialName, requiredAmount] of Object.entries(itemDef.craft)) {
+    const materialId = idByItem(materialName);
+    const playerAmount = await getItemAmount(playerName, materialId);
+    if (playerAmount < requiredAmount) return;
+  }
+
+  // ---------- remove materials ----------
+  for (const [materialName, requiredAmount] of Object.entries(itemDef.craft)) {
+    const materialId = idByItem(materialName);
+    await removeItem(playerName, materialId, requiredAmount);
+    players[playerName].craftXpTotal += requiredAmount;
+  }
+
+  // ---------- add crafted item (WITH SAFETY) ----------
+  const craftedId = idByItem(itemName);
+  if (!craftedId) return;
+
+  // does player already have this item?
+  const existing = await getItemAmount(playerName, craftedId);
+
+  let added = 0;
+
+  if (existing > 0) {
+    // stacking is always allowed
+    added = await addItem(playerName, craftedId, 1);
+  } else {
+    // new slot → check capacity
+    const slotsUsed = await getInventoryCount(playerName);
+
+    if (slotsUsed < 32) {
+      added = await addItem(playerName, craftedId, 1);
+    }
+  }
+
+  // if inventory couldn't accept it → send to bank
+  if (added === 0) {
+    await addBankItem(playerName, craftedId, 1);
+    console.log(`Inventory full — crafted ${itemName} sent to bank`);
+  }
+
+  await syncInventory(playerName);
+}
+
+/*
 async function craftItem(playerName, itemName, smelt = false) {
   if (!itemName) return;
 
@@ -1661,6 +1766,7 @@ async function craftItem(playerName, itemName, smelt = false) {
 
   await syncInventory(playerName);
 }
+  */
 
 async function smeltOre(playerName) {
   const player = players[playerName];
@@ -1737,6 +1843,8 @@ async function playerBank(playerName) {
   return bankItems;
 }
 
+const mobs = new Map();
+
 function replenishResources() {
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
@@ -1758,6 +1866,26 @@ function replenishResources() {
         let randFlower = Math.floor(Math.random()*1000);
         if (randFlower<flowers.length){
           addToMap(flowers[randFlower], x, y);
+        }
+      }
+      if (
+        isEmpty(tile.data?.objects) &&
+        isEmpty(tile.data?.floor) &&
+        isEmpty(tile.data?.roof) &&
+        isEmpty(tile.data?.depletedResources) &&
+        tile.data['base-tile']==='grass'
+        ) 
+      {
+        //random chance place a mushroom mob!
+        let randMushroom = Math.floor(Math.random()*2000);
+        if (randMushroom<3){
+          //add mushroom
+          let mushroom1 = createMob('mushroom', x, y);
+          mobs.set(mushroom1.id, mushroom1);
+          map.Map[y][x].mob = {
+            id: mushroom1.id,
+            sprite: "mushroomL"
+          }
         }
       }
       // Loop over both containers so all stages are eligible
@@ -1803,7 +1931,7 @@ replenishResources();
 
 //mob testing
 //create mob registry
-const mobs = new Map();
+//const mobs = new Map();
 //create a rat
 /*
 const rat1 = createMob('rat', 50, 50);
@@ -1815,6 +1943,14 @@ map.Map[50][50].mob = {
     sprite: "ratL"
 };
 */
+/*
+const mushroom1 = createMob('mushroom', 42, 57);
+mobs.set(mushroom1.id, mushroom1);
+map.Map[57][42].mob = {
+  id: mushroom1.id,
+  sprite: "mushroomL"
+}
+*/
 
 const mobSpawns = [
     {//rats south of Old Haven
@@ -1822,57 +1958,75 @@ const mobSpawns = [
         x: 35,//remember client coord abstraction is backwards lol
         y: 76,
         count: 5,
-        respawnTime: 12000 // ms
+        respawnTime: 20000 // ms
     },
     {
       type: "skeleton",
       x:40, y:35,
       count: 1,
-      respawnTime: 10000
+      respawnTime: 20000
     },
     {
       type: "skeleton",
       x:44, y:35,
       count: 1,
-      respawnTime: 10000
+      respawnTime: 20000
     },
     {
       type: "skeleton",
       x:40, y:33,
       count: 1,
-      respawnTime: 10000
+      respawnTime: 20000
     },
     {
       type: "skeleton",
       x:44, y:33,
       count: 1,
-      respawnTime: 10000
+      respawnTime: 20000
     },
     {
       type: "goblin",
       x:77, y:17,
       count: 1,
-      respawnTime: 10000
+      respawnTime: 30000
     },
     {
       type: "goblin",
       x:121, y:46,
       count: 1,
-      respawnTime: 10000
+      respawnTime: 30000
     },
     {
       type: "goblin",
       x:70, y:36,
       count: 1,
-      respawnTime: 10000
+      respawnTime: 30000
     },
     {
       type: "goblin",
       x:98, y:9,
       count: 1,
-      respawnTime: 10000
+      respawnTime: 30000
+    },
+    {
+      type: "goblin",
+      x:160, y:71,
+      count: 2,
+      respawnTime: 30000
+    },
+    {
+      type: "goblin",
+      x:223, y:79,
+      count: 4,
+      respawnTime: 30000
+    },
+    {
+        type: "rat",
+        x: 229,
+        y: 66,
+        count: 8,
+        respawnTime: 20000 // ms
     }
-      
 ];
 
 function spawnMob(spawn) {
@@ -2055,7 +2209,19 @@ function attackPlayer(mob, player) {
     // later:
     if (Date.now()>mob.lastAttack+1000){
       mob.lastAttack=Date.now();
-      player.hp -= mob.attack;
+      let damage = Math.floor(Math.random()*mob.attack);
+      if (player.head!==null){
+        let headName = itemById[player.head];
+        damage-=Math.floor(Math.random()*baseTiles[headName].defense);
+      }
+      if (player.body!==null){
+        let bodyName = itemById[player.body];
+        damage-=Math.floor(Math.random()*baseTiles[bodyName].defense);
+      }
+      if (damage<0){
+        damage=0;
+      }
+      player.hp -= damage;
       io.to(player.sock_id).emit('playSound', 'hit');
       io.to(player.sock_id).emit('playSound', 'damage');
     }

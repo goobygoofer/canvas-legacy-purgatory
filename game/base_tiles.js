@@ -146,6 +146,72 @@ base_tiles = {
     "x":64, "y":656,
     id: 24
   },
+  "orangedust": {
+    "x":32,"y":256,
+    id: 25
+  },
+  "bluedust": {
+    "x":48,"y":256,    
+    id: 26
+  },
+  "yellowdust": {
+    "x":64,"y":256,    
+    id: 27
+  },
+  "healthpotion": {
+    "x":256,"y":896,
+    id: 28,
+    craft: { orangedust: 10 }
+  },
+  "leatherarmor": {
+    "x":272,"y":272,
+    id: 29,
+    craft: { hide: 5 }
+  },
+  "leatherhelmet": {
+    "x":176,"y":352,
+    id: 30,
+    craft: { hide: 4 },
+  },
+  "ironarmor": {
+    "x":286,"y":208,
+    id:31,
+    craft: { hide: 2, ironbar: 5 },
+  },
+  "ironhelmet": {
+    "x":160,"y":352,
+    id:32,
+    craft: { hide: 1, ironbar: 2 },
+  },
+  "bucket": {
+    "x":304,"y":16,
+    id:33,
+    craft: {log: 3, hide: 1, ironbar: 1}
+  },
+  "ironarmorL":{
+    "x":145,"y":272
+  },
+  "ironarmorR":{
+    "x":95,"y":272
+  },
+  "ironhelmetL":{
+    "x":49,"y":368
+  },
+  "ironhelmetR":{
+    "x":31,"y":368
+  },
+  "leatherhelmetL": {
+    "x":81,"y":368,
+  },
+  "leatherhelmetR": {
+    "x":63,"y":368,
+  },
+    "leatherarmorL": {
+    "x":209,"y":272,
+  },
+    "leatherarmorR": {
+    "x":159,"y":272,
+  },
   "goblinswordL": {
     "x":80, "y":656
   },
@@ -355,7 +421,8 @@ base_tiles = {
   "rock4": { "x": 240, "y": 0, "collision": false, 'roof': false, 'type': 'depletedResource' },//
   //"rock":{"x":256, "y":0, "collision":false},//
   "water": { "x": 0, "y": 48, "collision": true, 'roof': false, 'type': 'base-tile' },//
-  "mushroom": { "x": 80, "y": 256 },//
+  "mushroomL": { "x": 80, "y": 256 },//
+  "mushroomR": { "x": 80, "y": 256 },//
   "rupee": { "x": 64, "y": 800 },//need to change this sprite to look more like a rupee
   //paths
   "pathHORIZ": { "x": 0, "y": 544 },//
