@@ -142,6 +142,62 @@ async function addPlayerXp(playerName, xpType, amount) {
   );
 }
 
+async function getLeaderboard() {
+  const sql = `
+    SELECT 'HP' AS skill, player_name, hpXp AS xp
+    FROM (
+      SELECT player_name, hpXp
+      FROM players
+      ORDER BY hpXp DESC
+      LIMIT 1
+    ) AS t
+
+    UNION ALL
+
+    SELECT 'Swordsmanship' AS skill, player_name, swordXp AS xp
+    FROM (
+      SELECT player_name, swordXp
+      FROM players
+      ORDER BY swordXp DESC
+      LIMIT 1
+    ) AS t
+
+    UNION ALL
+
+    SELECT 'Crafting' AS skill, player_name, craftXp AS xp
+    FROM (
+      SELECT player_name, craftXp
+      FROM players
+      ORDER BY craftXp DESC
+      LIMIT 1
+    ) AS t
+
+    UNION ALL
+
+    SELECT 'Woodcutting' AS skill, player_name, woodcuttingXp AS xp
+    FROM (
+      SELECT player_name, woodcuttingXp
+      FROM players
+      ORDER BY woodcuttingXp DESC
+      LIMIT 1
+    ) AS t
+
+    UNION ALL
+
+    SELECT 'Mining' AS skill, player_name, miningXp AS xp
+    FROM (
+      SELECT player_name, miningXp
+      FROM players
+      ORDER BY miningXp DESC
+      LIMIT 1
+    ) AS t;
+  `;
+
+  // Pass an empty array because there are no ? placeholders
+  const rows = await query(sql, []);
+  return rows; // array of { skill, player_name, xp }
+}
+
 async function initPlayer(name) {
   /*
   const sql = "SELECT JSON_ARRAY(x, y) AS coords FROM players WHERE player_name = ?";
@@ -1013,6 +1069,18 @@ socket.on('bankDeposit', async (data) => {
   }
 });
 
+  socket.on('getLeaderboard', async () => {
+    try {
+      const leaderboard = await getLeaderboard();
+
+      // send it back to the same client
+      socket.emit('leaderboardData', leaderboard);
+    } catch (err) {
+      console.error('Error fetching leaderboard:', err);
+      // optional: notify client of error
+      socket.emit('leaderboardError', { message: 'Could not load leaderboard' });
+    }
+  });
   socket.on('disconnect', () => {
     console.log(`User logged out: ${socket.user}`);
     setActive(socket.user, 0);
@@ -1496,7 +1564,15 @@ function checkInteract(name, objName){
   if (objName==='sign'){
     readSign(name);
   }
+  if (objName==='leaderboard'){
+    readLeaderboard(name);
+  }
   return false;
+}
+
+async function readLeaderboard(name){
+  const leaderboard = await getLeaderboard();
+  io.to(players[name].sock_id).emit('leaderboardData', leaderboard);
 }
 
 function readSign(name){
@@ -2332,6 +2408,11 @@ function updateMobs() {
 }
 
 setInterval(updateMobs, 250);
+
+(async () => {
+  const leaderboard = await getLeaderboard();
+  console.table(leaderboard);
+})();
 
 /*
 setInterval(() => {

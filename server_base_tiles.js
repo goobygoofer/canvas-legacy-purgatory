@@ -635,6 +635,12 @@ module.exports = {
     collision: false,
     roof: false
   },
+  "leaderboard": {
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
   "abyss": {
     'roof': false,
     'type': 'base-tile',

@@ -411,6 +411,7 @@ function onKeyDown(e) {
   keystate[key] = true;
   keystate.lastInput = Date.now();
   crafting = false;//need universal to close any similar popups
+  showLeaderboard=false;
 }
 
 function onKeyUp(e) {
@@ -812,6 +813,14 @@ socket.on('readSign', (data) => {
   messages.scrollTop = messages.scrollHeight;
 })
 
+var leaderboardData = null;
+socket.on('leaderboardData', (data) => {
+  console.log(data);
+  leaderboardData = data;
+  showLeaderboard=true;
+  drawLeaderboard();
+});
+
 var bankData;
 socket.on('openBank', (data) => {
   bankData = data;
@@ -908,6 +917,58 @@ document.getElementById("depositBtn").onclick = () => {
   console.log(`attempting to deposit ${amt} ${itemById[playerData.inventory[activeInvItem].id]}`);
   socket.emit("bankDeposit", { id: playerData.inventory[activeInvItem].id, amt: amt });
 };
+
+function levelFromXp(xp) {
+  return Math.floor(Math.sqrt(xp / 10)) + 1;
+}
+
+let showLeaderboard = false;
+function drawLeaderboard() {
+  if (!leaderboardData || leaderboardData.length === 0) return;
+  if (!showLeaderboard) return;
+
+  const width = 450;
+  const height = 250;
+  const x = canvas.width / 2 - width / 2;
+  const y = canvas.height / 2 - height / 2;
+
+  // --- background ---
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+  ctx.fillRect(x, y, width, height);
+
+  // --- title ---
+  ctx.fillStyle = 'yellow';        // change to yellow
+  ctx.font = '18px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Leaderboard', x + width / 2, y + 28); // move up 2px
+
+  // --- draw list ---
+  ctx.font = '14px Arial';
+  ctx.textAlign = 'left';
+  const startY = y + 60;
+  const lineHeight = 26;
+
+  // column positions
+  const colSkill = x + 20;
+  const colName = x + 160;
+  const colLevel = x + 300;
+  const colXp = x + 360;
+
+  ctx.fillStyle = '#fff';
+  leaderboardData.forEach((entry, i) => {
+    const level = levelFromXp(entry.xp);
+    ctx.fillText(entry.skill, colSkill, startY + i * lineHeight);
+    ctx.fillText(entry.player_name, colName, startY + i * lineHeight);
+    ctx.fillText(`Lvl ${level}`, colLevel, startY + i * lineHeight);
+    ctx.fillText(entry.xp.toLocaleString(), colXp, startY + i * lineHeight);
+  });
+
+  // --- border ---
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(x, y, width, height);
+}
+
 function drawTabs() {
   invCtx.clearRect(0, 0, invCanvas.width, invCanvas.height);
   invCtx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1488,6 +1549,7 @@ function updateDraw(now) {
     updateRainAudio();
     drawCrafting();
     drawSettings();
+    drawLeaderboard();
   }
   requestAnimationFrame(updateDraw);
 }

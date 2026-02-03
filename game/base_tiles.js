@@ -300,6 +300,9 @@ base_tiles = {
   "craftTools":{
     "x":64, "y":672
   },
+  "leaderboard": {
+    "x":144, "y":336
+  },
   "spiderL": { "x": 112, "y": 240 },
   "heartContainer": { "x": 128, "y": 528 },
   "staminaPot": { "x": 64, "y": 1072 },
