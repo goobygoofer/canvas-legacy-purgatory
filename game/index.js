@@ -785,8 +785,6 @@ socket.on('invData', (data) => {
 socket.on('updateChunk', (data) => {
     latestView = data;
     chunkNeedsRender = true;
-    //check if player under roof to muffle weather sounds
-    //checkForEvents();
 });
 
 socket.on('updateInventory', (data) => {
@@ -1356,7 +1354,14 @@ function drawChatBubbles(chunk){
 function drawRoofs(chunk){
   const roofs = chunk.data?.roof;
   if (!roofs) return;
-  if (Object.keys(latestView[5][10].data.roof).length>0) return;
+
+  if (roofs===undefined || roofs===null) return;
+  const roof = latestView[5][10].data?.roof;
+
+  if (roof && Object.keys(roof).length > 0) {
+    return;
+  }
+  
   for (const obj in roofs) {
     const res = roofs[obj];
     const tile = base_tiles[res?.name];

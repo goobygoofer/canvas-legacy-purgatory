@@ -7,12 +7,36 @@ var map = {
   Map: require('./blank_map.json'),
   Fxn: require('./map_fxns.js')
 };
-//temporary to remove old mob sprites
+//temporary to remove old mob sprites and other junk
 for (i in map.Map){
   for (j in map.Map[i]){
+    let tile = map.Map[i][j];
     delete map.Map[i][j].mob;
   }
 }
+
+for (const row of map.Map) {
+  for (const tile of row) {
+    const objects = tile.data.objects;
+    if (objects && Object.keys(objects).length === 0) {
+      delete tile.data.objects;
+    }
+    const roof = tile.data.roof;
+    if (roof && Object.keys(roof).length === 0 ){
+      delete tile.data.roof;
+    }
+      
+  }
+}
+
+setInterval(async () => {//should work
+  for (i in map.Map){
+    for (j in map.Map[i]){
+      map.Map[i][j].data.version=0;
+  }
+}
+}, 60*60*1000);
+
 const { createMob } = require("./mobs");
 
 require('dotenv').config();
@@ -109,36 +133,6 @@ function setActive(name, active) {//this really aint doin anything
   return query(
     "UPDATE players SET active = ? WHERE player_name = ?",
     [active, name]
-  );
-}
-
-async function getPlayerXp(playerName, xpType) {
-  if (!['hpXp', 'swordXp', 'craftXp', 'woodcuttingXp', 'miningXp'].includes(xpType)) {
-    throw new Error(`Invalid xpType: ${xpType}`);
-  }
-
-  const rows = await query(
-    `SELECT ${xpType} FROM players WHERE player_name = ?`,
-    [playerName]
-  );
-
-  if (!rows.length) return 0;
-  return rows[0][xpType] ?? 0;
-}
-
-async function addPlayerXp(playerName, xpType, amount) {
-  if (amount <= 0) return;
-  if (!['hpXp', 'swordXp', 'craftXp', 'woodcuttingXp', 'miningXp'].includes(xpType)) {
-    throw new Error(`Invalid xpType: ${xpType}`);
-  }
-
-  await query(
-    `
-    UPDATE players
-    SET ${xpType} = ${xpType} + ?
-    WHERE player_name = ?
-    `,
-    [amount, playerName]
   );
 }
 
@@ -288,7 +282,7 @@ async function cleanupPlayer(name){
   console.log("cleaning up disc'd player");
   delete map.Map[players[name].coords[1]][players[name].coords[0]].players[name];
   markTileChanged(players[name].coords[0], players[name].coords[1]);
-  await dbPlayerCoords(name);
+  await dbPlayer(name);
   delete players[name];
 }
 
@@ -296,7 +290,7 @@ async function levelFromXp(xp) {
   return Math.floor(Math.sqrt(xp / 10)) + 1;
 }
 
-async function dbPlayerCoords(name) {
+async function dbPlayer(name) {
   const sql = `
     UPDATE players SET 
     x = ?, y = ?, 
@@ -510,7 +504,7 @@ function mapPersist(){
   map.Fxn.persist(map.Map);
   for (p in players){
     addPlayerToTile(p)//cause they got took off lol
-    dbPlayerCoords(p);
+    dbPlayer(p);
   }
 }
 
@@ -574,14 +568,14 @@ async function markTileChanged(x, y){
 }
 
 async function removeObjFromMap(coords){
-  map.Map[coords[1]][coords[0]].data.objects = {}
+  delete map.Map[coords[1]][coords[0]].data.objects;// = {}
 }
 
 function clearTile(x, y){
   console.log("cleared tile");
   map.Map[y][x].data['base-tile']="grass";
   map.Map[y][x].data['collision']=false;
-  map.Map[y][x].data.objects = {};
+  delete map.Map[y][x].data.objects;// = {};
   map.Map[y][x].data.floor={};
   map.Map[y][x].data.roof={};
   const data = map.Map[y][x].data;
@@ -589,7 +583,6 @@ function clearTile(x, y){
     data.safeTile = {};
   }
   markTileChanged(x, y);
-  console.log(map.Map[y][x].data.objects);
 }
 
 //this function to prevent certain actions if safe tile
@@ -807,6 +800,7 @@ function generateLiveChunk(name, player_chunk){
   }
   return chunkObjects;
 }
+
 
 io.use((socket, next) => {
   sessionMiddleware(socket.request, {}, next);
@@ -1902,9 +1896,12 @@ async function dropItem(name, item){
   if (itemById[player.inventory[item].id]==="axe"){
     return;//take this out when get axe on death or whatever
   }
-  if (Object.keys(map.Map[player.coords[1]][player.coords[0]].data.objects).length!==0){
-    return;//only one object on tile, need to change this
+  if (map.Map[player.coords[1]][player.coords[0]].data.objects){
+    if (Object.keys(map.Map[player.coords[1]][player.coords[0]].data.objects).length !== 0) {
+      return;//only one object on tile, need to change this
+    }
   }
+
   const invItem = player.inventory[item]; // current inventory slot
   const baseName = itemById[invItem.id];  // normal name from ID
   const dropName = baseTiles[baseName]?.dropChange ?? baseName;
@@ -2636,7 +2633,6 @@ setInterval(async () => {
   );
 
   if (!rows.length) return;
-  console.log("got a murderer!");
   for (const player of rows) {
     const newTimer = Math.max(player.murderTimer - MURDER_TICK_INTERVAL, 0);
     // update timer
