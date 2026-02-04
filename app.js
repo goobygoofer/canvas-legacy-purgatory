@@ -199,11 +199,6 @@ async function getLeaderboard() {
 }
 
 async function initPlayer(name) {
-  /*
-  const sql = "SELECT JSON_ARRAY(x, y) AS coords FROM players WHERE player_name = ?";
-  const params = [name];
-  const result = await query(sql, params);
-  */
   const sql = `
     SELECT
       JSON_ARRAY(x, y) AS coords,
@@ -212,7 +207,8 @@ async function initPlayer(name) {
       hpXp,
       woodcuttingXp,
       miningXp,
-      craftXp
+      craftXp,
+      murderer
     FROM players
     WHERE player_name = ?
   `;
@@ -231,6 +227,7 @@ async function initPlayer(name) {
   let craftXp = result[0].craftXp;
   let miningXp = result[0].miningXp;
   let woodcuttingXp=result[0].woodcuttingXp;
+  let murdererStatus = result[0].murderer;
   let hpLvl = await levelFromXp(hpXp);
   let swordLvl = await levelFromXp(swordXp);
   let craftLvl = await levelFromXp(craftXp);
@@ -243,6 +240,7 @@ async function initPlayer(name) {
     lastCoords: p_coords,//gets set in compartChunks
     sock_id: null, //to be set in io.connection
     sprite: "ghostR",
+    murderSprite: null,//not murderer
     facing: 'right',
     lastInput: Date.now(),
     lastMove: Date.now(),
@@ -275,7 +273,10 @@ async function initPlayer(name) {
     woodcuttingLvl: woodcuttingLvl,
     miningLvl: miningLvl,
     lastState: null,
-    isCrafting: false
+    isCrafting: false,
+    lastHitBy: null,
+    lastPlayerHit: null,
+    murderer: murdererStatus//by default
   };
   let player = players[name];
   addPlayerToTile(name, p_coords[0], p_coords[1]);
@@ -350,50 +351,6 @@ async function getItemAmount(playerName, itemId) {
 
 const MAX_SLOTS = 32;
 
-/*
-async function addItem(playerName, itemId, amount) {
-  // 1. Check if item already exists
-  const existing = await query(
-    `
-    SELECT amount
-    FROM inventories
-    WHERE player_name = ? AND id = ?
-    `,
-    [playerName, itemId]
-  );
-
-  // 2. If item exists, stack freely
-  if (existing.length > 0) {
-    await query(
-      `
-      UPDATE inventories
-      SET amount = amount + ?
-      WHERE player_name = ? AND id = ?
-      `,
-      [amount, playerName, itemId]
-    );
-    return amount;
-  }
-
-  // 3. Item is new → check slot count
-  const slotsUsed = await getInventoryCount(playerName);
-
-  if (slotsUsed >= MAX_SLOTS) {
-    return 0; // inventory full
-  }
-
-  // 4. Insert new slot
-  await query(
-    `
-    INSERT INTO inventories (player_name, id, amount)
-    VALUES (?, ?, ?)
-    `,
-    [playerName, itemId, amount]
-  );
-
-  return amount;
-}
-  */
 async function addItem(playerName, itemId, amount) {
   // 1. Try stacking first (no slot cost)
   const stackResult = await query(
@@ -507,23 +464,38 @@ async function syncInventory(playerName) {
 
 async function addPlayerToDb(name, pass){
   console.log("trying to addPlayerToDb");
-  const sql = "INSERT INTO players (player_name, pass, x, y, hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-  const params = [name, pass, 49, 49, 100, 0, 0, 0, 0, 0];
+  const sql = "INSERT INTO players (player_name, pass, x, y, hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  const params = [name, pass, 49, 49, 100, 0, 0, 0, 0, 0, false, 0];
   await query(sql, params);
 }
 
-async function getPlayerStat(name, stat){
-  //query player stats. hp, swordsmanship, archery, mage, and exp of those etc
-  //
+async function setMurdererStatus(playerName, isMurderer, timerMs = null) {
+  // Build query and params dynamically
+  let sql = `UPDATE players SET murderer = ?`;
+  const params = [isMurderer ? 1 : 0];
+
+  if (timerMs !== null) {
+    sql += `, murderTimer = ?`;
+    params.push(timerMs);
+  }
+
+  sql += ` WHERE player_name = ?`;
+  params.push(playerName);
+
+  await query(sql, params);
+  players[playerName].murderer=isMurderer;
 }
 
-async function setPlayerStat(name, stat, amount){
-  //really only used for hp for now
-  //later on -- stamina, mana, etc. 
-  //max hp/mana/stamina +10 per level?
-  //stat levels derived from xp, then can be stored in players[name]
+async function incrementMurderTimer(playerName, ms) {
+  await query(
+    `
+    UPDATE players
+    SET murderTimer = murderTimer + ?
+    WHERE player_name = ?
+    `,
+    [ms, playerName]
+  );
 }
-
 
 async function addPlayer(name, pass) {
   await addPlayerToDb(name, pass);
@@ -554,7 +526,8 @@ function addPlayerToTile(name, x=null, y=null){//x and y for mod coords etc
     facing: players[name].facing,
     hand: players[name].hand,//then everything else
     head: players[name].head,
-    body: players[name].body
+    body: players[name].body,
+    murderSprite: players[name].murderSprite
   }
   markTileChanged(x, y);
 }
@@ -627,6 +600,18 @@ const isSafeActive = tile => !!tile?.data?.safeTile && Object.keys(tile.data.saf
 async function emitPlayerState(player){
   console.log("emitting player state");
   if (player.hp<=0){
+    if (player.lastHitBy!==null){
+      
+      io.emit('pk message', {//global chat, user needs toggle for wanting privacy
+        message: `${player.name} was defeated by ${player.lastHitBy}!`
+      });
+      if (!player.murderer){
+        io.emit('pk message', {//global chat, user needs toggle for wanting privacy
+          message: `${player.lastHitBy} is now a murderer!`
+        });
+        await startCriminalTimer(player.lastHitBy);
+      }
+    }
     //player.coords[0]=26;
     //player.coords[1]=54;
     player.hp=player.maxHp;//change to player level max hp
@@ -654,6 +639,14 @@ async function emitPlayerState(player){
   });
 }//need player last state
 
+async function startCriminalTimer(name){
+  if (!players[name].murderer){
+    setMurdererStatus(name, true, 60*60*1000);//to start, make 1 hour in milliseconds 60*60*1000    
+  } else {
+    incrementMurderTimer(name, 60*60*1000);
+  }
+}
+
 function getTilesInRadius(x, y, radius) {
   const tiles = [];
   for (let dy = -radius; dy <= radius; dy++) {
@@ -668,38 +661,6 @@ function getTilesInRadius(x, y, radius) {
   tiles.sort((a, b) => a.dist - b.dist);
   return tiles;
 }
-
-/*
-async function dropPlayerLootbag(playerName) {
-  const player = players[playerName];
-  const inv = await getPlayerInventory(playerName);
-  if (!inv || !inv.length) return;
-
-  const lootbag = {
-    name: "lootbag",
-    items: {},
-    locked: false
-  };
-
-  for (const item of inv) {
-    lootbag.items[item.id] = { id: item.id, amt: item.amt };
-  }
-
-  await clearPlayerInventory(playerName);
-
-  const tilesToCheck = getTilesInRadius(player.coords[0], player.coords[1], 3);
-
-  for (const { nx, ny } of tilesToCheck) {
-    const nTile = map.Map[ny]?.[nx];
-    if (!nTile) continue;
-    if (!nTile.data.objects || Object.keys(nTile.data.objects).length === 0) {
-      nTile.data.objects = { lootbag };
-      markTileChanged(nx, ny);
-      break; // dropped successfully
-    }
-  }
-}
-  */
 
 async function dropPlayerLootbag(playerName) {
   const player = players[playerName];
@@ -863,10 +824,24 @@ io.use((socket, next) => {
 
 io.on('connection', async (socket) => {
   console.log(`connecting ${socket.user} with socket id: ${socket.id}...`);
-  await initPlayer(socket.user);
-  console.log(`User connected: ${socket.user}`);
-  players[socket.user].sock_id = socket.id;
-  console.log(`Added id: ${socket.user} : ${players[socket.user].sock_id}`);
+
+  // Check if the player object already exists in memory
+  if (players[socket.user]) {
+    console.log(`${socket.user} is reconnecting to existing player object.`);
+    players[socket.user].sock_id = socket.id; // reconnect socket
+    let p = players[socket.user];
+    // Optional: send current state to client
+    //addPlayerToTile(name, p_coords[0], p_coords[1]);
+    markTileChanged(p.coords[0], p.coords[1]);
+    syncInventory(socket.user);
+    emitPlayerState(p);
+  } else {
+    // Player does not exist → initialize normally
+    await initPlayer(socket.user);
+    console.log(`User connected: ${socket.user}`);
+    players[socket.user].sock_id = socket.id;
+    console.log(`Added id: ${socket.user} : ${players[socket.user].sock_id}`);
+  }
   Object.entries(players).forEach(([playerName, playerData]) => {
     console.log('Player:', playerName, 'ID:', playerData.sock_id);
   });
@@ -1082,13 +1057,20 @@ socket.on('bankDeposit', async (data) => {
     }
   });
   socket.on('disconnect', () => {
-    console.log(`User logged out: ${socket.user}`);
-    setActive(socket.user, 0);
-    cleanupPlayer(socket.user);
-    socket.request.session.destroy();
-    io.emit('server message', {
-      message: `${socket.user} logged out...`
-    });
+    if (players[socket.user].murderer){
+      io.emit('server message', {
+        message: `${socket.user} is afk as a murderer!`
+      });
+      //don't cleanup, keep active on server
+    } else {
+      console.log(`User logged out: ${socket.user}`);
+      setActive(socket.user, 0);
+      cleanupPlayer(socket.user);
+      socket.request.session.destroy();
+      io.emit('server message', {
+        message: `${socket.user} logged out...`
+      });
+    }
   });
 });
 
@@ -1118,6 +1100,20 @@ function handlePlayerInput(name, data){
 }
 
 function movePlayer(name, data){
+  if (pendingTeleports[name]) {
+    clearTimeout(pendingTeleports[name]);
+    delete pendingTeleports[name];
+    console.log("Teleport canceled due to movement");
+  }
+  const channel = activeChannels[name];
+
+  if (channel && channel.cancelOnMove) {
+    clearTimeout(channel.timer);
+    delete activeChannels[name];
+
+    channel.onCancel?.();
+    io.to(players[name].sock_id).emit('channelCancel');
+  }
   if (Date.now() < players[name].lastMove+150){
     return;//since this calls checkCollision, might have to add a lastHit
            //as well, that number might be different? idk
@@ -1142,11 +1138,31 @@ function movePlayer(name, data){
       };
       const [dx, dy] = dirOffsets[dir];
       modCoords = [pCoords[0] + dx, pCoords[1] + dy];
-      if (checkCollision(name, modCoords)) return;//tile/obj/player interaction here?
-      players[name].lastDir = dir;//for use by generateLiveChunk/compareChunks
-      if (spriteMap[dir]){
+
+      if (checkCollision(name, modCoords)) return; // tile/obj/player interaction here?
+
+      //if (players[name].murderer )
+
+      // update facing
+      players[name].lastDir = dir;
+
+      // normal sprite
+      if (spriteMap[dir]) {
         players[name].sprite = spriteMap[dir];
         players[name].facing = dir;
+
+        // murderer sprite override if player is a murderer
+        if (players[name].murderer) {
+          // just append or replace "ghost" with "murder" prefix for example
+          // or use your existing mapping
+          const murderSpriteMap = {
+            left: "murderL",
+            right: "murderR"
+          };
+          players[name].murderSprite = murderSpriteMap[dir];
+        } else {
+          players[name].murderSprite = null;
+        }
       }
       delete map.Map[players[name].coords[1]][players[name].coords[0]].players[name];
       markTileChanged(players[name].coords[0], players[name].coords[1]);
@@ -1187,7 +1203,6 @@ function checkCollision(name, coords){
     console.log("skipped rest of checkCollision");
     return true;
   }
-  
 
   const objects = map.Map[coords[1]][coords[0]].data.objects ?? {};
   for (const objKey in objects) {
@@ -1199,12 +1214,29 @@ function checkCollision(name, coords){
     if (obj.name==="door" && obj.locked===false) continue;
     // Special: allow owners to walk through their own doors
     if (obj.name === "door" && obj.owner === name) {
-      continue; // skip collision for this object
+      if (players[name].murderer){
+        io.to(players[name].sock_id).emit('pk message',
+          {
+            message: `As a murderer,  you cannot hide...`
+          }
+        );
+        return true;
+      } else {
+        continue; // skip collision for this object
+      }
     }
 
     // Normal collision otherwise
     checkObjectCollision(name, coords, obj.name);
     return true;
+  }
+  if (players[name].murderer && map.Map[coords[1]][coords[0]].data.safeTile){
+    io.to(players[name].sock_id).emit('pk message',
+      {
+        message: `As a murderer,  you cannot enter safe places...`
+      }
+    );
+    return true;//lol they can't go to safe area!
   }
   return false; 
 }
@@ -1222,11 +1254,15 @@ function checkMelee(name, coords) {
 
     // 1️⃣ Players first
     const tilePlayerNames = Object.keys(tile.players || {});
-    if (tilePlayerNames.length > 0 && !isSafe) {
-        const playerTarget = tilePlayerNames[0];
+    if (tilePlayerNames.length > 0) {
+      const playerTarget = tilePlayerNames[0];
+
+      // allow attack if tile is not safe OR target is a murderer
+      if (!isSafe || (players[playerTarget] && players[playerTarget].murderer)) {
         meleeAttack(name, playerTarget);
         console.log("player on tile, attacked");
         return true;
+      }
     }
 
     // 2️⃣ Then mobs
@@ -1267,6 +1303,8 @@ async function meleeAttack(name, targetName){
   }
   players[targetName].hp-=damage;//change to playerattack-targetdefense etc
   console.log(`Attacked ${targetName}!`);
+  players[targetName].lastHitBy = name;
+  players[name].lastPlayerHit = targetName;
   if (damage>0){
     io.to(players[name].sock_id).emit('playSound', 'hit');
     io.to(players[targetName].sock_id).emit('playSound', 'hit');
@@ -1767,10 +1805,93 @@ async function consume(playerName, id){
     await removeItem(playerName, itemDef.id, 1);
     await syncInventory(playerName);
   }
+  if (itemDef.teleport){
+    await removeItem(playerName, itemDef.id, 1);
+    await syncInventory(playerName);
+    await teleportPlayer(playerName);
+  }
+}
+
+const activeChannels = {};//can be used for other stuff
+const pendingTeleports = {};
+async function teleportPlayer(name) {
+  startChannel({
+    playerName: name,
+    duration: 5000,
+    cancelOnMove: true,
+
+    onComplete: () => {
+      const player = players[name];
+      if (!player) return;
+
+      const x = player.coords[0];
+      const y = player.coords[1];
+
+      delete map.Map[y][x].players[name];
+      markTileChanged(x, y);
+
+      player.coords[0] = 49;
+      player.coords[1] = 49;
+
+      addPlayerToTile(name, 49, 49);
+      markTileChanged(49, 49);
+    },
+
+    onCancel: () => {
+      console.log("Teleport canceled");
+    }
+  });
+}
+
+function startChannel({
+  playerName,
+  duration,            // ms
+  onComplete,
+  onCancel,
+  cancelOnMove = true
+}) {
+  const player = players[playerName];
+  if (!player) return;
+
+  // already channeling
+  if (activeChannels[playerName]) return;
+
+  const startX = player.coords[0];
+  const startY = player.coords[1];
+  const startTime = Date.now();
+
+  // tell client to show progress bar
+  console.log("CHANNEL START:", playerName, duration);
+  io.to(player.sock_id).emit('channelStart', {
+    duration,
+    startTime
+  });
+
+  const timer = setTimeout(() => {
+    delete activeChannels[playerName];
+    onComplete?.();
+    io.to(player.sock_id).emit('channelEnd');
+  }, duration);
+
+  activeChannels[playerName] = {
+    timer,
+    startX,
+    startY,
+    cancelOnMove,
+    onCancel
+  };
 }
 
 async function dropItem(name, item){
   let player = players[name];
+  if (player.murderer) {
+    io.to(player.sock_id).emit('pk message',
+      {
+        message: `As a murderer,  you cannot drop items...`
+      }
+    );
+    return;
+  }
   try {
     if (itemById[player.inventory[item].id]==="axe"){
       return;//take this out when get axe on death or whatever
@@ -2395,6 +2516,7 @@ function attackPlayer(mob, player) {
         damage=0;
       }
       player.hp -= damage;
+      player.lastHitBy = null;
       io.to(player.sock_id).emit('playSound', 'hit');
       io.to(player.sock_id).emit('playSound', 'damage');
     }
@@ -2409,15 +2531,139 @@ function updateMobs() {
 
 setInterval(updateMobs, 250);
 
+async function initMurderers() {
+  // Get all players who are murderers with a remaining timer
+  const rows = await query(
+    `SELECT player_name, x, y, hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer
+     FROM players
+     WHERE murderer = 1 AND murderTimer > 0`
+  );
+
+  if (!rows.length) {
+    console.log('No active murderers to reinitialize.');
+    return;
+  }
+
+  for (const result of rows) {
+    const name = result.player_name;
+    let p_coords;
+    if (result.x == null || result.y == null) {
+      p_coords = [49, 49]; // default start point
+    } else {
+      p_coords = [result.x, result.y];
+    }
+
+    // Calculate levels
+    const hpLvl = await levelFromXp(result.hpXp);
+    const swordLvl = await levelFromXp(result.swordXp);
+    const craftLvl = await levelFromXp(result.craftXp);
+    const woodcuttingLvl = await levelFromXp(result.woodcuttingXp);
+    const miningLvl = await levelFromXp(result.miningXp);
+
+    // Initialize player object in memory
+    players[name] = {
+      coords: p_coords,
+      lastCoords: p_coords,
+      sock_id: null, // offline
+      sprite: "ghostR",
+      murderSprite: "murderR", // will be set when needed
+      facing: 'right',
+      lastInput: Date.now(),
+      lastMove: Date.now(),
+      lastDir: "right",
+      step: 'stepR',
+      typing: { state: false, lastSpot: { x: 0, y: 0 } },
+      lastChunk: null,
+      lastChunkSum: null,
+      lastChunkKey: null,
+      activeInventory: 0,
+      inventory: [],
+      hand: null,
+      head: null,
+      body: null,
+      lastGather: Date.now(),
+      hp: result.hp,
+      maxHp: 100 + Math.floor(hpLvl * 2),
+      lastMelee: Date.now(),
+      name: name,
+      swordXpTotal: result.swordXp,
+      hpXpTotal: result.hpXp,
+      swordXp: 0,
+      hpXp: 0,
+      craftXpTotal: result.craftXp,
+      woodcuttingXpTotal: result.woodcuttingXp,
+      miningXpTotal: result.miningXp,
+      swordLvl: swordLvl,
+      hpLvl: hpLvl,
+      craftLvl: craftLvl,
+      woodcuttingLvl: woodcuttingLvl,
+      miningLvl: miningLvl,
+      lastState: null,
+      isCrafting: false,
+      lastHitBy: null,
+      lastPlayerHit: null,
+      murderer: true,
+      murderTimer: result.murderTimer
+    };
+
+    // Put the offline murderer on the map
+    addPlayerToTile(name, p_coords[0], p_coords[1]);
+    markTileChanged(p_coords[0], p_coords[1]);
+    syncInventory(name);
+
+    console.log(`Reinitialized murderer: ${name} with ${result.murderTimer}ms remaining`);
+  }
+}
+
 (async () => {
-  const leaderboard = await getLeaderboard();
-  console.table(leaderboard);
+  await initMurderers();
+
+  // Start the murder timer tick loop
+  //startMurderTickLoop();
 })();
 
-/*
-setInterval(() => {
-  if (players['Theunorg']){
-    players['Theunorg'].hp=100;
+const MURDER_TICK_INTERVAL = 1000; // ms (1 second)
+
+setInterval(async () => {
+  // 1. Get all active murderers
+  const rows = await query(
+    `
+    SELECT player_name, murderTimer
+    FROM players
+    WHERE murderer = 1
+      AND murderTimer > 0
+    `
+  );
+
+  if (!rows.length) return;
+  console.log("got a murderer!");
+  for (const player of rows) {
+    const newTimer = Math.max(player.murderTimer - MURDER_TICK_INTERVAL, 0);
+    // update timer
+    await query(
+      `
+      UPDATE players
+      SET murderTimer = ?
+      WHERE player_name = ?
+      `,
+      [newTimer, player.player_name]
+    );
+
+    // if timer expired, clear murderer
+    if (newTimer === 0) {
+      await query(
+        `
+        UPDATE players
+        SET murderer = 0
+        WHERE player_name = ?
+        `,
+        [player.player_name]
+      );
+      players[player.player_name].murderer=false;
+      players[player.player_name].murderSprite=null;
+      io.emit('server message', {//global chat, user needs toggle for wanting privacy
+        message: `${player.player_name} has been cleared of murder charges...`
+      });
+    } 
   }
-}, 1000)
-*/
+}, MURDER_TICK_INTERVAL);

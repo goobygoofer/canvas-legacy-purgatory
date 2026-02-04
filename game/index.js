@@ -134,7 +134,7 @@ const craftableList = Object.keys(base_tiles).filter(
   name => base_tiles[name]?.craft && Object.keys(base_tiles[name].craft).length > 0
 );
 
-console.log(craftableList);
+//console.log(craftableList);
 
 // optional helper: get recipe for a given item
 const getCraftRecipe = itemName => base_tiles[itemName]?.craft ?? {};
@@ -184,7 +184,6 @@ function devModeActive(){
     devMode=false;
   }
   if (devMode) {
-    console.log("got here");
     select = document.createElement('select');
     document.getElementById('side-column').appendChild(select);
 
@@ -815,7 +814,6 @@ socket.on('readSign', (data) => {
 
 var leaderboardData = null;
 socket.on('leaderboardData', (data) => {
-  console.log(data);
   leaderboardData = data;
   showLeaderboard=true;
   drawLeaderboard();
@@ -828,6 +826,28 @@ socket.on('openBank', (data) => {
   openBank();
 });
 
+let channelStartTime = 0;
+let channelDuration = 0;
+let isChanneling = false;
+
+socket.on('channelStart', ({ duration, startTime }) => {
+  channelStartTime = startTime;
+  channelDuration = duration;
+  isChanneling = true;
+});
+
+socket.on('channelEnd', () => {
+  isChanneling = false;
+});
+
+socket.on('channelCancel', () => {
+  isChanneling = false;
+});
+
+socket.on('pk message', (data) => {
+  const { message } = data;
+  messages.innerHTML += `<div><strong style="color: red;">${message}</strong></div>`;
+})
 const bankContainer = document.getElementById("bankContainer");
 const bankGrid = document.getElementById("bankGrid");
 const amountInput = document.getElementById("bankAmount");
@@ -906,7 +926,6 @@ function renderBank() {
 document.getElementById("withdrawBtn").onclick = () => {
   if (!selectedBankItemId) return;
   const amt = parseInt(amountInput.value) || 1;
-  console.log(`attempting to withdraw ${amt} ${itemById[selectedBankItemId]}`);
   socket.emit("bankWithdraw", { id: selectedBankItemId, amt: amt});
 };
 
@@ -914,7 +933,6 @@ document.getElementById("withdrawBtn").onclick = () => {
 document.getElementById("depositBtn").onclick = () => {
   if (!activeInvItem) return;
   const amt = parseInt(amountInput.value) || 1;
-  console.log(`attempting to deposit ${amt} ${itemById[playerData.inventory[activeInvItem].id]}`);
   socket.emit("bankDeposit", { id: playerData.inventory[activeInvItem].id, amt: amt });
 };
 
@@ -967,6 +985,31 @@ function drawLeaderboard() {
   ctx.strokeStyle = '#fff';
   ctx.lineWidth = 2;
   ctx.strokeRect(x, y, width, height);
+}
+
+function drawChannelBar() {
+  if (!isChanneling) return;
+
+  const now = Date.now();
+  const elapsed = now - channelStartTime;
+  const progress = Math.min(elapsed / channelDuration, 1);
+
+  const barWidth = 200;
+  const barHeight = 16;
+  const x = canvas.width / 2 - barWidth / 2;
+  const y = canvas.height - 60;
+
+  // background
+  ctx.fillStyle = 'rgba(0,0,0,0.7)';
+  ctx.fillRect(x, y, barWidth, barHeight);
+
+  // fill
+  ctx.fillStyle = '#00ff88';
+  ctx.fillRect(x, y, barWidth * progress, barHeight);
+
+  // border
+  ctx.strokeStyle = '#fff';
+  ctx.strokeRect(x, y, barWidth, barHeight);
 }
 
 function drawTabs() {
@@ -1025,7 +1068,6 @@ function drawInventory() {
 
 function drawItemInSlot(item, x, y, size, slotIndex) {
   let name = base_tiles[itemById[item.id]];
-  console.log(`x:${x}, y:${y}`);
   const pad = size * 0.15;
   const s = size - pad * 2;
   invCtx.drawImage(
@@ -1256,6 +1298,11 @@ function drawPlayers(chunk){
           16, 16,
           j * 32, i * 32, 32, 32
         );
+        if (players[p].murderSprite!==null){
+          equipToDraw.push(
+            players[p].murderSprite
+          );
+        }
         //draw any equipped items
         if (players[p].hand !== null) {
           let handSprite = getEquipSprite(players[p].hand, players[p].facing);
@@ -1550,6 +1597,7 @@ function updateDraw(now) {
     drawCrafting();
     drawSettings();
     drawLeaderboard();
+    drawChannelBar();//teleport wait
   }
   requestAnimationFrame(updateDraw);
 }

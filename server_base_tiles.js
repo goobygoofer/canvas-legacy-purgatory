@@ -257,6 +257,15 @@ module.exports = {
     collision: false,
     craft: {log: 3, hide: 1, ironbar: 1}
   },
+  "townteleport": {
+    kind: "item",
+    id: 34,
+    container: "objects",
+    collision: false,
+    craft: { hide: 1, bluedust: 50 },
+    consume: true,
+    teleport: true
+  },
   "lootbag": {
       kind: "lootbag",
       container: "objects",

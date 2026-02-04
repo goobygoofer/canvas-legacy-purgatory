@@ -188,6 +188,11 @@ base_tiles = {
     id:33,
     craft: {log: 3, hide: 1, ironbar: 1}
   },
+  "townteleport": {
+    "x":192,"y":496,
+    id: 34,
+    craft: { hide: 1, bluedust: 50 },
+  },
   "ironarmorL":{
     "x":145,"y":272
   },
@@ -302,6 +307,12 @@ base_tiles = {
   },
   "leaderboard": {
     "x":144, "y":336
+  },
+  "murderL":{
+    "x":113,"y":176
+  },
+  "murderR":{
+    "x":63, "y":176
   },
   "spiderL": { "x": 112, "y": 240 },
   "heartContainer": { "x": 128, "y": 528 },
