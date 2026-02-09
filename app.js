@@ -893,16 +893,28 @@ io.on('connection', async (socket) => {
 
   socket.on('chat message', (msg) => {
     console.log(`${socket.user}: ${msg}`)
-    io.emit('chat message', {
-      user: socket.user,
-      message: msg
-    });
+    if (msg[0]==="/"){
+      console.log("command message");
+      parseCmdMsg(socket.user, msg);
+    } else {
+      io.emit('chat message', {
+        user: socket.user,
+        message: msg
+      });
+    }
+
   });
 /*
   socket.on("player input", data => {
     handlePlayerInput(socket.user, data);
   });
 */
+  socket.on("acceptTrade", data => {
+    console.log(`Accepted ${data}'s trade...`);
+  });
+  socket.on("declineTrade", data => {
+    console.log(`Declined ${data}'s trade...`);
+  })
   socket.on("player input", data => {
     const player = players[socket.user];
     if (!player.keystate) player.keystate = { up: false, down: false, left: false, right: false };
@@ -1155,20 +1167,64 @@ const itemById = Object.fromEntries(
 
 const idByItem = name => ITEMS[name]?.id;
 
-/*
-function handlePlayerInput(name, data){
-  const directions = ['up', 'down', 'left', 'right'];
-  if (Date.now()>players[name].lastInput+25){
-    players[name].lastInput=Date.now();
-    if (data['up'] || data['down'] || data['left'] || data['right']){//jesus christ
-      movePlayer(name, data);
+async function parseCmdMsg(name, cmd){
+  const words = cmd.slice(1).trim().split(/\s+/);
+  console.log(`words: ${words}`);
+  if (words[0]==="tell"){
+    if (players[words[1]]){
+      let recipient = words[1];
+      let msg = words.slice(2);
+      io.to(players[words[1]]?.sock_id).emit('chat message', {
+        user: name,
+        message: msg
+      })
+    } else {
+      io.to(players[name].sock_id).emit('pk message', {
+        message: `${words[1]} is not online...`
+      })
     }
-    if (data===' '){
-      useItem(name);
+  }
+  if (words[0]==="trade"){
+    let targetName = words[1];
+    if (targetName===name){
+      io.to(players[name].sock_id).emit('pk message', {
+        message: `You must be high af...`
+      })
+    }
+    if (players[targetName]?.sock_id){
+      sendTradeRequest(name, targetName);
+    } else{
+      io.to(players[name].sock_id).emit('pk message', {
+        message: `${targetName} is not online...`
+      })
     }
   }
 }
-*/
+
+async function sendTradeRequest(fromName, toName) {
+  console.log(`${fromName} attempting to trade ${toName}`);
+
+  if (!players[toName] || players[toName].sock_id === null) {
+    io.to(players[fromName].sock_id).emit("pk message", {
+      message: `${toName} is not online...`
+    });
+    return;
+  }
+
+  // sender sees confirmation
+  io.to(players[fromName].sock_id).emit("server message", 
+    {
+      message: `Trade request sent to ${toName}`
+    }
+  );
+
+  // receiver gets the request
+  io.to(players[toName].sock_id).emit("chatEvent", {
+    type: "tradeRequest",
+    from: fromName
+  });
+}
+
 function handlePlayerInput(name, keystate){
   if (!players[name]) return;
 
@@ -2326,7 +2382,9 @@ map.Map[57][42].mob = {
 async function removeMobType(type) {
   for (const [id, mob] of mobs) {
     if (mob.type === type) {
+      let oldSprite = {x:mob.x, y: mob.y}; 
       mobs.delete(id);
+      delete map.Map[oldSprite.y][oldSprite.x].mob;
     }
   }
 }
@@ -2654,7 +2712,7 @@ function attackPlayer(mob, player) {
         player.lastHitBy = null;
         //io.to(player.sock_id).emit('playSound', ['hit']);
         io.to(player.sock_id).emit('playSound', ['hit', 'damage']);
-          io.emit('pk message', {//global chat, user needs toggle for wanting privacy
+        io.to(player.sock_id).emit('pk message', {//global chat, user needs toggle for wanting privacy
           message: `You got hit by the ${mob.type} for ${damage} damage!`
         });
       }
@@ -2768,13 +2826,3 @@ setInterval(async () => {
     handlePlayerInput(name, player.keystate);
   }
 }, 20);
-
-//miniboss testing
-/*
-let testZorg = createMob('zorg', 42, 135);
-mobs.set(testZorg.id, testZorg);
-map.Map[135][42].mob = {
-  id: testZorg.id,
-  sprite: "zorgL"
-}
-*/

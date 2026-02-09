@@ -17,6 +17,33 @@ const form = document.getElementById('form');
 const input = document.getElementById('input');
 const messages = document.getElementById('messages');
 
+messages.addEventListener("click", (e) => {
+  // only handle clicks on elements with .chat-link
+  const el = e.target.closest(".chat-link");
+  if (!el) return;
+
+  const { action, username } = el.dataset;
+
+  switch (action) {
+    case "trade":
+      // clicking a username to start a trade
+      openTradeWith(username);
+      break;
+
+    case "acceptTrade":
+      // clicking "Accept" on incoming trade
+      console.log("accepted trade");
+      socket.emit("acceptTrade", username);
+      break;
+
+    case "declineTrade":
+      console.log("declined trade");
+      // clicking "Decline" on incoming trade
+      socket.emit("declineTrade", username);
+      break;
+  }
+});
+
 let typingTimeout;
 let isTyping=false;
 let emitInputSwitch = false;
@@ -785,6 +812,31 @@ function sendPaint(x, y, subX, subY, leftRight){
   };
   socket.emit("paint", data);
 }
+
+function addTradeIncomingMessage(username) {
+  const line = document.createElement("div");
+
+  const accept = document.createElement("span");
+  accept.textContent = "Accept";
+  accept.className = "chat-link";
+  accept.dataset.action = "acceptTrade";
+  accept.dataset.username = username;
+
+  const decline = document.createElement("span");
+  decline.textContent = " Decline";
+  decline.className = "chat-link";
+  decline.dataset.action = "declineTrade";
+  decline.dataset.username = username;
+
+  line.append(`${username} wants to trade — `, accept, " ", decline);
+  messages.append(line);
+}
+
+socket.on("chatEvent", (data) => {
+  if (data.type === "tradeRequest") {
+    addTradeIncomingMessage(data.from);
+  }
+});
 
 socket.on('chat message', (data) => {
   const { user, message } = data;
