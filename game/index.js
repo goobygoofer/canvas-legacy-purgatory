@@ -888,6 +888,7 @@ socket.on('channelCancel', () => {
 socket.on('pk message', (data) => {
   const { message } = data;
   messages.innerHTML += `<div><strong style="color: red;">${message}</strong></div>`;
+  messages.scrollTop = messages.scrollHeight;
 })
 const bankContainer = document.getElementById("bankContainer");
 const bankGrid = document.getElementById("bankGrid");
@@ -1259,7 +1260,7 @@ function drawBaseTile(chunk){
   ctx.drawImage(
     spriteSheet,
     //sx, sy, sw, sh,
-    base_tiles[chunk['base-tile']].x, base_tiles[chunk['base-tile']].y,
+    base_tiles[chunk['b-t']].x, base_tiles[chunk['b-t']].y,
     16, 16,
     //dx, dy, dw, dh
     j * 32, i * 32, 32, 32

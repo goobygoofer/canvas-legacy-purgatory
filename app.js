@@ -26,6 +26,8 @@ function flattenTileData() {
 //cleanup empty pixel tiles
 for (let y = 0; y < map.Map.length; y++) {
   for (let x = 0; x < map.Map[y].length; x++) {
+    //map.Map[y][x]['b-t']=map.Map[y][x]['base-tile'];
+    //delete map.Map[y][x]['base-tile'];
     const tile = map.Map[y][x];
     if (!tile.pixels) continue;
 
@@ -587,13 +589,13 @@ async function markTileChanged(x, y){
     return;
   }
 
-  // 1️⃣ Replace base-tile if applicable
-  if (tileData.container === "base-tile") {
-    tile["base-tile"] = name;
+  // 1️⃣ Replace b-t if applicable
+  if (tileData.container === "b-t") {
+    tile["b-t"] = name;
   }
 
-  // 2️⃣ Add to normal container (objects, resources, etc.) if not base-tile
-  if (tileData.container !== "base-tile") {
+  // 2️⃣ Add to normal container (objects, resources, etc.) if not b-t
+  if (tileData.container !== "b-t") {
     const type = tileData.container;
     tile[type] ??= {};
     tile[type][name] = { name };
@@ -605,7 +607,7 @@ async function markTileChanged(x, y){
     tile["roof"][name] = { name };
   }
 
-  console.log(`Placed ${name} in: base-tile=${tileData.container==='base-tile'?name:'-'} container=${tileData.container} roof=${tileData.roof}`);
+  console.log(`Placed ${name} in: b-t=${tileData.container==='b-t'?name:'-'} container=${tileData.container} roof=${tileData.roof}`);
   markTileChanged(x, y);
 }
 
@@ -615,7 +617,7 @@ async function removeObjFromMap(coords){
 
 function clearTile(x, y){
   console.log("cleared tile");
-  map.Map[y][x]['base-tile']="grass";
+  map.Map[y][x]['b-t']="grass";
   map.Map[y][x]['collision']=false;
   delete map.Map[y][x].objects;// = {};
   map.Map[y][x].floor={};
@@ -633,7 +635,7 @@ function clearTile(x, y){
 const isSafeActive = tile => !!tile?.safeTile && Object.keys(tile.safeTile).length > 0;
 
 async function emitPlayerState(player){
-  console.log("emitting player state");
+  //console.log("emitting player state");
   if (player.hp<=0){
     if (player.lastHitBy!==null){
       
@@ -1255,7 +1257,6 @@ function movePlayer(name, data){
 
 const tileMax = map.Map[0].length;
 function checkCollision(name, coords){
-  console.log(tileMax);
   if (coords[0]< 0 || coords[0]>499){  //need next map on collision with edge
     return true;
   }
@@ -1269,7 +1270,7 @@ function checkCollision(name, coords){
   if (map.Map[coords[1]][coords[0]].collision){//is this necessary?
     return true;//don't think data.collision ever even gets used, take out of map?
   }
-  if (baseTiles[map.Map[coords[1]][coords[0]]['base-tile']].collision===true){
+  if (baseTiles[map.Map[coords[1]][coords[0]]['b-t']].collision===true){
     return true;
   }
   //player melee here??
@@ -1315,13 +1316,9 @@ function checkCollision(name, coords){
 }
 
 function checkMelee(name, coords) {
-    console.log("checkMelee");
-
     if (players[name].hand === null) {
-        console.log("not holding anything");
         return false;
     }
-
     const tile = map.Map[coords[1]][coords[0]];
     const isSafe = isSafeActive(tile);
 
@@ -2159,7 +2156,7 @@ function pickWeighted(list) {
 let test = {
   "x": 0, "y": 0,
   "data": {
-    "base-tile": "grass",
+    "b-t": "grass",
     "collision": false,
     "objects": {},
     "typing": false,
@@ -2211,7 +2208,7 @@ async function replenishResources() {
         isEmpty(tile?.floor) &&
         isEmpty(tile?.roof) &&
         isEmpty(tile?.depletedResources) &&
-        tile['base-tile']==='grass'
+        tile['b-t']==='grass'
         ) 
       {
         //random chance to grow a flower!
@@ -2226,7 +2223,7 @@ async function replenishResources() {
         isEmpty(tile?.floor) &&
         isEmpty(tile?.roof) &&
         isEmpty(tile?.depletedResources) &&
-        tile['base-tile']==='grass'
+        tile['b-t']==='grass'
         ) 
       {
         //random chance place a mushroom mob!
@@ -2250,7 +2247,7 @@ async function replenishResources() {
         isEmpty(tile?.floor) &&
         isEmpty(tile?.roof) &&
         isEmpty(tile?.depletedResources) &&
-        tile['base-tile']==='grass'
+        tile['b-t']==='grass'
         ) 
       {
         let testGoat = createMob('goat', x, y);
@@ -2513,7 +2510,7 @@ function mobCollision(tile){
   for (obj in tile.objects){
     if (baseTiles[tile.objects[obj].name].collision) return true;
   }
-  if (baseTiles[tile['base-tile']].collision) return true;
+  if (baseTiles[tile['b-t']].collision) return true;
   return false;
 }
 
@@ -2608,6 +2605,9 @@ function attackPlayer(mob, player) {
         player.lastHitBy = null;
         //io.to(player.sock_id).emit('playSound', ['hit']);
         io.to(player.sock_id).emit('playSound', ['hit', 'damage']);
+          io.emit('pk message', {//global chat, user needs toggle for wanting privacy
+          message: `You got hit by the ${mob.type} for ${damage} damage!`
+        });
       }
     }
 }
