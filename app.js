@@ -2405,8 +2405,32 @@ const mobSpawns = [
         y: 66,
         count: 8,
         respawnTime: 20000 // ms
+    },
+    //zorg mini-boss!
+    {
+      type: "zorg",
+      x: 42,
+      y: 135,
+      count: 1,
+      respawnTime: 30000
     }
+    /*
+    let testZorg = createMob('zorg', 42, 135);
+mobs.set(testZorg.id, testZorg);
+map.Map[135][42].mob = {
+  id: testZorg.id,
+  sprite: "zorgL"
+}
+    */
 ];
+
+function countMobsByType(type) {
+  let count = 0;
+  for (const mob of mobs.values()) {
+    if (mob.type === type) count++;
+  }
+  return count;
+}
 
 function spawnMob(spawn) {
     const mob = createMob(spawn.type, spawn.x, spawn.y);
@@ -2418,6 +2442,10 @@ function spawnMob(spawn) {
     };
 
     mob.spawnRef = spawn; // 🔑 link back to spawn
+    //for minion spawners so they don't spam
+    if (mob?.spawnMinion){
+      mob.spawnCount = countMobsByType(mob.spawnMinion);
+    }
 }
 
 for (const spawn of mobSpawns) {
@@ -2429,7 +2457,9 @@ for (const spawn of mobSpawns) {
 function updateMob(mob, now) {
   if (now < mob.nextThink) return;
   mob.nextThink = now + mob.thinkSpeed;
-
+  if (mob?.spawnMinion){
+    spawnMinion(mob);
+  }
   if (mob.state === "return") {
     if (mob.x === mob.spawnX && mob.y === mob.spawnY) {
       mob.state = "idle";
@@ -2460,6 +2490,25 @@ function updateMob(mob, now) {
   }
 
   wander(mob);
+}
+
+function spawnMinion(mob){
+  //mob.spawnMinion="minizorg";
+  //mob.spawnMax=5;
+  //mob.spawnCount=n; get from mob.type
+  //only spawns if health below max
+  //only spawns up to .spawnMax
+  //for zorg, needs to count mini zorgs in mobs
+  //if gets killed, spawnCount gets reset
+  if (mob.hp<mob.maxHp && mob.spawnCount<mob.spawnMax){
+    let testMinion = createMob(mob.spawnMinion, mob.x, mob.y);
+    mobs.set(testMinion.id, testMinion);
+    map.Map[mob.x][mob.y].mob = {
+      id: testMinion.id,
+      sprite: mob.spawnMinion+"L"
+    }
+    mob.spawnCount+=1;
+  }
 }
 
 function findPlayerInRange(mob) {
@@ -2585,7 +2634,7 @@ function inAttackRange(mob, player) {
 }
 
 function attackPlayer(mob, player) {
-    if (Date.now()>mob.lastAttack+1000){
+    if (Date.now()>mob.lastAttack+mob.thinkSpeed){
       mob.lastAttack=Date.now();
       let damage = mob.attack;
       if (player.head!==null){
@@ -2719,3 +2768,13 @@ setInterval(async () => {
     handlePlayerInput(name, player.keystate);
   }
 }, 20);
+
+//miniboss testing
+/*
+let testZorg = createMob('zorg', 42, 135);
+mobs.set(testZorg.id, testZorg);
+map.Map[135][42].mob = {
+  id: testZorg.id,
+  sprite: "zorgL"
+}
+*/

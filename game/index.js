@@ -1670,6 +1670,13 @@ function updateView(data){
   for (i in data){
     for (j in data[i]){
       if (data[i][j]===null || data[i][j]===undefined){
+        ctx.drawImage(
+          spriteSheet,
+          base_tiles['water'].x, base_tiles['water'].y,
+          16,16,
+          j*32, i*32,
+          32, 32
+        )
         continue;
       }
       let chunk = data[i][j];

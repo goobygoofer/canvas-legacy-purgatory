@@ -213,6 +213,18 @@ base_tiles = {
   "goatL":{
     "x":208,"y":288
   },
+  "zorgR":{
+    "x":80,"y":144
+  },
+  "zorgL":{
+    "x":208,"y":128
+  },
+  "minizorgR":{
+    "x":256,"y":400
+  },
+  "minizorgL":{
+    "x":240,"y":400
+  },
   "ironarmorL":{
     "x":145,"y":272
   },

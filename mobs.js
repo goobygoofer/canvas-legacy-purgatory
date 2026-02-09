@@ -133,6 +133,62 @@ const mobTypes = {
         drop: [
             { name: "hide", min: 1, max: 2, weight: 100 }
         ]
+    }),
+    zorg: (x, y) => ({
+        id: getNextMobId(),
+        type: "zorg",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        spawnMinion: "minizorg",
+        spawnMax: 5,
+        spawnCount: 0,
+
+        hp: 400,
+        maxHp: 400,
+        attack: 25,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 5,
+        leashRadius: 5,
+
+        nextThink: 0,
+        thinkSpeed: 1000,
+        facing: "left",
+        drop: [
+            { name: "coin", min: 100, max: 250, weight: 10000 },
+            { name: "orangedust", min: 25, max: 50, weight: 1000 },
+            { name: "bluedust", min: 25, max: 50, weight: 500 },
+            { name: "yellowdust", min:25, max: 50, weight: 250 },
+            { name: "speedboots", min:1, max: 1, weight: 1}
+        ]
+    }),
+    minizorg: (x, y) => ({
+        id: getNextMobId(),
+        type: "minizorg",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 10,
+        maxHp: 10,
+        attack: 5,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 10,
+        leashRadius: 10,
+
+        nextThink: 0,
+        thinkSpeed: 500,
+        facing: "left",
+        drop: [
+            { name: "hide", min: 1, max: 1, weight: 100 },
+        ]
     })
 };
 
