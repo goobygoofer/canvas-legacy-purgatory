@@ -25,11 +25,6 @@ messages.addEventListener("click", (e) => {
   const { action, username } = el.dataset;
 
   switch (action) {
-    case "trade":
-      // clicking a username to start a trade
-      openTradeWith(username);
-      break;
-
     case "acceptTrade":
       // clicking "Accept" on incoming trade
       console.log("accepted trade");
@@ -335,6 +330,7 @@ form.addEventListener('submit', (e) => {
         socket.emit('chat message', message);
         input.value = '';
     }
+    input.blur();
 });
 
 input.addEventListener('input', () => {
@@ -454,6 +450,12 @@ function onKeyUp(e) {
 
 function onKeyDown(e) {
   if (document.activeElement === input) return;
+  if (e.key==="Enter"){
+    setTimeout(() => {
+      input.focus();
+    }, 0);
+    return;
+  }
 
   if (e.key === 'Shift') {
     handleShiftKey();
@@ -941,7 +943,37 @@ socket.on('pk message', (data) => {
   const { message } = data;
   messages.innerHTML += `<div><strong style="color: red;">${message}</strong></div>`;
   messages.scrollTop = messages.scrollHeight;
-})
+});
+
+socket.on("tradeStarted", data => {
+  openTradeWindow(data.with);
+});
+
+function openTradeWindow(otherPlayer) {
+  const trade = document.createElement("div");
+  trade.id = "tradeWindow";
+
+  const title = document.createElement("h3");
+  title.textContent = `Trading with ${otherPlayer}`;
+
+  const myItems = document.createElement("div");
+  myItems.id = "myTradeItems";
+
+  const theirItems = document.createElement("div");
+  theirItems.id = "theirTradeItems";
+
+  const accept = document.createElement("button");
+  accept.textContent = "Accept";
+  accept.onclick = () => socket.emit("tradeAccept");
+
+  const cancel = document.createElement("button");
+  cancel.textContent = "Cancel";
+  cancel.onclick = () => socket.emit("tradeCancel");
+
+  trade.append(title, myItems, theirItems, accept, cancel);
+  document.body.append(trade);
+}
+
 const bankContainer = document.getElementById("bankContainer");
 const bankGrid = document.getElementById("bankGrid");
 const amountInput = document.getElementById("bankAmount");

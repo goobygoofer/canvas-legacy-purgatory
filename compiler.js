@@ -35,7 +35,7 @@ const COLOR_PALETTE = {
 };
 
 function drawBaseTile(chunk, i, j) {
-  const tile = base_tiles[chunk.data['base-tile']];
+  const tile = base_tiles[chunk['b-t']];
 
   ctx.drawImage(
     spriteSheet,
@@ -48,8 +48,10 @@ function drawBaseTile(chunk, i, j) {
 }
 
 function drawPixels(chunk, i, j) {
-  const subTile = chunk.data.pixels; // 4x4 array
-
+  const subTile = chunk?.pixels; // 4x4 array
+  if (!subTile){
+    return;
+  }
   for (let y = 0; y < subTile.length; y++) {
     for (let x = 0; x < subTile[y].length; x++) {
       const colorIndex = subTile[y][x];
@@ -69,8 +71,8 @@ function drawPixels(chunk, i, j) {
 }
 
 function drawObjects(chunk, i, j) {
-  for (let objKey in chunk.data.objects) {
-    const obj = chunk.data.objects[objKey];
+  for (let objKey in chunk.objects) {
+    const obj = chunk.objects[objKey];
     const tile = base_tiles[obj.name];
     if (!tile) continue;
 
@@ -85,7 +87,7 @@ function drawObjects(chunk, i, j) {
   }
 }
 
-const CANVAS_SIZE = 2000;      // your canvas width/height
+const CANVAS_SIZE = 3200;      // your canvas width/height
 const TILE_PIXELS = 16;        // your tile width/height in source spriteSheet
 const SUBPIXELS = 4;           // each tile has 4x4 subpixels
 

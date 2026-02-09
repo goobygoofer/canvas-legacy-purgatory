@@ -80,6 +80,9 @@ for (const row of map.Map) {
   }
 }
 
+//trade testing
+let pendingTradeRequests = {};
+
 //reset tile versions so they don't build up to ridiculous numbers
 setInterval(async () => {
   for (i in map.Map){
@@ -558,6 +561,9 @@ function addPlayerToTile(name, x=null, y=null){//x and y for mod coords etc
   if (y===null){
     y = players[name].coords[1];
   }
+  if (!map.Map[y][x]?.players){
+    map.Map[y][x].players = {};
+  }
   map.Map[y][x].players[name] = {
     sprite: players[name].sprite,
     facing: players[name].facing,
@@ -904,17 +910,57 @@ io.on('connection', async (socket) => {
     }
 
   });
-/*
-  socket.on("player input", data => {
-    handlePlayerInput(socket.user, data);
+
+  socket.on("acceptTrade", fromName => {
+    const toName = socket.user; // the accepter
+
+    console.log(`${toName} accepted ${fromName}'s trade...`);
+
+    // request must exist
+    if (pendingTradeRequests[toName] !== fromName) return;
+
+    // sender must still be online
+    if (!players[fromName] || players[fromName].sock_id === null) {
+      delete pendingTradeRequests[toName];
+      return;
+    }
+
+    // neither already trading
+    if (players[toName].tradingWith || players[fromName].tradingWith) {
+      delete pendingTradeRequests[toName];
+      return;
+    }
+
+    // remove pending request
+    delete pendingTradeRequests[toName];
+
+    // create trade link
+    players[toName].tradingWith = fromName;
+    players[fromName].tradingWith = toName;
+
+    // tell both clients to open UI
+    io.to(players[toName].sock_id).emit("tradeStarted", { with: fromName });
+    io.to(players[fromName].sock_id).emit("tradeStarted", { with: toName });
   });
-*/
-  socket.on("acceptTrade", data => {
-    console.log(`Accepted ${data}'s trade...`);
+
+  socket.on("declineTrade", fromName => {
+    const toName = socket.user;
+
+    console.log(`${toName} declined ${fromName}'s trade...`);
+
+    // request must exist
+    if (pendingTradeRequests[toName] !== fromName) return;
+
+    delete pendingTradeRequests[toName];
+
+    // notify sender
+    if (players[fromName] && players[fromName].sock_id) {
+      io.to(players[fromName].sock_id).emit("chatEvent", {
+        type: "tradeDeclined",
+        by: toName
+      });
+    }
   });
-  socket.on("declineTrade", data => {
-    console.log(`Declined ${data}'s trade...`);
-  })
   socket.on("player input", data => {
     const player = players[socket.user];
     if (!player.keystate) player.keystate = { up: false, down: false, left: false, right: false };
@@ -1199,6 +1245,11 @@ async function parseCmdMsg(name, cmd){
       })
     }
   }
+  if (words[0]==="who"){
+    io.to(players[name].sock_id).emit('server message', {
+      message: `\n${Object.keys(players)}`
+    })
+  }
 }
 
 async function sendTradeRequest(fromName, toName) {
@@ -1211,6 +1262,14 @@ async function sendTradeRequest(fromName, toName) {
     return;
   }
 
+  if (pendingTradeRequests[toName]) {
+    io.to(players[fromName].sock_id).emit('pk message', {
+      message: `${toName} already has a pending request.`
+    });
+    return;
+  }
+  
+  pendingTradeRequests[toName] = fromName;
   // sender sees confirmation
   io.to(players[fromName].sock_id).emit("server message", 
     {
@@ -1311,12 +1370,14 @@ function movePlayer(name, data){
   });
 }
 
-const tileMax = map.Map[0].length;
+const tileMaxX = map.Map[0].length;
+const tileMaxY = map.Map.length;
+console.log(`${tileMaxX}, ${tileMaxY}`);
 function checkCollision(name, coords){
-  if (coords[0]< 0 || coords[0]>499){  //need next map on collision with edge
+  if (coords[0]< 0 || coords[0]>tileMaxX-1){  //need next map on collision with edge
     return true;
   }
-  if (coords[1]<0 || coords[1]>499){
+  if (coords[1]<0 || coords[1]>tileMaxY-1){
     return true;
   }
   if (noCollision || name==='Admin'){
@@ -2345,6 +2406,7 @@ async function replenishResources() {
       }
     }
   }
+  console.log(`${mobs.size}`);
 }
 replenishResources();//run at server start to add random ores n shit
 setInterval(replenishResources, 60000*180);//every 3 hours
