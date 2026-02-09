@@ -72,7 +72,7 @@ base_tiles = {
     id: 9,
     container: "objects",
     collision: false,
-    craft: { ironore: 5 }
+    smelt: { ironore: 5 }
   },
   "ironsword": {
     "x": 304, "y": 976,
@@ -192,6 +192,26 @@ base_tiles = {
     "x":192,"y":496,
     id: 34,
     craft: { hide: 1, bluedust: 50 },
+  },
+  "speedboots": {
+    "x":144,"y":448,
+    id: 35,
+    craft: { hide: 4, bluedust: 100000 }
+  },
+  "speedbootsL": {
+    "x":161,"y":448
+  },
+  "speedbootsR": {
+    "x":159,"y":432
+  },
+  "combatIcon":{
+    "x":128, "y":832
+  },
+  "goatR":{
+    "x":192,"y":288
+  },
+  "goatL":{
+    "x":208,"y":288
   },
   "ironarmorL":{
     "x":145,"y":272
@@ -552,9 +572,6 @@ base_tiles = {
   "leatherArmorI": { "x": 288, "y": 224 },
   "brasskey": { "x": 176, "y": 1264 },
   "heart": { "x": 144, "y": 528 },
-  "speedbootsI": { "x": 144, "y": 448 },
-  "speedbootsR": { "x": 160, "y": 448 },//might have to switch/tweak R/L or offset
-  "speedbootsL": { "x": 160, "y": 432 },
   "UPARROW": { "x": 208, "y": 1264 },
   "DOWNARROW": { "x": 192, "y": 1264 },
   "palmtree": { "x": 224, "y": 1264 },
@@ -610,11 +627,15 @@ base_tiles = {
   "rangeGoblinL": { "x": 96, "y": 336 },
   "mageLichR": { "x": 80, "y": 160, "collision": true },
   "mageLichL": { "x": 64, "y": 160, "collision": true },//to here
-  "goblinR": {
-    "x":80,"y":16
+  "goblinR": {//for draw and sprite size to work, need a drawqueue  type thing...
+    "x":80,"y":16,
+    //"drawSize":64,//test
+    //"spriteSize":16//bigger if bigger mob sprite on sheet
   },
   "goblinL": {
-    "x":80,"y":32
+    "x":80,"y":32,
+    //"drawSize":64,//test
+    //"spriteSize":16//bigger if bigger mob sprite on sheet
   }
 }
 

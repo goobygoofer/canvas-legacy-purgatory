@@ -22,6 +22,7 @@ const mobTypes = {
         leashRadius: 12,
 
         nextThink: 0,
+        thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
         drop: [
@@ -46,6 +47,7 @@ const mobTypes = {
         leashRadius: 7,
 
         nextThink: 0,
+        thinkSpeed: 1000+Math.floor(Math.random()*100),
         facing: "left",
 
         drop: [
@@ -71,6 +73,7 @@ const mobTypes = {
         leashRadius: 7,
 
         nextThink: 0,
+        thinkSpeed: 250+Math.floor(Math.random()*100),
         facing: "left",
 
         drop: [
@@ -97,13 +100,38 @@ const mobTypes = {
         aggroRadius: 0,
         leashRadius: 0,
 
-        nextThink: 0,
+        nextThink: 10000,
         facing: "left",
-
+        passive: true,
+        thinkSpeed: 0,
         drop: [
             { name: "orangedust", min: 1, max: 10, weight: 100 },
             { name: "bluedust", min: 1, max: 10, weight: 50 },
             { name: "yellowdust", min: 1, max: 10, weight: 25 },
+        ]
+    }),
+    goat: (x, y) => ({
+        id: getNextMobId(),
+        type: "goat",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 20,
+        attack: 0,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 0,
+        leashRadius: 25,
+
+        nextThink: 0,
+        thinkSpeed: 2000+Math.floor(Math.random()*100),
+        facing: "left",
+        passive: true,
+        drop: [
+            { name: "hide", min: 1, max: 2, weight: 100 }
         ]
     })
 };

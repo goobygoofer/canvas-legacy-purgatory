@@ -68,7 +68,7 @@ module.exports = {
     id: 9,
     container: "objects",
     collision: false,
-    craft: { ironore: 5 },
+    smelt: { ironore: 5 },
   },
   "ironsword": {
     kind: "item",
@@ -265,6 +265,16 @@ module.exports = {
     craft: { hide: 1, bluedust: 50 },
     consume: true,
     teleport: true
+  },
+  "speedboots": {
+    kind: "item",
+    id: 35,
+    container: "objects",
+    collision: false,
+    craft: { hide: 4, bluedust: 100000 },
+    equip: {slot: "feet"},
+    defense: 1,
+    speed: 115
   },
   "lootbag": {
       kind: "lootbag",

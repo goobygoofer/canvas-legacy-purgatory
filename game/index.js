@@ -39,6 +39,7 @@ let playerData = {
   inventory: {},//[{id:1, amt:1}, {id:5, amt:16}
   hand: null,
   head: null,
+  feet: null,
   hp: null
 };
 
@@ -241,13 +242,14 @@ function playSound(name, loop = false) {
 //sounds.rain.volume = 0.2;   // muffle rain
 //sounds.music.volume = 0.6; // lower music
 function playSound(name, loop = false, volume = 1) {
-  const audio = sounds[name];
-  if (!audio) return;
-
-  audio.loop = loop;
-  audio.volume = volume;
-  audio.currentTime = 0;
-  audio.play().catch(e => console.warn("Sound play failed:", e));
+  for(s in name){
+    const audio = sounds[name[s]];
+    if (!audio) continue;
+    audio.loop = loop;
+    audio.volume = volume;
+    audio.currentTime = 0;
+    audio.play().catch(e => console.warn("Sound play failed:", e));
+  }
 }
 
 function stopSound(name) {
@@ -263,7 +265,7 @@ let lastUnderRoof = false;
 function updateRainAudio() {
   if (!latestView) return;
   const tile = latestView[5]?.[10];
-  const roof = tile?.data?.roof;
+  const roof = tile?.roof;
   const underRoof = roof && Object.keys(roof).length > 0;
 
   // only react when the state changes
@@ -385,6 +387,7 @@ canvas.addEventListener("mouseup", () => {
 
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
+/*
 function onKeyDown(e) {
   if (document.activeElement === input) return;
   if (e.key === 'Shift'){
@@ -419,6 +422,45 @@ function onKeyUp(e) {
   emitInputSwitch=false;
   keystate[key] = false;
   emitInput();
+}
+*/
+
+function onKeyDown(e) {
+  if (document.activeElement === input) return;
+
+  if (e.key === 'Shift') {
+    handleShiftKey();
+    return;
+  }
+
+  if (e.key === ' ') {
+    const active = document.activeElement;
+    if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') return;
+
+    if (devMode) {
+      layTile();
+    } else {
+      socket.emit('player input', ' '); // keep your existing socket
+    }
+    crafting = false;
+    return;
+  }
+
+  const key = keys[e.key];
+  if (!key || keystate[key]) return; // only emit if not already pressed
+
+  keystate[key] = true;
+  socket.emit('player input', { key, state: true }); // one emit per keydown
+  crafting = false;
+  showLeaderboard = false;
+}
+
+function onKeyUp(e) {
+  const key = keys[e.key];
+  if (!key || !keystate[key]) return; // only emit if it was pressed
+
+  keystate[key] = false;
+  socket.emit('player input', { key, state: false }); // one emit per keyup
 }
 
 function handleShiftKey(){
@@ -459,7 +501,7 @@ function toggleMusic(){
     stopSound("hell");
   } else {
     music = "on";
-    playSound("hell", true);
+    playSound(["hell"], true);
   }
 }
 
@@ -477,7 +519,7 @@ function toggleSfx(){
     stopSound("rain");
   } else {
     sfx = "on";
-    playSound("rain", true);
+    playSound(["rain"], true);
   }
 }
 
@@ -761,6 +803,7 @@ socket.on('playerState', (data)=> {
   playerData.hand=data.hand;
   playerData.head=data.head;
   playerData.body=data.body;
+  playerData.feet=data.feet;
   playerData.facing=data.facing;
   playerData.hp=data.hp;
   playerData.hpLvl=data.hpLvl;
@@ -1068,6 +1111,7 @@ function drawItemInSlot(item, x, y, size, slotIndex) {
   let name = base_tiles[itemById[item.id]];
   const pad = size * 0.15;
   const s = size - pad * 2;
+
   invCtx.drawImage(
     spriteSheet,
     name.x, name.y,
@@ -1075,9 +1119,20 @@ function drawItemInSlot(item, x, y, size, slotIndex) {
     x + pad, y + pad,
     s, s
   );
+
   invCtx.font = "10px sans-serif";
   invCtx.fillStyle = "yellow";
-  invCtx.fillText(`${playerData.inventory[slotIndex].amount}`, x + pad, y + pad);
+
+  const amt = playerData.inventory[slotIndex].amount;
+  invCtx.fillText(formatItemAmount(amt), x + pad, y + pad);
+}
+
+function formatItemAmount(n) {
+  if (n < 10000) return String(n);
+  if (n < 1_000_000) return (n / 1000).toFixed(1).replace(/\.0$/, "") + "k";
+  if (n < 1_000_000_000) return (n / 1_000_000).toFixed(1).replace(/\.0$/, "") + "m";
+  if (n < 1_000_000_000_000) return (n / 1_000_000_000).toFixed(1).replace(/\.0$/, "") + "b";
+  return (n / 1_000_000_000_000).toFixed(1).replace(/\.0$/, "") + "t";
 }
 
 function drawPaintPalette() {
@@ -1172,7 +1227,7 @@ function drawRain() {
   if (!latestView) return;
   // player tile is fixed in the view
   const playerTile = latestView[5]?.[10];
-  const playerRoof = playerTile?.data?.roof;
+  const playerRoof = playerTile?.roof;
   const playerUnderRoof =
     playerRoof && Object.keys(playerRoof).length > 0;
 
@@ -1180,7 +1235,7 @@ function drawRain() {
     for (let j = 0; j < latestView[i].length; j++) {
 
       const tile = latestView[i][j];
-      const roof = tile?.data?.roof;
+      const roof = tile?.roof;
       const hasRoof = roof && Object.keys(roof).length > 0;
 
       // if player is indoors, don't draw rain on roofed tiles
@@ -1204,7 +1259,7 @@ function drawBaseTile(chunk){
   ctx.drawImage(
     spriteSheet,
     //sx, sy, sw, sh,
-    base_tiles[chunk.data['base-tile']].x, base_tiles[chunk.data['base-tile']].y,
+    base_tiles[chunk['base-tile']].x, base_tiles[chunk['base-tile']].y,
     16, 16,
     //dx, dy, dw, dh
     j * 32, i * 32, 32, 32
@@ -1212,7 +1267,7 @@ function drawBaseTile(chunk){
 }
 
 function drawFloor(chunk) {
-    const floorObj = chunk.data?.floor;
+    const floorObj = chunk?.floor;
     if (!floorObj) return;
 
     // Get the first key in the floor object
@@ -1234,7 +1289,7 @@ function drawFloor(chunk) {
 }
 
 function drawPixels(chunk){
-  let subTile = chunk.data.pixels;
+  let subTile = chunk.pixels;
   for (let y in subTile) {
     for (let x in subTile[y]) {
       if (subTile[y][x] !== -1) {
@@ -1251,11 +1306,11 @@ function drawPixels(chunk){
 }
 
 function drawObjects(chunk){
-  for (obj in chunk.data.objects) {
+  for (obj in chunk.objects) {
     try {
       ctx.drawImage(
         spriteSheet,
-        base_tiles[chunk.data.objects[obj].name].x, base_tiles[chunk.data.objects[obj].name].y,
+        base_tiles[chunk.objects[obj].name].x, base_tiles[chunk.objects[obj].name].y,
         16, 16,
         j * 32, i * 32, 32, 32
       );
@@ -1266,7 +1321,7 @@ function drawObjects(chunk){
 }
 
 function drawDepletedResources(chunk) {
-  const depleted = chunk.data?.depletedResources;//how tf this even workin?
+  const depleted = chunk?.depletedResources;//how tf this even workin?
   if (!depleted) return;
   for (const obj in depleted) {
     const res = depleted[obj];
@@ -1314,6 +1369,10 @@ function drawPlayers(chunk){
           let bodySprite = getEquipSprite(players[p].body, players[p].facing);
           equipToDraw.push(bodySprite);
         }
+        if (players[p].feet !== null){
+          let feetSprite = getEquipSprite(players[p].feet, players[p].facing);
+          equipToDraw.push(feetSprite);
+        }
         for (e in equipToDraw) {
           ctx.drawImage(
             spriteSheet,
@@ -1331,16 +1390,25 @@ function drawPlayers(chunk){
 
 function drawMobs(chunk){
   if (!chunk.mob) return;//server end, create or delete .mob as needed, only has name (ratL, etc)
+  let drawSize = 32;
+  let spriteSize = 16;
+  if (base_tiles[chunk.mob.sprite]?.drawSize) {
+    drawSize = base_tiles[chunk.mob.sprite].drawSize;
+  }
+
+  if (base_tiles[chunk.mob.sprite]?.spriteSize) {
+    spriteSize = base_tiles[chunk.mob.sprite].spriteSize;
+  }
   ctx.drawImage(
     spriteSheet,
     base_tiles[chunk.mob.sprite].x, base_tiles[chunk.mob.sprite].y,
-    16, 16,
-    j*32, i*32, 32, 32
+    spriteSize, spriteSize,
+    j*32, i*32, drawSize, drawSize
   )
 }
 
 function drawChatBubbles(chunk){
-  if (chunk.data.typing === true) {
+  if (chunk.typing === true) {
     //draw chat bubbles
     ctx.drawImage(
       spriteSheet,
@@ -1352,11 +1420,11 @@ function drawChatBubbles(chunk){
 }
 
 function drawRoofs(chunk){
-  const roofs = chunk.data?.roof;
+  const roofs = chunk?.roof;
   if (!roofs) return;
 
   if (roofs===undefined || roofs===null) return;
-  const roof = latestView[5][10].data?.roof;
+  const roof = latestView[5][10]?.roof;
 
   if (roof && Object.keys(roof).length > 0) {
     return;
@@ -1382,7 +1450,7 @@ function getEquipSprite(item, facing){
 
 function drawCrafting(){
   if (ispainting || !crafting) return;
-  if (!crafting) return;
+  if (!crafting) return;//this necessary?
   ctx.fillStyle = "#ffae4485"
   ctx.fillRect(100, 50, 400, 200);
 let hoveredCraftItem = null;
@@ -1533,7 +1601,7 @@ function drawSettings() {
 }
 
 function drawSafeTiles(chunk){
-  const safe = chunk.data?.safeTile;
+  const safe = chunk?.safeTile;
   if (!safe || Object.keys(safe).length===0) return;
   if (!devMode) return;
   ctx.drawImage(
@@ -1565,6 +1633,34 @@ function drawHUD(){
 
   // draw the HP bar
   ctx.fillRect(hpPosX + 1, hpPosY + 1, safeWidth, 8);
+  
+  //draw combat icon
+  ctx.drawImage(
+    spriteSheet,
+    base_tiles['combatIcon'].x, base_tiles['combatIcon'].y,
+    16, 16, 
+    canvas.width-24, canvas.height-24,
+    16, 16
+  )
+  //
+  if (latestView){
+    if (latestView[5][10]?.safeTile){
+      //cross out combat icon
+      drawRedX(ctx, canvas.width-24, canvas.height-24);
+    }
+  }
+
+}
+
+function drawRedX(ctx, x, y, size = 16) {//wow this useful lmao
+  ctx.strokeStyle = "#ff00008c";
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + size, y + size);
+  ctx.moveTo(x + size, y);
+  ctx.lineTo(x, y + size);
+  ctx.stroke();
 }
 
 //draw everything here
@@ -1608,8 +1704,8 @@ function updateDraw(now) {
 }
 
 loadSounds();//have to do this at page start I guess?
-playSound("rain", true);
-playSound("hell", true);
+playSound(["rain"], true);
+playSound(["hell"], true);
 drawTabs();
 requestAnimationFrame(updateDraw);
 
