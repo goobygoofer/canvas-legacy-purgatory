@@ -1089,7 +1089,7 @@ const tradeState = {
   theirOffer: {},
   accepted: false
 };
-
+/*
 function renderTradeItems() {
   console.log("rendering trade!");
   const myDiv = document.getElementById("myTradeItems");
@@ -1099,10 +1099,11 @@ function renderTradeItems() {
   for (const slot in tradeState.myOffer) {
     const item = tradeState.myOffer[slot];
     if (!item) continue;
-
+    
     if (item.amount === undefined || item.amount === null) {
       item.amount = item.initialAmount || 1;
     }
+    const amount = item.amount ?? 1;
 
     let container = document.getElementById("mySlot_" + slot);
     let numInput;
@@ -1132,26 +1133,29 @@ function renderTradeItems() {
       numInput.type = "number";
       numInput.min = 1;
       numInput.max = item.initialAmount || item.amount;
-      numInput.value = item.amount;
+      //numInput.value = item.amount;
       numInput.id = "input_" + slot;
 
-numInput.addEventListener("input", () => {
-  let val = parseInt(numInput.value, 10);
+      numInput.addEventListener("input", () => {
+        let val = parseInt(numInput.value, 10);
 
-  if (isNaN(val) || val < 1) val = 1;
+        if (isNaN(val) || val < 1) val = 1;
 
-  const max = item.initialAmount || item.amount || 1;
-  if (val > max) val = max;
+        const max = item.initialAmount || item.amount || 1;
+        if (val > max) val = max;
 
-  // keep UI synced with the corrected value
-  numInput.value = val;
+        // keep UI synced with the corrected value
+        //numInput.value = val;
+        if (document.activeElement !== numInput) {
+          numInput.value = val;
+        }
 
-  // update local state
-  tradeState.myOffer[slot].amount = val;
+        // update local state
+        tradeState.myOffer[slot].amount = val;
 
-  // send the CLEAN number
-  socket.emit("tradeOfferUpdate", { slot, amount: val });
-});
+        // send the CLEAN number
+        socket.emit("tradeOfferUpdate", { slot, amount: val });
+      });
 
       container.appendChild(numInput);
     } else {
@@ -1175,8 +1179,12 @@ numInput.addEventListener("input", () => {
     const item = tradeState.theirOffer[slot];
     if (!item) continue;
 
+ //   if (item.amount === undefined || item.amount === null) {
+ //     item.amount = item.initialAmount || 1;
+ //   }
+
     if (item.amount === undefined || item.amount === null) {
-      item.amount = item.initialAmount || 1;
+      item.amount = 1;
     }
 
     let container = document.getElementById("theirSlot_" + slot);
@@ -1212,8 +1220,135 @@ numInput.addEventListener("input", () => {
     document.getElementById("theirLabel_" + slot).textContent = `${item.name || item.id} x${item.amount}`;
   }
 }
+*/
   
+function renderTradeItems() {
+  const myDiv = document.getElementById("myTradeItems");
+  const theirDiv = document.getElementById("theirTradeItems");
 
+  // --- My Offer ---
+  for (const slot in tradeState.myOffer) {
+    const item = tradeState.myOffer[slot];
+    if (!item) continue;
+
+    // ALWAYS ensure amount exists
+    if (!("amount" in item) || item.amount == null) {
+      item.amount = 1;
+    }
+
+    let container = document.getElementById("mySlot_" + slot);
+    let numInput;
+
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "mySlot_" + slot;
+      myDiv.appendChild(container);
+
+      const label = document.createElement("span");
+      label.id = "label_" + slot;
+      container.appendChild(label);
+
+      // Icon
+      const iconCanvas = document.createElement("canvas");
+      iconCanvas.width = 16;
+      iconCanvas.height = 16;
+      iconCanvas.id = "icon_" + slot;
+      container.appendChild(iconCanvas);
+
+      const ctx = iconCanvas.getContext("2d");
+      const tile = base_tiles[itemById[item.id]];
+      ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
+
+      // Input
+      numInput = document.createElement("input");
+      numInput.type = "number";
+      numInput.min = 1;
+      numInput.max = item.initialAmount || 9999999999;
+      numInput.value = item.amount;
+      numInput.id = "input_" + slot;
+
+      numInput.addEventListener("input", () => {
+        let val = parseInt(numInput.value, 10);
+
+        if (!Number.isFinite(val) || val < 1) val = 1;
+        const max = item.initialAmount || 9999999999;
+        if (val > max) val = max;
+
+        // Update tradeState
+        tradeState.myOffer[slot].amount = val;
+
+        // Update input to sanitized value
+        numInput.value = val;
+
+        // Send to server
+        socket.emit("tradeOfferUpdate", { slot, amount: val });
+      });
+
+      container.appendChild(numInput);
+    } else {
+      // Update input to always reflect tradeState
+      numInput = document.getElementById("input_" + slot);
+      if (numInput) {
+        numInput.max = item.initialAmount || 9999999999;
+        if (parseInt(numInput.value, 10) !== item.amount) {
+          numInput.value = item.amount;
+        }
+      }
+
+      // Update icon
+      const iconCanvas = document.getElementById("icon_" + slot);
+      if (iconCanvas) {
+        const ctx = iconCanvas.getContext("2d");
+        const tile = base_tiles[itemById[item.id]];
+        ctx.clearRect(0, 0, 16, 16);
+        ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
+      }
+    }
+
+    document.getElementById("label_" + slot).textContent = `${item.name || item.id} x`;
+  }
+
+  // --- Their Offer ---
+  for (const slot in tradeState.theirOffer) {
+    const item = tradeState.theirOffer[slot];
+    if (!item) continue;
+
+    if (!("amount" in item) || item.amount == null) {
+      item.amount = 1;
+    }
+
+    let container = document.getElementById("theirSlot_" + slot);
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "theirSlot_" + slot;
+      theirDiv.appendChild(container);
+
+      const label = document.createElement("span");
+      label.id = "theirLabel_" + slot;
+      container.appendChild(label);
+
+      const iconCanvas = document.createElement("canvas");
+      iconCanvas.width = 16;
+      iconCanvas.height = 16;
+      iconCanvas.id = "theirIcon_" + slot;
+      container.appendChild(iconCanvas);
+
+      const ctx = iconCanvas.getContext("2d");
+      const tile = base_tiles[itemById[item.id]];
+      ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
+    } else {
+      const iconCanvas = document.getElementById("theirIcon_" + slot);
+      if (iconCanvas) {
+        const ctx = iconCanvas.getContext("2d");
+        const tile = base_tiles[itemById[item.id]];
+        ctx.clearRect(0, 0, 16, 16);
+        ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
+      }
+    }
+
+    document.getElementById("theirLabel_" + slot).textContent = `${item.name || item.id} x${item.amount}`;
+  }
+}
 
 // SOCKET: make sure theirOffer updates correctly
 socket.on("tradeOfferUpdate", (data) => {
