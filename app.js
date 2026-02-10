@@ -326,7 +326,10 @@ async function initPlayer(name) {
     isCrafting: false,
     lastHitBy: null,
     lastPlayerHit: null,
-    murderer: murdererStatus//by default
+    murderer: murdererStatus,//by default
+    tradingWith: null,
+    tradeOffer : {}, // itemId -> amount
+    tradeAccepted : false
   };
   let player = players[name];
   addPlayerToTile(name, p_coords[0], p_coords[1]);
@@ -910,7 +913,7 @@ io.on('connection', async (socket) => {
     }
 
   });
-
+/*
   socket.on("acceptTrade", fromName => {
     const toName = socket.user; // the accepter
 
@@ -942,6 +945,44 @@ io.on('connection', async (socket) => {
     io.to(players[toName].sock_id).emit("tradeStarted", { with: fromName });
     io.to(players[fromName].sock_id).emit("tradeStarted", { with: toName });
   });
+*/
+  socket.on("acceptTrade", fromName => {
+    const toName = socket.user; // the accepter
+
+    console.log(`${toName} accepted ${fromName}'s trade...`);
+
+    // request must exist
+    if (pendingTradeRequests[toName] !== fromName) return;
+
+    // sender must still be online
+    if (!players[fromName] || players[fromName].sock_id === null) {
+      delete pendingTradeRequests[toName];
+      return;
+    }
+
+    // neither already trading
+    if (players[toName].tradingWith || players[fromName].tradingWith) {
+      delete pendingTradeRequests[toName];
+      return;
+    }
+
+    // remove pending request
+    delete pendingTradeRequests[toName];
+
+    // --- CLEAR OLD TRADE DATA ---
+    players[toName].tradeOffer = {};
+    players[toName].tradeAccepted = false;
+    players[fromName].tradeOffer = {};
+    players[fromName].tradeAccepted = false;
+
+    // create trade link
+    players[toName].tradingWith = fromName;
+    players[fromName].tradingWith = toName;
+
+    // tell both clients to open UI
+    io.to(players[toName].sock_id).emit("tradeStarted", { with: fromName });
+    io.to(players[fromName].sock_id).emit("tradeStarted", { with: toName });
+  });
 
   socket.on("declineTrade", fromName => {
     const toName = socket.user;
@@ -955,12 +996,81 @@ io.on('connection', async (socket) => {
 
     // notify sender
     if (players[fromName] && players[fromName].sock_id) {
-      io.to(players[fromName].sock_id).emit("chatEvent", {
-        type: "tradeDeclined",
-        by: toName
+      io.to(players[fromName].sock_id).emit("pk message", {
+        message: `${toName} declined to trade!`
       });
     }
   });
+
+  socket.on("tradeAccept", () => {
+    const name = socket.user;
+    const other = players[name].tradingWith;
+    if (!other) return;
+
+    players[name].tradeAccepted = true;
+
+    const bothAccepted =
+      players[name].tradeAccepted &&
+      players[other].tradeAccepted;
+
+    if (!bothAccepted) {
+      // update UI for both
+      io.to(players[name].sock_id).emit("tradeStatus", { who: name });
+      io.to(players[other].sock_id).emit("tradeStatus", { who: name });
+      return;
+    }
+
+    // 🚨 BOTH ACCEPTED → DO THE SWAP
+    finalizeTrade(name, other);
+  });
+
+  socket.on("tradeCancel", () => {
+    const name = socket.user;
+    const other = players[name].tradingWith;
+    if (!other) return;
+
+    players[name].tradingWith = null;
+    players[other].tradingWith = null;
+    players[name].tradeOffer = {};
+    players[other].tradeOffer = {};
+    players[name].tradeAccepted = false;
+    players[other].tradeAccepted = false;
+
+    io.to(players[name].sock_id).emit("tradeCanceled");
+    io.to(players[other].sock_id).emit("tradeCanceled");
+  });
+
+socket.on("tradeOfferUpdate", ({ slot, amount }) => {
+  console.log(`slot: ${slot}, amount: ${amount}`);
+  const name = socket.user;
+  const other = players[name].tradingWith;
+  if (!other){
+    console.log("not other");
+    return;
+  }
+
+  const item = players[name].inventory[slot];
+  if (!item) {
+    console.log("not item");
+    return;
+  }
+
+  // Use the amount the user typed, clamped between 1 and inventory amount
+  const finalAmount = Math.max(1, Math.min(amount, item.amount));
+
+  // Update the tradeOffer with the chosen amount
+  if (!players[name].tradeOffer) players[name].tradeOffer = {};
+  players[name].tradeOffer[slot] = {
+    id: item.id,
+    amount: finalAmount,
+    name: item.name
+  };
+
+  players[name].tradeAccepted = false;
+  players[other].tradeAccepted = false;
+
+  sendTradeSync(name, other);
+});
   socket.on("player input", data => {
     const player = players[socket.user];
     if (!player.keystate) player.keystate = { up: false, down: false, left: false, right: false };
@@ -1201,6 +1311,33 @@ socket.on('bankDeposit', async (data) => {
   });
 });
 
+function sendTradeSync(a, b) {
+  const playerA = players[a];
+  const playerB = players[b];
+
+  if (!playerA || !playerB) return;
+
+  // what A sees
+  io.to(playerA.sock_id).emit("tradeSync", {
+    myOffer: playerA.tradeOffer || {},
+    theirOffer: playerB.tradeOffer || {},
+    accepted: {
+      me: playerA.tradeAccepted || false,
+      them: playerB.tradeAccepted || false
+    }
+  });
+
+  // what B sees
+  io.to(playerB.sock_id).emit("tradeSync", {
+    myOffer: playerB.tradeOffer || {},
+    theirOffer: playerA.tradeOffer || {},
+    accepted: {
+      me: playerB.tradeAccepted || false,
+      them: playerA.tradeAccepted || false
+    }
+  });
+}
+
 const ITEMS = Object.fromEntries(
   Object.entries(baseTiles)
     .filter(([_, v]) => v.kind === "item")
@@ -1235,10 +1372,23 @@ async function parseCmdMsg(name, cmd){
     if (targetName===name){
       io.to(players[name].sock_id).emit('pk message', {
         message: `You must be high af...`
-      })
+      });
+      return;
+    }
+    if (players[name].murderer){
+      io.to(players[name].sock_id).emit('pk message', {
+        message: `As a murderer, you cannot trade...`
+      });
+      return;
     }
     if (players[targetName]?.sock_id){
-      sendTradeRequest(name, targetName);
+      if (players[targetName].murderer){
+        io.to(players[name].sock_id).emit('pk message', {
+          message: `You cannot trade with murderers...`
+        })
+      } else {
+        sendTradeRequest(name, targetName);
+      }
     } else{
       io.to(players[name].sock_id).emit('pk message', {
         message: `${targetName} is not online...`
@@ -1282,6 +1432,58 @@ async function sendTradeRequest(fromName, toName) {
     type: "tradeRequest",
     from: fromName
   });
+}
+
+async function finalizeTrade(a, b) {
+  const offerA = players[a].tradeOffer || {};
+  const offerB = players[b].tradeOffer || {};
+
+  // remove items from A → give to B
+  console.log("moving A's items");
+  for (const slot in offerA) {
+    const item = offerA[slot];
+    if (!item) continue;
+
+    const amount = Number(item.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      console.log("Invalid trade amount from A:", item);
+      continue;
+    }
+
+    await removeItem(a, item.id, amount);
+    await addItem(b, item.id, amount);
+  }
+
+  // remove items from B → give to A
+  console.log("moving B's items");
+  for (const slot in offerB) {
+    const item = offerB[slot];
+    if (!item) continue;
+
+    const amount = Number(item.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      console.log("Invalid trade amount from B:", item);
+      continue;
+    }
+
+    await removeItem(b, item.id, amount);
+    await addItem(a, item.id, amount);
+  }
+
+  console.log("Trade successful!");
+
+  // cleanup
+  players[a].tradingWith = null;
+  players[b].tradingWith = null;
+  players[a].tradeOffer = {};
+  players[b].tradeOffer = {};
+  players[a].tradeAccepted = false;
+  players[b].tradeAccepted = false;
+
+  io.to(players[a].sock_id).emit("tradeComplete");
+  io.to(players[b].sock_id).emit("tradeComplete");
+  await syncInventory(a);
+  await syncInventory(b);
 }
 
 function handlePlayerInput(name, keystate){

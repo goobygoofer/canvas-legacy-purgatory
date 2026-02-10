@@ -595,6 +595,7 @@ function handleActiveTabClick(x, y, leftRight){
   }
 }
 
+/*
 function handleInvClick(mx, my, leftRight) {
   if (my < TAB_HEIGHT) return null;
 
@@ -617,6 +618,48 @@ function handleInvClick(mx, my, leftRight) {
   if (leftRight==='right'){
     socket.emit('dropItem', activeInvItem);
   }
+  drawInventory();
+}
+*/
+
+function handleInvClick(mx, my, leftRight) {
+  if (my < TAB_HEIGHT) return null;
+
+  const invY = my - TAB_HEIGHT;
+
+  const col = Math.floor(mx / SLOT_SIZE);
+  const row = Math.floor(invY / SLOT_SIZE);
+
+  if (
+    col < 0 || col >= INV_COLS ||
+    row < 0 || row >= INV_ROWS
+  ) {
+    activeInvItem = null;
+    return;
+  }
+
+  activeInvItem = row * INV_COLS + col; // 0–31
+
+  // ⭐⭐⭐ IF TRADING → SEND TO TRADE ⭐⭐⭐
+  if (isTrading) {
+    if (leftRight === "left") {
+      socket.emit("tradeOfferUpdate", {
+        slot: activeInvItem,
+        amount: 1
+      });
+    }
+    return;
+  }
+
+  // normal behaviour
+  if (leftRight === 'left') {
+    socket.emit('activeInvItem', activeInvItem);
+  }
+
+  if (leftRight === 'right') {
+    socket.emit('dropItem', activeInvItem);
+  }
+
   drawInventory();
 }
 
@@ -829,8 +872,12 @@ function addTradeIncomingMessage(username) {
   decline.className = "chat-link";
   decline.dataset.action = "declineTrade";
   decline.dataset.username = username;
-
-  line.append(`${username} wants to trade — `, accept, " ", decline);
+  const nameSpan = document.createElement("span");
+  nameSpan.textContent = `${username} wants to trade — `;
+  nameSpan.style.color = "purple";
+  accept.style.color = "green";
+  decline.style.color = "red";
+  line.append(nameSpan, accept, " ", decline);
   messages.append(line);
 }
 
@@ -945,23 +992,83 @@ socket.on('pk message', (data) => {
   messages.scrollTop = messages.scrollHeight;
 });
 
+let isTrading = false;
 socket.on("tradeStarted", data => {
+  isTrading=true;
   openTradeWindow(data.with);
+  messages.innerHTML += `<div><strong style="color: green;">Trading with ${data.with}!</strong></div>`;
+});
+
+socket.on("tradeStatus", data => {
+  console.log(data.who, "accepted");
+  messages.innerHTML += `<div><strong style="color: green;">${data.who} agreed to trade!</strong></div>`;
+});
+
+socket.on("tradeComplete", () => {
+  console.log("trade complete!");
+  isTrading=false;
+  document.getElementById("tradeWindow")?.remove();
+  messages.innerHTML += `<div><strong style="color: green;">Trade successful!</strong></div>`;
+});
+
+socket.on("tradeCanceled", () => {
+  console.log("They aint wanna trade with you");
+  isTrading=false;
+  document.getElementById("tradeWindow")?.remove();
+  messages.innerHTML += `<div><strong style="color: red;">Trade cancelled!</strong></div>`;
+});
+
+let myTradeOffer = null;
+let theirTradeOffer = null;
+let tradeAccepted = null;
+
+socket.on("tradeSync", ({ myOffer, theirOffer, accepted }) => {
+  tradeState.myOffer = myOffer;
+  tradeState.theirOffer = theirOffer;
+  tradeState.accepted = accepted;
+  console.log(tradeState);
+  renderTradeItems();
+  messages.innerHTML += `<div><strong style="color: green;">Trade updated!</strong></div>`;
 });
 
 function openTradeWindow(otherPlayer) {
+  // Remove old trade window if it exists
+  tradeState.myOffer = {};
+  tradeState.theirOffer = {};
+  const old = document.getElementById("tradeWindow");
+  if (old) old.remove();
+  tradeState.myOffer = {}
+  tradeState.theirOffer = {};
+  tradeState.accepted = false
   const trade = document.createElement("div");
   trade.id = "tradeWindow";
+  trade.style.position = "fixed";
+  trade.style.top = "50px";
+  trade.style.left = "50%";
+  trade.style.transform = "translateX(-50%)";
+  trade.style.border = "2px solid #666";
+  trade.style.padding = "10px";
+  trade.style.background = "#222";
+  trade.style.color = "#fff";
+  trade.style.zIndex = 1000;
 
   const title = document.createElement("h3");
   title.textContent = `Trading with ${otherPlayer}`;
 
-  const myItems = document.createElement("div");
-  myItems.id = "myTradeItems";
+  // Containers for my and their items
+  const myDiv = document.createElement("div");
+  myDiv.id = "myTradeItems";
+  myDiv.style.border = "1px solid #555";
+  myDiv.style.padding = "5px";
+  myDiv.style.marginBottom = "10px";
 
-  const theirItems = document.createElement("div");
-  theirItems.id = "theirTradeItems";
+  const theirDiv = document.createElement("div");
+  theirDiv.id = "theirTradeItems";
+  theirDiv.style.border = "1px solid #555";
+  theirDiv.style.padding = "5px";
+  theirDiv.style.marginBottom = "10px";
 
+  // Buttons
   const accept = document.createElement("button");
   accept.textContent = "Accept";
   accept.onclick = () => socket.emit("tradeAccept");
@@ -970,9 +1077,153 @@ function openTradeWindow(otherPlayer) {
   cancel.textContent = "Cancel";
   cancel.onclick = () => socket.emit("tradeCancel");
 
-  trade.append(title, myItems, theirItems, accept, cancel);
-  document.body.append(trade);
+  trade.append(title, myDiv, theirDiv, accept, cancel);
+  document.body.appendChild(trade);
+
+  // Render the items
+  renderTradeItems();
 }
+
+const tradeState = {
+  myOffer: {},
+  theirOffer: {},
+  accepted: false
+};
+
+function renderTradeItems() {
+  console.log("rendering trade!");
+  const myDiv = document.getElementById("myTradeItems");
+  const theirDiv = document.getElementById("theirTradeItems");
+
+  // --- My Offer (with input) ---
+  for (const slot in tradeState.myOffer) {
+    const item = tradeState.myOffer[slot];
+    if (!item) continue;
+
+    if (item.amount === undefined || item.amount === null) {
+      item.amount = item.initialAmount || 1;
+    }
+
+    let container = document.getElementById("mySlot_" + slot);
+    let numInput;
+
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "mySlot_" + slot;
+      myDiv.appendChild(container);
+
+      const label = document.createElement("span");
+      label.id = "label_" + slot;
+      container.appendChild(label);
+
+      // Icon
+      const iconCanvas = document.createElement("canvas");
+      iconCanvas.width = 16;
+      iconCanvas.height = 16;
+      iconCanvas.id = "icon_" + slot;
+      container.appendChild(iconCanvas);
+
+      const ctx = iconCanvas.getContext("2d");
+      const tile = base_tiles[itemById[item.id]];
+      ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
+
+      // Input
+      numInput = document.createElement("input");
+      numInput.type = "number";
+      numInput.min = 1;
+      numInput.max = item.initialAmount || item.amount;
+      numInput.value = item.amount;
+      numInput.id = "input_" + slot;
+
+numInput.addEventListener("input", () => {
+  let val = parseInt(numInput.value, 10);
+
+  if (isNaN(val) || val < 1) val = 1;
+
+  const max = item.initialAmount || item.amount || 1;
+  if (val > max) val = max;
+
+  // keep UI synced with the corrected value
+  numInput.value = val;
+
+  // update local state
+  tradeState.myOffer[slot].amount = val;
+
+  // send the CLEAN number
+  socket.emit("tradeOfferUpdate", { slot, amount: val });
+});
+
+      container.appendChild(numInput);
+    } else {
+      numInput = document.getElementById("input_" + slot);
+      numInput.max = item.initialAmount || item.amount;
+
+      const iconCanvas = document.getElementById("icon_" + slot);
+      if (iconCanvas) {
+        const ctx = iconCanvas.getContext("2d");
+        const tile = base_tiles[itemById[item.id]];
+        ctx.clearRect(0, 0, 16, 16);
+        ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
+      }
+    }
+
+    document.getElementById("label_" + slot).textContent = `${item.name || item.id} x`;
+  }
+
+  // --- Their Offer (read-only) ---
+  for (const slot in tradeState.theirOffer) {
+    const item = tradeState.theirOffer[slot];
+    if (!item) continue;
+
+    if (item.amount === undefined || item.amount === null) {
+      item.amount = item.initialAmount || 1;
+    }
+
+    let container = document.getElementById("theirSlot_" + slot);
+
+    if (!container) {
+      container = document.createElement("div");
+      container.id = "theirSlot_" + slot;
+      theirDiv.appendChild(container);
+
+      const label = document.createElement("span");
+      label.id = "theirLabel_" + slot;
+      container.appendChild(label);
+
+      const iconCanvas = document.createElement("canvas");
+      iconCanvas.width = 16;
+      iconCanvas.height = 16;
+      iconCanvas.id = "theirIcon_" + slot;
+      container.appendChild(iconCanvas);
+
+      const ctx = iconCanvas.getContext("2d");
+      const tile = base_tiles[itemById[item.id]];
+      ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
+    } else {
+      const iconCanvas = document.getElementById("theirIcon_" + slot);
+      if (iconCanvas) {
+        const ctx = iconCanvas.getContext("2d");
+        const tile = base_tiles[itemById[item.id]];
+        ctx.clearRect(0, 0, 16, 16);
+        ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
+      }
+    }
+
+    document.getElementById("theirLabel_" + slot).textContent = `${item.name || item.id} x${item.amount}`;
+  }
+}
+  
+
+
+// SOCKET: make sure theirOffer updates correctly
+socket.on("tradeOfferUpdate", (data) => {
+  if (!tradeState.theirOffer[data.slot]) {
+    tradeState.theirOffer[data.slot] = {};
+  }
+  tradeState.theirOffer[data.slot].amount = data.amount;
+  tradeState.theirOffer[data.slot].name = data.name || tradeState.theirOffer[data.slot].name;
+  renderTradeItems(); // now the other client updates correctly
+});
 
 const bankContainer = document.getElementById("bankContainer");
 const bankGrid = document.getElementById("bankGrid");
