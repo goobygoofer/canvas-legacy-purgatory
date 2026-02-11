@@ -276,6 +276,24 @@ module.exports = {
     defense: 1,
     speed: 115
   },
+  "arrow": {
+    kind: "item",
+    id: 36,
+    container: "objects",
+    collision: false,
+    craft: { log: 1, ironbar: 1 },
+    equip: { slot: "quiver" },
+    attack: 5
+  },
+  "bow":{
+    kind: "item",
+    id: 37,
+    container: "objects",
+    collision: false,
+    craft: { log: 1, hide: 1, string: 1 },
+    equip: { slot: "hand" },
+    attack: 1
+  },
   "lootbag": {
       kind: "lootbag",
       container: "objects",
@@ -607,31 +625,31 @@ module.exports = {
     ]
   },
   "grass": {
-    kind: "base-tile",
-    container: "base-tile",
+    kind: "b-t",
+    container: "b-t",
     collision: false
   },
   "grass2": {},
   "snow": {
-    kind: "base-tile",
-    container: "base-tile",
+    kind: "b-t",
+    container: "b-t",
     collision: false
   },
   "oak": {
     "collision": true
   },
   "water": {
-    kind: "base-tile",
-    container: "base-tile",
+    kind: "b-t",
+    container: "b-t",
     collision: true
   },
   "sand": {
-    kind: "base-tile",
-    container: "base-tile",
+    kind: "b-t",
+    container: "b-t",
     collision:false
   },
   "rockroof": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'roof',
     collision: false,
     roof: true,
@@ -662,12 +680,12 @@ module.exports = {
   },
   "abyss": {
     'roof': false,
-    'type': 'base-tile',
+    'type': 'b-t',
     'collision': true
   },
   "void": {
     'roof': false,
-    'type': 'base-tile',
+    'type': 'b-t',
     'collision': true
   },//just blank space for event tiles (like map exit or dungeon stairs)
     "flowercrownL":{
@@ -678,63 +696,63 @@ module.exports = {
   },
     //paths
   "pathHORIZ": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathVERT": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathTDWN": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathTUP": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathTRT": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathTLT": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathCRS": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathCRV1": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathCRV2": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathCRV3": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
   "pathCRV4": {
-    kind: 'base-tile',
+    kind: 'b-t',
     container:'floor',
     'collision': false
   },
     "bridge": {
-    kind: "base-tile",
-    container: "base-tile",
+    kind: "b-t",
+    container: "b-t",
     collision:false
   },
   "safeTile": {
@@ -749,7 +767,7 @@ module.exports = {
     text: null
   },
   "grave": {
-    kind: "base-tile",
+    kind: "b-t",
     container: "objects",
     collision: false
   },
@@ -873,11 +891,6 @@ module.exports = {
   "urShad": {},
   "llShad": {},
   "lrShad": {},
-  "arrowup": {},
-  "arrowdown": {},
-  "arrowleft": {},
-  "arrowright": {},
-  "arrow": {},
   "pebble": {},
   "whitewave": {},
   "fireballup": {},

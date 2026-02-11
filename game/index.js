@@ -62,6 +62,7 @@ let playerData = {
   hand: null,
   head: null,
   feet: null,
+  quiver: null,
   hp: null
 };
 
@@ -352,15 +353,19 @@ window.addEventListener("keydown", e => {
   }
 });
 
+let isBuilding = false;
 canvas.addEventListener("mousedown", (e) => {
+  if (devMode){
+    isBuilding=true;
+  }
   e.preventDefault();
   currentButton = e.button === 2 ? "right" : "left"; // 0 = left, 2 = right
   let canvCoords = coordsInCanvas(e);
   let mapCoords={wX:null, wY:null, sX:null, sY:null};
   if (painting){
     ispainting = true;
-    mapCoords = coordsOnMap(canvCoords.x, canvCoords.y);
   }
+  mapCoords = coordsOnMap(canvCoords.x, canvCoords.y);
   handleMainClick(
     canvCoords.x, canvCoords.y,
     mapCoords.wX, mapCoords.wY,
@@ -392,7 +397,8 @@ canvas.addEventListener("mousemove", (e) => {
   mouseY = canvCoords.y;
 
   // ONLY do painting logic when painting
-  if (!ispainting) return;
+  if (!ispainting && !devMode) return;
+  if (devMode && !isBuilding) return;
 
   const mapCoords = coordsOnMap(canvCoords.x, canvCoords.y);
   handleMainClick(
@@ -403,6 +409,9 @@ canvas.addEventListener("mousemove", (e) => {
 });
 
 canvas.addEventListener("mouseup", () => {
+  if (devMode){
+    isBuilding=false;
+  }
   if (painting){
     ispainting = false;
   }
@@ -731,14 +740,27 @@ function coordsOnMap(mouseX, mouseY){//first part gets tile on map.Map
 
 //c canvas coord, m map coord, subX/Y sub coord in map coord
 function handleMainClick(cX, cY, mX=null, mY=null, subX=null, subY=null){
+  if (devMode){
+    console.log(`${mX}, ${mY}`);
+    if (currentButton==="left"){
+      socket.emit('layTile', { tile: select.value, x:mX, y:mY });
+    }
+    if (currentButton==="right"){
+      socket.emit('clearTile', { x:mX, y:mY });
+    }
+    return;
+  }
   if (ispainting) {
     sendPaint(mX, mY, subX, subY, currentButton);
+    return;
   }
   if (crafting){
     handleCraftMenuClick(cX, cY);
+    return;
   }
   if (showSettings){
     handleSettingsClick(cX, cY);
+    return;
   }
 }
 
@@ -805,7 +827,7 @@ function layTile(){
   if (!devMode) return;
   console.log("laying tile");
   let selectedTile = select.value;
-  socket.emit('layTile', selectedTile);
+  socket.emit('layTile', { tile: selectedTile, x:null, y:null });
 }
 
 function saveMap(){
@@ -905,6 +927,7 @@ socket.on('playerState', (data)=> {
   playerData.head=data.head;
   playerData.body=data.body;
   playerData.feet=data.feet;
+  playerData.quiver=data.quiver;
   playerData.facing=data.facing;
   playerData.hp=data.hp;
   playerData.hpLvl=data.hpLvl;
@@ -1577,7 +1600,7 @@ function drawInventory() {
     }
   }
 }
-
+/*
 function drawItemInSlot(item, x, y, size, slotIndex) {
   let name = base_tiles[itemById[item.id]];
   const pad = size * 0.15;
@@ -1596,6 +1619,42 @@ function drawItemInSlot(item, x, y, size, slotIndex) {
 
   const amt = playerData.inventory[slotIndex].amount;
   invCtx.fillText(formatItemAmount(amt), x + pad, y + pad);
+}
+  */
+function drawItemInSlot(item, x, y, size, slotIndex) {
+  // --- draw the item normally ---
+  let name = base_tiles[itemById[item.id]];
+  const pad = size * 0.15;
+  const s = size - pad * 2;
+
+  invCtx.drawImage(
+    spriteSheet,
+    name.x, name.y,
+    16, 16,
+    x + pad, y + pad,
+    s, s
+  );
+
+  // --- draw the amount ---
+  invCtx.font = "10px sans-serif";
+  invCtx.fillStyle = "yellow";
+
+  const amt = playerData.inventory[slotIndex].amount;
+  invCtx.fillText(formatItemAmount(amt), x + pad, y + pad);
+
+  // --- draw "e" if this item is equipped ---
+  const equippedSlots = ["hand", "head", "body", "feet", "quiver"];
+  const isEquipped = equippedSlots.some(slot => playerData[slot] === item.id);
+
+  if (isEquipped) {
+    invCtx.font = "12px sans-serif";
+    invCtx.fillStyle = "lime";
+
+    const eX = x + size - 8;       // 8px from the right edge
+    const eY = y + size - 4;       // 4px above the bottom to avoid clipping
+
+    invCtx.fillText("e", eX, eY);
+  }
 }
 
 function formatItemAmount(n) {
@@ -1827,6 +1886,11 @@ function drawPlayers(chunk){
             players[p].murderSprite
           );
         }
+        if (players[p].criminalSprite!==null){
+          equipToDraw.push(
+            players[p].criminalSprite
+          );
+        }
         //draw any equipped items
         if (players[p].hand !== null) {
           let handSprite = getEquipSprite(players[p].hand, players[p].facing);
@@ -1876,6 +1940,19 @@ function drawMobs(chunk){
     spriteSize, spriteSize,
     j*32, i*32, drawSize, drawSize
   )
+}
+
+function drawProjectiles(chunk){
+  //draw arrows n shit
+  const proj = chunk?.projectile;
+  if (!proj) return;
+  console.log("drawing projectile");
+  ctx.drawImage(
+    spriteSheet,
+    base_tiles[proj.name].x, base_tiles[proj.name].y,
+    16, 16,
+    j * 32, i * 32, 32, 32
+  );
 }
 
 function drawChatBubbles(chunk){
@@ -2157,6 +2234,7 @@ function updateView(data){
       drawObjects(chunk);
       drawMobs(chunk);
       drawPlayers(chunk);
+      drawProjectiles(chunk);
       drawRoofs(chunk);
       drawSafeTiles(chunk);
       drawChatBubbles(chunk);

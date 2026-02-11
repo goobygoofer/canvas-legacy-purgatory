@@ -198,11 +198,37 @@ base_tiles = {
     id: 35,
     craft: { hide: 4, bluedust: 100000 }
   },
+  "arrow": {
+    "x":48,"y":1216,
+    id: 36,
+    craft: { log: 1, ironbar: 1 }
+  },
+  "bow":{
+    "x":32,"y":240,
+    id: 37,
+    craft: { log: 1, hide: 1, string: 1 },
+  },
+  "bowL":{
+    "x":144,"y":240
+  },
+  "bowR":{
+    "x":128,"y":240
+  },
+  "arrowUp": { "x": 208, "y": 240 },
+  "arrowDown": { "x": 224, "y": 240 },
+  "arrowLeft": { "x": 240, "y": 240 },
+  "arrowRight": { "x": 256, "y": 240 },
   "speedbootsL": {
     "x":161,"y":448
   },
   "speedbootsR": {
     "x":159,"y":432
+  },
+  "criminalL": {
+    "x":97,"y":176
+  },
+  "criminalR": {
+    "x":79,"y":176
   },
   "combatIcon":{
     "x":128, "y":832
@@ -224,6 +250,18 @@ base_tiles = {
   },
   "minizorgL":{
     "x":240,"y":400
+  },
+  "treeEntL":{
+    "x":288,"y":1216,
+  },
+  "rockGolemR":{
+    "x":304,"y":1200
+  },
+  "rockGolemL":{
+    "x":304,"y":1200
+  },
+  "treeEntR":{
+    "x":288,"y":1216
   },
   "ironarmorL":{
     "x":145,"y":272
@@ -371,10 +409,10 @@ base_tiles = {
   "empty-heart": { "x": 160, "y": 528 },
   "ghostR": { "x": 48, "y": 80 },//
   "ghostL": { "x": 64, "y": 96 },
-  "grass": { "x": 0, "y": 0, 'roof': false, 'type': 'base-tile', 'collision': false },//plain, "y":green grass
+  "grass": { "x": 0, "y": 0, 'roof': false, 'type': 'b-t', 'collision': false },//plain, "y":green grass
   "grass2": { "x": 160, "y": 608 },
   "cutGrass": { "x": 128, "y": 48 },//when grass2 gets cut
-  "snow": { "x": 208, "y": 528, 'roof': false, 'type': 'base-tile', 'collision': false },//
+  "snow": { "x": 208, "y": 528, 'roof': false, 'type': 'b-t', 'collision': false },//
   "tree": {//deprecated
     "x": 16,
     "y": 0,
@@ -466,7 +504,7 @@ base_tiles = {
   "rock3": { "x": 224, "y": 0, "collision": true, 'roof': false, 'type': 'objects' },//
   "rock4": { "x": 240, "y": 0, "collision": false, 'roof': false, 'type': 'depletedResource' },//
   //"rock":{"x":256, "y":0, "collision":false},//
-  "water": { "x": 0, "y": 48, "collision": true, 'roof': false, 'type': 'base-tile' },//
+  "water": { "x": 0, "y": 48, "collision": true, 'roof': false, 'type': 'b-t' },//
   "mushroomL": { "x": 80, "y": 256 },//
   "mushroomR": { "x": 80, "y": 256 },//
   "rupee": { "x": 64, "y": 800 },//need to change this sprite to look more like a rupee
@@ -514,7 +552,7 @@ base_tiles = {
   "rain": { "x": 144, "y": 432 },//
   "fenceV": { "x": 0, "y": 160 },
   "fenceH": { "x": 16, "y": 160 },
-  "sand": { "x": 16, "y": 64, 'roof': false, 'type': 'base-tile', 'collision': false },
+  "sand": { "x": 16, "y": 64, 'roof': false, 'type': 'b-t', 'collision': false },
   "boulder": { "x": 144, "y": 1232 },
   "rockpile": { "x": 304, "y": 1072 },
   "mapsign": { "x": 16, "y": 176 },
@@ -556,8 +594,8 @@ base_tiles = {
   "fPole": { "x": 288, "y": 480 },
   "craftTable": { "x": 192, "y": 528, 'roof': false, 'type': 'objects', 'collision': false },//just this for now as a click point
   "lootbag": { "x": 192, "y": 240 },
-  "abyss": { "x": 176, "y": 32, 'roof': false, 'type': 'base-tile', 'collision': true },
-  "void": { "x": 240, "y": 1232, 'roof': false, 'type': 'base-tile', 'collision': true },//just blank space for event tiles (like map e"x"it or dungeon stairs)
+  "abyss": { "x": 176, "y": 32, 'roof': false, 'type': 'b-t', 'collision': true },
+  "void": { "x": 240, "y": 1232, 'roof': false, 'type': 'b-t', 'collision': true },//just blank space for event tiles (like map e"x"it or dungeon stairs)
   "dungeonStairs": { "x": 0, "y": 352 },
   "fish": { "x": 256, "y": 480 },
   "portalfish": { "x": 224, "y": 480 },
@@ -607,11 +645,6 @@ base_tiles = {
   "llShad": { "x": 288, "y": 369 },
   "lrShad": { "x": 304, "y": 368 },
   //projectiles -- all these have up down left right
-  "arrowup": { "x": 208, "y": 240 },
-  "arrowdown": { "x": 224, "y": 240 },
-  "arrowleft": { "x": 240, "y": 240 },
-  "arrowright": { "x": 256, "y": 240 },
-  "arrow": { "x": 48, "y": 1216 },
   "pebble": { "x": 208, "y": 576 },
   "whitewave": { "x": 144, "y": 736 },
   "fireballup": { "x": 96, "y": 256 },

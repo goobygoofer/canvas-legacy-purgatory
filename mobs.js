@@ -189,7 +189,32 @@ const mobTypes = {
         drop: [
             { name: "hide", min: 1, max: 1, weight: 100 },
         ]
-    })
+    }),
+    resourceMob: (x, y) => ({
+        id: getNextMobId(),
+        type: "resourceMob",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: null,//gets set by player level
+        attack: null,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 6,
+        leashRadius: 15,
+
+        nextThink: 0,
+        thinkSpeed: 250+Math.floor(Math.random()*100),
+        facing: "left",
+
+        drop: [
+            //determined by spawnMob
+            //{ name: "*log or stone", min: *determined by lvl, max: *determined by lvl, weight: 100 }
+        ]
+    }),
 };
 
 function createMob(type, x, y) {
