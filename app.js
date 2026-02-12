@@ -114,7 +114,9 @@ setInterval(async () => {
 }
 }, 60*60*1000);
 
-const { createMob } = require("./mobs");
+const { createMob, mobTypes } = require("./mobs");
+
+console.log(mobTypes);
 
 require('dotenv').config();
 const express = require('express');
@@ -237,6 +239,16 @@ async function getLeaderboard() {
 
     UNION ALL
 
+    SELECT 'Archery' AS skill, player_name, archeryXp AS xp
+    FROM (
+      SELECT player_name, archeryXp
+      FROM players
+      ORDER BY archeryXp DESC
+      LIMIT 1
+    ) AS t
+
+    UNION ALL
+
     SELECT 'Crafting' AS skill, player_name, craftXp AS xp
     FROM (
       SELECT player_name, craftXp
@@ -277,6 +289,7 @@ async function initPlayer(name) {
       JSON_ARRAY(x, y) AS coords,
       hp,
       swordXp,
+      archeryXp,
       hpXp,
       woodcuttingXp,
       miningXp,
@@ -297,6 +310,7 @@ async function initPlayer(name) {
   let currHp = result[0].hp;
   let hpXp = result[0].hpXp;
   let swordXp = result[0].swordXp;
+  let archeryXp = result[0].archeryXp;
   let craftXp = result[0].craftXp;
   let miningXp = result[0].miningXp;
   let woodcuttingXp=result[0].woodcuttingXp;
@@ -304,6 +318,7 @@ async function initPlayer(name) {
   let criminalStatus = result[0].criminal;
   let hpLvl = await levelFromXp(hpXp);
   let swordLvl = await levelFromXp(swordXp);
+  let archeryLvl = await levelFromXp(archeryXp);
   let craftLvl = await levelFromXp(craftXp);
   let woodcuttingLvl = await levelFromXp(woodcuttingXp);
   let miningLvl = await levelFromXp(miningXp);
@@ -339,6 +354,7 @@ async function initPlayer(name) {
     lastMelee: Date.now(),
     name: name,
     swordXpTotal: swordXp,
+    archeryXpTotal: archeryXp,
     hpXpTotal: hpXp,
     swordXp: 0,//these get written to the db every so often
     hpXp: 0,   //then set back to 0
@@ -346,6 +362,7 @@ async function initPlayer(name) {
     woodcuttingXpTotal: woodcuttingXp,
     miningXpTotal: miningXp,
     swordLvl: swordLvl,
+    archeryLvl: archeryLvl,
     hpLvl: hpLvl,
     craftLvl: craftLvl,
     woodcuttingLvl: woodcuttingLvl,
@@ -360,7 +377,9 @@ async function initPlayer(name) {
     criminalTimer: 0,
     tradingWith: null,
     tradeOffer : {}, // itemId -> amount
-    tradeAccepted : false
+    tradeAccepted : false,
+    slow: false,//like when hit by web
+    slowTime: 0//set with proj.slowTime
   };
   let player = players[name];
   addPlayerToTile(name, p_coords[0], p_coords[1]);
@@ -389,7 +408,8 @@ async function dbPlayer(name) {
     hpXp = ?,
     craftXp = ?,
     woodcuttingXp = ?,
-    miningXp = ?
+    miningXp = ?,
+    archeryXp = ?
     WHERE player_name = ?`;
   const params = [
     players[name].coords[0], players[name].coords[1], 
@@ -399,6 +419,7 @@ async function dbPlayer(name) {
     players[name].craftXpTotal,
     players[name].woodcuttingXpTotal,
     players[name].miningXpTotal,
+    players[name].archeryXpTotal,
     name];
   await query(sql, params);
 }
@@ -778,6 +799,8 @@ async function emitPlayerState(player){
       hpXpTotal: player.hpXpTotal,
       swordLvl: player.swordLvl,
       swordXpTotal: player.swordXpTotal,
+      archeryLvl: player.archeryLvl,
+      archeryXpTotal: player.archeryXpTotal,
       craftLvl: player.craftLvl,
       craftXpTotal: player.craftXpTotal,
       woodcuttingLvl: player.woodcuttingLvl,
@@ -870,7 +893,7 @@ async function respawnPlayer(name){
   players[name].head=null;
   players[name].body=null;
   players[name].feet=null;
-  playeres[name].quiver=null;
+  players[name].quiver=null;
   players[name].coords[0]=26;
   players[name].coords[1]=54;
   addPlayerToTile(name, 26, 54);
@@ -882,6 +905,7 @@ async function respawnPlayer(name){
 async function updatePlayerState(player) {
   player.hpLvl = await levelFromXp(player.hpXpTotal);
   player.swordLvl = await levelFromXp(player.swordXpTotal);
+  player.archeryLvl = await levelFromXp(player.archeryXpTotal);
   player.craftLvl = await levelFromXp(player.craftXpTotal);
   player.woodcuttingLvl = await levelFromXp(player.woodcuttingXpTotal);
   player.miningLvl = await levelFromXp(player.miningXpTotal);
@@ -901,6 +925,8 @@ async function updatePlayerState(player) {
     hpXpTotal: player.hpXpTotal,
     swordLvl: player.swordLvl,
     swordXpTotal: player.swordXpTotal,
+    archeryLvl: player.archeryLvl,
+    archeryXpTotal: player.archeryXpTotal,
     craftLvl: player.craftLvl,
     craftXpTotal: player.craftXpTotal,
     woodcuttingLvl: player.woodcuttingLvl,
@@ -1645,6 +1671,14 @@ function movePlayer(name, data){
     return;//since this calls checkCollision, might have to add a lastHit
            //as well, that number might be different? idk
   }
+  if (players[name].slow===true){
+    players[name].slowTime-=players[name].movementSpeed;
+    if (players[name].slowTime<=0){
+      players[name].slow=false;
+      players[name].slowTime=0;
+    }
+    return;//can move next time lol
+  }
   players[name].lastMove = Date.now();
   const directions = ['up', 'down', 'left', 'right'];
   directions.forEach(dir => {
@@ -1740,7 +1774,12 @@ function checkCollision(name, coords){
   if (checkMelee(name, coords)){//stay in place if hitting somebody
     return true;
   }
-
+  let tile = map.Map[coords[1]][coords[0]];
+  if (tile?.mob){
+    if (tile.mob?.collision===true){
+      return true;
+    }
+  }
   const objects = map.Map[coords[1]][coords[0]].objects ?? {};
   for (const objKey in objects) {
     const obj = objects[objKey];
@@ -1823,50 +1862,11 @@ async function meleeAttack(name, targetName){
   if (weaponDmg!==0){
     damage += Math.floor(Math.random() * weaponDmg);
     damage += Math.floor(Math.random() * players[name].swordLvl);
-    damagePlayer(player, targetPlayer, damage);
+    damagePlayer(player, targetPlayer, damage, "melee");
   }
 }
-    //FROM HERE damagePlayer()
-    /*
-    if (targetPlayer.head!==null){
-      let headName = itemById[targetPlayer.head];
-      damage-=Math.floor(Math.random() * baseTiles[headName].defense);
-    }
-    if (players[targetName].body!==null){
-      let bodyName = itemById[targetPlayer.body];
-      damage-=Math.floor(Math.random() * baseTiles[bodyName].defense);
-    }
-    if (players[targetName].feet!==null){
-      let feetName = itemById[targetPlayer.feet];
-      damage-=Math.floor(Math.random() * baseTiles[feetName].defense);
-    }
-  }
-  if (damage<0){
-    damage=0;
-  }
-  players[targetName].hp-=damage;//change to playerattack-targetdefense etc
-  console.log(`Attacked ${targetName}!`);
-  players[targetName].lastHitBy = name;
-  players[name].lastPlayerHit = targetName;
-  if (damage>0){
-    io.to(players[name].sock_id).emit('playSound', ['hit']);
-    //io.to(players[targetName].sock_id).emit('playSound', 'hit');
-    io.to(players[targetName].sock_id).emit('playSound', ['hit', 'damage']);
-    io.to(players[targetName].sock_id).emit('pk message', 
-      {message: `${name} hit you for ${damage} damage!`}
-    )
-    io.to(players[name].sock_id).emit('pk message', 
-      {message: `You hit ${targetName} for ${damage} damage!`}
-    )
-  }
-  else {
-    io.to(players[name].sock_id).emit('playSound', ['miss']);
-    io.to(players[targetName].sock_id).emit('playSound', ['miss']);
-  }
-  */
-  //TO HERE damagePlayer()
 
-function damagePlayer(player, targetPlayer, damage) {
+function damagePlayer(player, targetPlayer, damage, type) {
   if (targetPlayer.head !== null) {
     let headName = itemById[targetPlayer.head];
     damage -= Math.floor(Math.random() * baseTiles[headName].defense);
@@ -1885,9 +1885,7 @@ function damagePlayer(player, targetPlayer, damage) {
   }
   targetPlayer.hp -= damage;//change to playerattack-targetdefense etc
   if (!targetPlayer.criminal && !targetPlayer.murderer){
-    console.log("trying to set criminal!");
     if (!player.criminal && !player.murderer){
-      console.log("setting criminal!");
       startCriminalTimer(player.name);//15 min criminal!
     }
   }
@@ -1896,7 +1894,6 @@ function damagePlayer(player, targetPlayer, damage) {
   player.lastPlayerHit = targetPlayer.name;
   if (damage > 0) {
     io.to(player.sock_id).emit('playSound', ['hit']);
-    //io.to(players[targetName].sock_id).emit('playSound', 'hit');
     io.to(targetPlayer.sock_id).emit('playSound', ['hit', 'damage']);
     io.to(targetPlayer.sock_id).emit('pk message',
       { message: `${player.name} hit you for ${damage} damage!` }
@@ -1925,35 +1922,48 @@ function meleeAttackMob(playerName, mobId) {
       damage += Math.floor(Math.random() * weaponDmg);
       damage += Math.floor(Math.random() * players[playerName].swordLvl);
     }
-    console.log(`reg damage: ${damage}`);
-    console.log(`floor damage: ${Math.floor(damage)}`)
     if (damage!==0){
-      let giveXp = Math.floor(damage/10);
-      if (mob.hp-damage<0){
-        giveXp=Math.floor(Math.floor(mob.hp/10));
-      }
-      if (giveXp<1){
-        giveXp=1;
-      }
-      players[playerName].swordXpTotal+=giveXp;//xp 10% of damage, can change
-      players[playerName].hpXpTotal+=giveXp;
-      if (damage<0){
-        damage=0;//just a safeguard, might not need here
-      }
-      mob.hp -= damage;
-      io.to(players[playerName].sock_id).emit('playSound', ['hit']);
-      io.to(players[playerName].sock_id).emit('pk message',
-        {message: `You hit the ${mob.type} for ${damage} damage!`}
-      )
+      damageMob(playerName, mobId, damage, "melee");
     } else {
       io.to(players[playerName].sock_id).emit('playSound', ['miss']);
     }
-    console.log(`Player ${playerName} hit mob ${mob.type} for ${damage}`);
-    /*
-    if (mob.hp <= 0) {
-        killMob(mob);
-    }
-    */
+}
+
+async function damageMob(playerName, mobId, damage, type){
+  let player = players[playerName];
+  let targetMob = mobs.get(mobId);
+  let xp = Math.floor(damage / 10);
+  if (targetMob.hp - damage < 0) {
+    xp = Math.floor(Math.floor(targetMob.hp / 10));
+  }
+  if (xp< 1) {
+    xp= 1;
+  }
+  await giveXp(playerName, xp, type);
+  if (damage < 0) {
+    damage = 0;//just a safeguard, might not need here
+  }
+  targetMob.hp -= damage;
+  io.to(players[playerName].sock_id).emit('playSound', ['hit']);
+  io.to(players[playerName].sock_id).emit('pk message',
+    { message: `You hit the ${targetMob.type} for ${damage} damage!` }
+  )
+}
+
+async function giveXp(playerName, xp, type){
+  let player = players[playerName];
+  switch (type){
+    case "melee":
+      player.swordXpTotal += xp;
+      player.hpXpTotal += xp;
+      break;
+    case "archery":
+      player.archeryXpTotal += xp;
+      break;
+    case "mage":
+      player.mageXpTotal += xp;
+      break;
+  }
 }
 
 async function killMob(mob) {
@@ -2767,9 +2777,10 @@ async function replenishResources() {
       //plant regens like this need separate fxns
       Object.keys(tile?.objects ?? {}).forEach(k => k.startsWith("flower") && delete tile.objects[k]);
       if (
+        //will need to change this not to go on player plots and shit lol
         isEmpty(tile?.objects) &&
         isEmpty(tile?.floor) &&
-        isEmpty(tile?.roof) &&
+        //isEmpty(tile?.roof) &&
         isEmpty(tile?.depletedResources) &&
         tile['b-t']==='grass'
         ) 
@@ -2784,7 +2795,7 @@ async function replenishResources() {
       if (
         isEmpty(tile?.objects) &&
         isEmpty(tile?.floor) &&
-        isEmpty(tile?.roof) &&
+        //isEmpty(tile?.roof) &&
         isEmpty(tile?.depletedResources) &&
         tile['b-t']==='grass'
         ) 
@@ -2979,6 +2990,50 @@ const mobSpawns = [
       y: 135,
       count: 1,
       respawnTime: 30000
+    },
+    {
+      type: "spider",
+      x: 131,
+      y: 108,
+      count: 2,
+      respawnTime: 5000
+    },
+    {
+      type: "spider",
+      x: 150,
+      y: 98,
+      count: 3,
+      respawnTime: 5000
+    },
+    {
+      type: "spiderweb",
+      x:97, y:111,
+      count: 1,
+      respawnTime: 30000
+    },
+    {
+      type: "spiderweb",
+      x:110, y:118,
+      count: 1,
+      respawnTime: 30000
+    },
+    {
+      type: "spiderweb",
+      x:123, y:114,
+      count: 1,
+      respawnTime: 30000
+    },
+    {
+      type: "spiderweb",
+      x:135, y:106,
+      count: 1,
+      respawnTime: 30000
+    },
+    {
+      type: "spiderweb",
+      x:144, y:101,
+      count: 1,
+      respawnTime: 30000
     }
     /*
     let testZorg = createMob('zorg', 42, 135);
@@ -3001,12 +3056,13 @@ function countMobsByType(type) {
 function spawnMob(spawn) {
     const mob = createMob(spawn.type, spawn.x, spawn.y);
     mobs.set(mob.id, mob);
-
     map.Map[mob.y][mob.x].mob = {
         id: mob.id,
         sprite: mob.type + "L"
     };
-
+    if (mob?.collision===true){
+      map.Map[mob.y][mob.x].mob.collision=true;
+    }
     mob.spawnRef = spawn; // 🔑 link back to spawn
     //for minion spawners so they don't spam
     if (mob?.spawnMinion){
@@ -3089,7 +3145,6 @@ function findPlayerInRange(mob) {
         const py = player.coords[1];
         const dist = Math.abs(mob.x - px) + Math.abs(mob.y - py);
         if (dist <= mob.aggroRadius) {
-            console.log(`Player ${name} detected by mob ${mob.id}`);
             return player;
         }
     }
@@ -3173,7 +3228,9 @@ function wander(mob) {
 function moveToward(mob, target) {
     const px = target.coords[0];
     const py = target.coords[1];
-
+    if (target?.name && mob?.rangeAttack){
+      mobRangeAttack(mob, target);
+    }
     const dx = Math.sign(px - mob.x);
     const dy = Math.sign(py - mob.y);
 
@@ -3189,6 +3246,35 @@ function moveToward(mob, target) {
     }
 
     // if blocked → do nothing (NO wandering here)
+}
+
+function mobRangeAttack(mob, target){
+  if (Date.now()<mob.lastAttack+1000) return;
+  console.log("mob range attack!");
+  mob.lastAttack=Date.now();
+  let projType = mob.rangeAttack.type;
+  const dir = getDirectionToward(mob.x, mob.y, target.coords[0], target.coords[1]);
+  if (mob.rangeAttack?.slow===true){
+    console.log("making projectile with slow property");
+    let slowTime = mob.rangeAttack.slowTime;
+    const mobProj = createProjectile(projType, dir, mob.x, mob.y, mob.id, true, slowTime);
+    addProjectileToTile(mobProj);
+  } else {
+    const mobProj = createProjectile(projType, dir, mob.x, mob.y, mob.id);//fix "right" lol
+    addProjectileToTile(mobProj);
+  }
+}
+
+function getDirectionToward(fromX, fromY, toX, toY) {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+
+  // whichever difference is larger wins
+  if (Math.abs(dx) > Math.abs(dy)) {
+    return dx > 0 ? "right" : "left";
+  } else {
+    return dy > 0 ? "down" : "up";
+  }
 }
 
 function returnToSpawn(mob) {
@@ -3271,7 +3357,7 @@ setInterval(updateMobs, 250);
 async function initMurderers() {
   // Get all players who are murderers with a remaining timer
   const rows = await query(
-    `SELECT player_name, x, y, hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer
+    `SELECT player_name, x, y, hp, hpXp, swordXp, archeryXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer
      FROM players
      WHERE murderer = 1 AND murderTimer > 0`
   );
@@ -3292,6 +3378,7 @@ async function initMurderers() {
     // Calculate levels
     const hpLvl = await levelFromXp(result.hpXp);
     const swordLvl = await levelFromXp(result.swordXp);
+    const archeryLvl = await levelFromXp(result.archeryXp);
     const craftLvl = await levelFromXp(result.craftXp);
     const woodcuttingLvl = await levelFromXp(result.woodcuttingXp);
     const miningLvl = await levelFromXp(result.miningXp);
@@ -3331,55 +3418,7 @@ async function initCriminals() {
   await initMurderers();
   await initCriminals();
 })();
-/*
-const MURDER_TICK_INTERVAL = 1000; // ms (1 second)
 
-setInterval(async () => {
-  // 1. Get all active murderers
-  const rows = await query(
-    `
-    SELECT player_name, murderTimer
-    FROM players
-    WHERE murderer = 1
-      AND murderTimer > 0
-    `
-  );
-
-  if (!rows.length) return;
-  for (const player of rows) {
-    const newTimer = Math.max(player.murderTimer - MURDER_TICK_INTERVAL, 0);
-    // update timer
-    await query(
-      `
-      UPDATE players
-      SET murderTimer = ?
-      WHERE player_name = ?
-      `,
-      [newTimer, player.player_name]
-    );
-
-    // if timer expired, clear murderer
-    if (newTimer === 0) {
-      await query(
-        `
-        UPDATE players
-        SET murderer = 0
-        WHERE player_name = ?
-        `,
-        [player.player_name]
-      );
-      players[player.player_name].murderer=false;
-      players[player.player_name].murderSprite=null;
-      io.emit('server message', {//global chat, user needs toggle for wanting privacy
-        message: `${player.player_name} has been cleared of murder charges...`
-      });
-      if (players[player.player_name].sock_id===null){//they weren't logged in
-        cleanupPlayer(player.player_name);
-      }
-    } 
-  }
-}, MURDER_TICK_INTERVAL);
-*/
 const STATUS_TICK_INTERVAL = 1000; // 1 second
 
 setInterval(async () => {
@@ -3472,7 +3511,7 @@ setInterval(async () => {
 const projectiles = new Map();
 let nextProjectileId = 1;
 
-function createProjectile(type, direction, x, y, ownerId) {
+function createProjectile(type, direction, x, y, ownerId, slow=false, slowTime=null) {
   const id = nextProjectileId++;
   const damage = baseTiles[type].attack;
   const projectile = {
@@ -3489,7 +3528,10 @@ function createProjectile(type, direction, x, y, ownerId) {
 
   // derive the tile name for rendering
   projectile.tileName = type + direction.charAt(0).toUpperCase() + direction.slice(1); // e.g., "arrowRight"
-
+  if (slow===true){
+    projectile.slow=true;
+    projectile.slowTime=slowTime;
+  }
   projectiles.set(id, projectile);
   return projectile;
 }
@@ -3499,7 +3541,6 @@ function addProjectileToTile(proj) {
   markTileChanged(proj.x, proj.y);
   // if tile already has a projectile, destroy both
   if (tile.projectile) {
-    console.log(`Projectile collision at ${proj.x},${proj.y}`);
     projectiles.delete(proj.id);
     // optionally delete the existing one? depends on rules
     delete tile.projectile;
@@ -3507,13 +3548,11 @@ function addProjectileToTile(proj) {
     return false;
   }
   if (checkProjectileCollision(proj)===true){
-    console.log("arrow collided with something");
     projectiles.delete(proj.id);
     delete tile.projectile;
     markTileChanged(proj.x, proj.y);
     return false;
   }
-  console.log("adding arrow to tile");
   tile.projectile = { name: proj.tileName };
   proj.prevTile = { x: proj.x, y: proj.y };
   markTileChanged(proj.x, proj.y);
@@ -3525,7 +3564,6 @@ function checkProjectileCollision(proj){
   if (tile?.objects){
     for (obj in tile.objects){
       if (baseTiles[tile.objects[obj].name].collision){
-        console.log("hit obj with collision!");
         return true;
       }
     }
@@ -3533,18 +3571,15 @@ function checkProjectileCollision(proj){
   if (tile?.players){
     if (Object.keys(tile.players).length>0){
       if (tile.players[proj.ownerId]){
-        console.log("owned arrow");
         return false;
       }
-      console.log("hit a player!");//hits first player on tile, sorry rng lol
       let targetName = Object.keys(tile.players)[0];
       rangeAttackPlayer(proj, targetName);
       return true;
     }
   }
   if (tile?.mob){
-    if (Object.keys(tile.mob).length>0){
-      console.log("hit a mob!");
+    if (Object.keys(tile.mob).length>0 && mobs.get(proj.ownerId)===undefined){
       rangeAttackMob(proj, tile.mob);
       return true;
     }
@@ -3554,22 +3589,41 @@ function checkProjectileCollision(proj){
 
 //add all functionality, sounds, rand hits/crits, etc
 function rangeAttackMob(proj, mob){
+  if (mobs.get(proj.ownerId)!==undefined) return;
   let mobObj = mobs.get(mob.id);
   let player = players[proj.ownerId];
   console.log(`Hit ${mobObj.type} with ${proj.type} for ${proj.damage}`);
-  mobObj.hp-=proj.damage;//just for now
-  console.log(`mobhp: ${mobObj.hp}`);
-  //send sounds, etc
+  let damage = Math.floor(Math.random()*baseTiles[proj.type].attack);
+  damageMob(proj.ownerId, mob.id, damage, "archery");
 }
 
 //must consolidate doing damage to players/mobs
 //else have to rewrite murder status, sounds etc
 function rangeAttackPlayer(proj, targetName){
-  let damage = baseTiles[proj.type].attack;
-  let player = players[proj.ownerId];
+  let damage = Math.floor(Math.random()*baseTiles[proj.type].attack);
   let targetPlayer = players[targetName];
-  console.log(`${proj.ownerId} hit ${targetName} with ${proj.type} for ${damage} damage!`);
-  damagePlayer(player, targetPlayer, damage);
+  if (proj?.slow===true){
+    targetPlayer.slow=true;
+    targetPlayer.slowTime=proj.slowTime;
+  }
+  if (mobs.get(proj.ownerId)!==undefined){
+    mobRangeDamagePlayer(proj, targetPlayer);
+  }else {
+    let player = players[proj.ownerId];
+    console.log(`${proj.ownerId} hit ${targetName} with ${proj.type} for ${damage} damage!`);
+    damagePlayer(player, targetPlayer, damage, "archery");
+  }
+}
+
+function mobRangeDamagePlayer(proj, targetPlayer){
+  let damage = baseTiles[proj.type].attack;
+  //other logic for combat triangle, armour etc
+  targetPlayer.hp-=damage;
+  let mobName = mobs.get(proj.ownerId);
+  io.to(targetPlayer.sock_id).emit('playSound', ['hit', 'damage']);
+  io.to(targetPlayer.sock_id).emit('pk message',
+    { message: `The ${mobName.type} hit you for ${damage} damage!` }
+  )
 }
 
 function removeProjectileFromTile(proj) {
@@ -3601,7 +3655,10 @@ function updateProjectiles() {
     if (proj.life <= 0) {
       removeProjectileFromTile(proj);
       markTileChanged(proj.x, proj.y);
-      addToMap("arrow", proj.x, proj.y); //change to drop proper item (or not for spells etc)
+      if (proj.type.startsWith("arrow")){//still not perfect, fix
+        addToMap(proj.type, proj.x, proj.y);
+      }
+     //change to drop proper item (or not for spells etc)
       projectiles.delete(id);
     }
   }

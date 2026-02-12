@@ -934,6 +934,8 @@ socket.on('playerState', (data)=> {
   playerData.hpXpTotal=data.hpXpTotal;
   playerData.swordLvl=data.swordLvl;
   playerData.swordXpTotal=data.swordXpTotal;
+  playerData.archeryXpTotal=data.archeryXpTotal;
+  playerData.archeryLvl=data.archeryLvl;
   playerData.craftLvl=data.craftLvl;
   playerData.craftXpTotal=data.craftXpTotal;
   playerData.woodcuttingLvl=data.woodcuttingLvl;
@@ -1695,10 +1697,11 @@ const statsConfig = [
   { key: "hpLvl", name: "HP", sx: base_tiles['heart'].x, sy: base_tiles['heart'].y }, // icon at (16,0)
   { key: "craftLvl", name: "Crafting", sx: base_tiles['craftTools'].x, sy: base_tiles['craftTools'].y },
   { key: "woodcuttingLvl", name: "Woodcutting", sx: base_tiles['axe'].x, sy: base_tiles['axe'].y },
-  { key: "miningLvl", name: "HP", sx: base_tiles['pickaxe'].x, sy: base_tiles['pickaxe'].y }
+  { key: "miningLvl", name: "HP", sx: base_tiles['pickaxe'].x, sy: base_tiles['pickaxe'].y },
+  { key: "archeryLvl", name: "Archery", sx: base_tiles['arrow'].x, sy: base_tiles['arrow'].y }
   // Add more stats here as needed
 ];
-
+/*
 function drawStats() {
   if (!playerData) return;
 
@@ -1732,6 +1735,56 @@ function drawStats() {
     );
 
     y += rowHeight;
+  }
+}
+*/
+function drawStats() {
+  if (!playerData) return;
+
+  const iconSize = 16;
+  const padding = 4;
+
+  const columns = 4;
+
+  // room for icon + padding + up to 3 digit level + a little breathing room
+  const columnWidth = iconSize + padding + 24;
+
+  const rowHeight = iconSize + 6;
+
+  const startY = 14;
+
+  let index = 0;
+
+  for (const stat of statsConfig) {
+    if (!stat || !stat.key) continue;
+    if (!(stat.key in playerData)) continue;
+
+    const level = playerData[stat.key];
+
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+
+    const x = col * columnWidth;
+    const y = startY + row * rowHeight;
+
+    // icon
+    invCtx.drawImage(
+      spriteSheet,
+      stat.sx, stat.sy, iconSize, iconSize,
+      x, y, iconSize, iconSize
+    );
+
+    // level text
+    invCtx.fillStyle = "black";
+    invCtx.font = "12px Arial";
+    invCtx.textBaseline = "middle";
+    invCtx.fillText(
+      level,
+      x + iconSize + padding,
+      y + iconSize / 2
+    );
+
+    index++;
   }
 }
 

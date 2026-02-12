@@ -294,6 +294,12 @@ module.exports = {
     equip: { slot: "hand" },
     attack: 1
   },
+  "string": { 
+    kind: "item",
+    id: 38,
+    container: "objects",
+    collision: false
+  },
   "lootbag": {
       kind: "lootbag",
       container: "objects",
@@ -302,7 +308,10 @@ module.exports = {
       //mobs drop these with random items
       //player drops all inventory on death
       //{id:1, amt:1} etc
-    },
+  },
+  "web": {
+    attack: 5
+  },
   // -----------------------------------resources----------------------------------------
   "tree0": {
     kind: "resource",
@@ -840,7 +849,6 @@ module.exports = {
   "upArrow": {},
   "downArrow": {},
   "hpIcon": {},
-  "string": {},
   "fPoleR": {},
   "fPoleL": {},
   "fPole": {},
@@ -850,7 +858,6 @@ module.exports = {
   "cookedfish": {},
   "bobber": {},
   "chest2": {},
-  "web": {},
   "raft": {},
   "sail": {},
   "key": {},

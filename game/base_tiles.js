@@ -208,6 +208,10 @@ base_tiles = {
     id: 37,
     craft: { log: 1, hide: 1, string: 1 },
   },
+  "string": { 
+    "x": 80, "y": 240,
+    id: 38
+  },
   "bowL":{
     "x":144,"y":240
   },
@@ -262,6 +266,12 @@ base_tiles = {
   },
   "treeEntR":{
     "x":288,"y":1216
+  },
+  "spiderL":{
+    "x":112,"y":240
+  },
+  "spiderR":{
+    "x":96,"y":240
   },
   "ironarmorL":{
     "x":145,"y":272
@@ -495,6 +505,17 @@ base_tiles = {
     collision: false,
     regrowsTo: "rock0"
   },
+  "web": { "x": 208, "y": 400 },
+  "webRight": { "x": 208, "y": 400 },
+  "webUp": { "x": 208, "y": 400 },
+  "webDown": { "x": 208, "y": 400 },
+  "webLeft": { "x": 208, "y": 400 },
+  "spiderwebL":{
+    "x": 208, "y": 400
+  },
+  "spiderwebR":{
+    "x": 208, "y": 400
+  },
   "oak": { "x": 128, "y": 1104, "collision": true },//
   "deadtree": { "x": 48, "y": 464 },//
   "snowtree": { "x": 176, "y": 544 },//
@@ -588,7 +609,6 @@ base_tiles = {
   "upArrow": { "x": 80, "y": 975 },
   "downArrow": { "x": 96, "y": 975 },
   "hpIcon": { "x": 160, "y": 832 },
-  "string": { "x": 80, "y": 240 },//probabl"y" another objects like logs where no actual objects (like A"x"e), "y":just inv obj and sprite obj
   "fPoleR": { "x": 0, "y": 496 },
   "fPoleL": { "x": 16, "y": 495 },
   "fPole": { "x": 288, "y": 480 },
@@ -602,7 +622,6 @@ base_tiles = {
   "cookedfish": { "x": 272, "y": 480 },
   "bobber": { "x": 304, "y": 480 },
   "chest2": { "x": 240, "y": 816 },
-  "web": { "x": 208, "y": 400 },
   "raft": { "x": 128, "y": 1264 },
   "sail": { "x": 144, "y": 1264 },//draw raft > pla"y"er > sail
   "key": { "x": 16, "y": 848 },

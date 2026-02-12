@@ -5,6 +5,8 @@ spriteSheet.src = 'spritesheet-0.5.18.png';
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+
+
 const COLOR_PALETTE = {
   0:  { name: "Black",        hex: "#000000" },
   1:  { name: "White",        hex: "#ffffff" },
@@ -91,8 +93,8 @@ const CANVAS_SIZE = 3200;      // your canvas width/height
 const TILE_PIXELS = 16;        // your tile width/height in source spriteSheet
 const SUBPIXELS = 4;           // each tile has 4x4 subpixels
 
-const mapWidth  = map[0].length;  // number of tiles horizontally
-const mapHeight = map.length;     // number of tiles vertically
+const mapWidth  = 800;  // number of tiles horizontally
+const mapHeight = 600;     // number of tiles vertically
 
 // total size of the map in “map pixels”
 const mapPixelWidth  = mapWidth * TILE_PIXELS;

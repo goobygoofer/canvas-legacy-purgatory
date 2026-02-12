@@ -215,6 +215,59 @@ const mobTypes = {
             //{ name: "*log or stone", min: *determined by lvl, max: *determined by lvl, weight: 100 }
         ]
     }),
+    spider: (x, y) => ({
+        id: getNextMobId(),
+        type: "spider",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 40,
+        attack: 5,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        rangeAttack: {
+            type: "web",
+            slow: true,
+            slowTime: 4000
+        },
+
+        aggroRadius: 6,
+        leashRadius: 7,
+
+        nextThink: 0,
+        thinkSpeed: 250+Math.floor(Math.random()*100),
+        facing: "left",
+
+        drop: [
+            { name: "coin", min: 5, max: 50, weight: 1000 },
+            { name: "string", min:1, max: 1, weight: 1000 }
+        ]
+    }),
+    spiderweb: (x, y) => ({
+        id: getNextMobId(),
+        type: "spiderweb",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 10,
+        attack: 0,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 0,
+        leashRadius: 0,
+
+        nextThink: 10000,
+        facing: "left",
+        passive: true,
+        thinkSpeed: 0,
+        collision: true
+    }),
 };
 
 function createMob(type, x, y) {
@@ -222,4 +275,4 @@ function createMob(type, x, y) {
     if (!factory) throw new Error("Unknown mob type: " + type);
     return factory(x, y);
 }
-module.exports = { createMob };
+module.exports = { createMob, mobTypes };
