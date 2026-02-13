@@ -212,6 +212,32 @@ base_tiles = {
     "x": 80, "y": 240,
     id: 38
   },
+  "fishingpole": {
+    "x":288,"y":480,
+    id: 39,
+    craft: { log: 1, hide: 1, string: 1, ironbar: 1 },
+  },
+  "cod":{
+    "x":256,"y":480,
+    id: 40
+  },
+  "goldfish":{
+    "x":272, "y":480,
+    id: 41,
+  },
+  "redfish":{
+    "x":208,"y":480,
+    id: 42,
+  },
+  "fishingspot":{
+    "x":272,"y":1264,
+  },
+  "fishingpoleL":{
+    "x":16,"y":496
+  },
+  "fishingpoleR":{
+    "x":0,"y":496
+  },
   "bowL":{
     "x":144,"y":240
   },

@@ -282,8 +282,9 @@ module.exports = {
     container: "objects",
     collision: false,
     craft: { log: 1, ironbar: 1 },
+    craftAmount: 12,
     equip: { slot: "quiver" },
-    attack: 5
+    attack: 10
   },
   "bow":{
     kind: "item",
@@ -297,6 +298,40 @@ module.exports = {
   "string": { 
     kind: "item",
     id: 38,
+    container: "objects",
+    collision: false
+  },
+  "fishingpole": {
+    kind: "item",
+    id: 39,
+    container: "objects",
+    collision: false,
+    craft: { log: 1, hide: 1, string: 1, ironbar: 1 },
+    equip: { slot: "hand" },
+    attack: 0//lol
+  },
+  "cod":{
+    kind: "item",
+    id: 40,
+    container: "objects",
+    collision: false,
+    xp: 5
+  },
+  "goldfish":{
+    kind: "item",
+    id: 41,
+    container: "objects",
+    collision: false,
+    xp: 8
+  },
+  "redfish":{
+    kind: "item",
+    id: 42,
+    container: "objects",
+    collision: false,
+    xp: 15
+  },
+  "fishingspot":{
     container: "objects",
     collision: false
   },
@@ -853,9 +888,6 @@ module.exports = {
   "fPoleL": {},
   "fPole": {},
   "dungeonStairs": {},
-  "fish": {},
-  "portalfish": {},
-  "cookedfish": {},
   "bobber": {},
   "chest2": {},
   "raft": {},
@@ -867,8 +899,6 @@ module.exports = {
   "C": {},
   "hitOutlineLeft": {},
   "hitOutlineRight": {},
-  "tunafish": {},
-  "cookedtuna": {},
   "leatherArmorL": {},
   "leatherArmorR": {},
   "leatherArmorI": {},

@@ -419,43 +419,16 @@ canvas.addEventListener("mouseup", () => {
 
 canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
-/*
-function onKeyDown(e) {
-  if (document.activeElement === input) return;
-  if (e.key === 'Shift'){
-    handleShiftKey();
-    return;
+function closePopups(){
+  crafting = false;
+  showLeaderboard = false;
+  if (bankOpen){
+    closeBank();
   }
-  if (e.key === ' ') {
-    const active = document.activeElement;
-    if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') {
-      return;
-    }
-    if (devMode){
-      layTile();
-    } else {
-      socket.emit('player input', e.key);
-    }
-    crafting = false;
-    return;
+  if (isTrading){
+    socket.emit("tradeCancel");
   }
-  const key = keys[e.key];
-  if (!key) return;
-  emitInputSwitch=true;
-  keystate[key] = true;
-  keystate.lastInput = Date.now();
-  crafting = false;//need universal to close any similar popups
-  showLeaderboard=false;
 }
-
-function onKeyUp(e) {
-  const key = keys[e.key];
-  if (!key) return;
-  emitInputSwitch=false;
-  keystate[key] = false;
-  emitInput();
-}
-*/
 
 function onKeyDown(e) {
   if (document.activeElement === input) return;
@@ -474,13 +447,8 @@ function onKeyDown(e) {
   if (e.key === ' ') {
     const active = document.activeElement;
     if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') return;
-
-    if (devMode) {
-      layTile();
-    } else {
-      socket.emit('player input', ' '); // keep your existing socket
-    }
-    crafting = false;
+    socket.emit('player input', ' '); // keep your existing socket
+    closePopups();
     return;
   }
 
@@ -489,8 +457,9 @@ function onKeyDown(e) {
 
   keystate[key] = true;
   socket.emit('player input', { key, state: true }); // one emit per keydown
-  crafting = false;
-  showLeaderboard = false;
+  //crafting = false;
+  //showLeaderboard = false;
+  closePopups();
 }
 
 function onKeyUp(e) {
@@ -603,33 +572,6 @@ function handleActiveTabClick(x, y, leftRight){
     handleInvClick(x, y, leftRight);
   }
 }
-
-/*
-function handleInvClick(mx, my, leftRight) {
-  if (my < TAB_HEIGHT) return null;
-
-  const invY = my - TAB_HEIGHT;
-
-  const col = Math.floor(mx / SLOT_SIZE);
-  const row = Math.floor(invY / SLOT_SIZE);
-
-  if (
-    col < 0 || col >= INV_COLS ||
-    row < 0 || row >= INV_ROWS
-  ) {
-    activeInvItem = null;
-  } else {
-    activeInvItem = row * INV_COLS + col; //0–31
-  }
-  if (leftRight==='left'){
-    socket.emit('activeInvItem', activeInvItem);
-  }
-  if (leftRight==='right'){
-    socket.emit('dropItem', activeInvItem);
-  }
-  drawInventory();
-}
-*/
 
 function handleInvClick(mx, my, leftRight) {
   if (my < TAB_HEIGHT) return null;
@@ -901,6 +843,7 @@ function addTradeIncomingMessage(username) {
   decline.style.color = "red";
   line.append(nameSpan, accept, " ", decline);
   messages.append(line);
+  messages.scrollTop = messages.scrollHeight;
 }
 
 socket.on("chatEvent", (data) => {
@@ -918,6 +861,7 @@ socket.on('chat message', (data) => {
 socket.on('server message', (data) => {
   const { message } = data;
   messages.innerHTML += `<div><strong>${message}</strong></div>`;
+  messages.scrollTop = messages.scrollHeight;
 });
 
 socket.on('playerState', (data)=> {
@@ -934,6 +878,8 @@ socket.on('playerState', (data)=> {
   playerData.hpXpTotal=data.hpXpTotal;
   playerData.swordLvl=data.swordLvl;
   playerData.swordXpTotal=data.swordXpTotal;
+  playerData.fishingLvl=data.fishingLvl;
+  playerData.fishingXpTotal=data.fishingXpTotal;
   playerData.archeryXpTotal=data.archeryXpTotal;
   playerData.archeryLvl=data.archeryLvl;
   playerData.craftLvl=data.craftLvl;
@@ -975,7 +921,7 @@ socket.on('playSound', (data) => {
 });
 
 socket.on('readSign', (data) => {
-  messages.innerHTML += `<div style="color: brown;">\n<strong>${data}\n</div>`;
+  messages.innerHTML += `<div style="color: brown;">\n<strong>${data.message}\n</div>`;
   messages.scrollTop = messages.scrollHeight;
 })
 
@@ -1022,26 +968,32 @@ socket.on("tradeStarted", data => {
   isTrading=true;
   openTradeWindow(data.with);
   messages.innerHTML += `<div><strong style="color: green;">Trading with ${data.with}!</strong></div>`;
+  messages.scrollTop = messages.scrollHeight;
 });
 
 socket.on("tradeStatus", data => {
   console.log(data.who, "accepted");
   messages.innerHTML += `<div><strong style="color: green;">${data.who} agreed to trade!</strong></div>`;
+  messages.scrollTop = messages.scrollHeight;
 });
 
 socket.on("tradeComplete", () => {
   console.log("trade complete!");
   isTrading=false;
-  document.getElementById("tradeWindow")?.remove();
-  messages.innerHTML += `<div><strong style="color: green;">Trade successful!</strong></div>`;
+  closeTradeWindow();
 });
 
 socket.on("tradeCanceled", () => {
   console.log("They aint wanna trade with you");
+  closeTradeWindow();
+});
+
+function closeTradeWindow(){
   isTrading=false;
   document.getElementById("tradeWindow")?.remove();
   messages.innerHTML += `<div><strong style="color: red;">Trade cancelled!</strong></div>`;
-});
+  messages.scrollTop = messages.scrollHeight;
+}
 
 let myTradeOffer = null;
 let theirTradeOffer = null;
@@ -1054,6 +1006,7 @@ socket.on("tradeSync", ({ myOffer, theirOffer, accepted }) => {
   console.log(tradeState);
   renderTradeItems();
   messages.innerHTML += `<div><strong style="color: green;">Trade updated!</strong></div>`;
+  messages.scrollTop = messages.scrollHeight;
 });
 
 function openTradeWindow(otherPlayer) {
@@ -1114,138 +1067,6 @@ const tradeState = {
   theirOffer: {},
   accepted: false
 };
-/*
-function renderTradeItems() {
-  console.log("rendering trade!");
-  const myDiv = document.getElementById("myTradeItems");
-  const theirDiv = document.getElementById("theirTradeItems");
-
-  // --- My Offer (with input) ---
-  for (const slot in tradeState.myOffer) {
-    const item = tradeState.myOffer[slot];
-    if (!item) continue;
-    
-    if (item.amount === undefined || item.amount === null) {
-      item.amount = item.initialAmount || 1;
-    }
-    const amount = item.amount ?? 1;
-
-    let container = document.getElementById("mySlot_" + slot);
-    let numInput;
-
-    if (!container) {
-      container = document.createElement("div");
-      container.id = "mySlot_" + slot;
-      myDiv.appendChild(container);
-
-      const label = document.createElement("span");
-      label.id = "label_" + slot;
-      container.appendChild(label);
-
-      // Icon
-      const iconCanvas = document.createElement("canvas");
-      iconCanvas.width = 16;
-      iconCanvas.height = 16;
-      iconCanvas.id = "icon_" + slot;
-      container.appendChild(iconCanvas);
-
-      const ctx = iconCanvas.getContext("2d");
-      const tile = base_tiles[itemById[item.id]];
-      ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
-
-      // Input
-      numInput = document.createElement("input");
-      numInput.type = "number";
-      numInput.min = 1;
-      numInput.max = item.initialAmount || item.amount;
-      //numInput.value = item.amount;
-      numInput.id = "input_" + slot;
-
-      numInput.addEventListener("input", () => {
-        let val = parseInt(numInput.value, 10);
-
-        if (isNaN(val) || val < 1) val = 1;
-
-        const max = item.initialAmount || item.amount || 1;
-        if (val > max) val = max;
-
-        // keep UI synced with the corrected value
-        //numInput.value = val;
-        if (document.activeElement !== numInput) {
-          numInput.value = val;
-        }
-
-        // update local state
-        tradeState.myOffer[slot].amount = val;
-
-        // send the CLEAN number
-        socket.emit("tradeOfferUpdate", { slot, amount: val });
-      });
-
-      container.appendChild(numInput);
-    } else {
-      numInput = document.getElementById("input_" + slot);
-      numInput.max = item.initialAmount || item.amount;
-
-      const iconCanvas = document.getElementById("icon_" + slot);
-      if (iconCanvas) {
-        const ctx = iconCanvas.getContext("2d");
-        const tile = base_tiles[itemById[item.id]];
-        ctx.clearRect(0, 0, 16, 16);
-        ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
-      }
-    }
-
-    document.getElementById("label_" + slot).textContent = `${item.name || item.id} x`;
-  }
-
-  // --- Their Offer (read-only) ---
-  for (const slot in tradeState.theirOffer) {
-    const item = tradeState.theirOffer[slot];
-    if (!item) continue;
-
- //   if (item.amount === undefined || item.amount === null) {
- //     item.amount = item.initialAmount || 1;
- //   }
-
-    if (item.amount === undefined || item.amount === null) {
-      item.amount = 1;
-    }
-
-    let container = document.getElementById("theirSlot_" + slot);
-
-    if (!container) {
-      container = document.createElement("div");
-      container.id = "theirSlot_" + slot;
-      theirDiv.appendChild(container);
-
-      const label = document.createElement("span");
-      label.id = "theirLabel_" + slot;
-      container.appendChild(label);
-
-      const iconCanvas = document.createElement("canvas");
-      iconCanvas.width = 16;
-      iconCanvas.height = 16;
-      iconCanvas.id = "theirIcon_" + slot;
-      container.appendChild(iconCanvas);
-
-      const ctx = iconCanvas.getContext("2d");
-      const tile = base_tiles[itemById[item.id]];
-      ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
-    } else {
-      const iconCanvas = document.getElementById("theirIcon_" + slot);
-      if (iconCanvas) {
-        const ctx = iconCanvas.getContext("2d");
-        const tile = base_tiles[itemById[item.id]];
-        ctx.clearRect(0, 0, 16, 16);
-        ctx.drawImage(spriteSheet, tile.x, tile.y, 16, 16, 0, 0, 16, 16);
-      }
-    }
-
-    document.getElementById("theirLabel_" + slot).textContent = `${item.name || item.id} x${item.amount}`;
-  }
-}
-*/
   
 function renderTradeItems() {
   const myDiv = document.getElementById("myTradeItems");
@@ -1401,6 +1222,7 @@ function openBank() {
 function closeBank() {
   bankContainer.style.display = "none";
   selectedBankItemId = null;
+  bankOpen = false;
 }
 
 document.getElementById("bankClose").onclick = closeBank;
@@ -1602,27 +1424,7 @@ function drawInventory() {
     }
   }
 }
-/*
-function drawItemInSlot(item, x, y, size, slotIndex) {
-  let name = base_tiles[itemById[item.id]];
-  const pad = size * 0.15;
-  const s = size - pad * 2;
 
-  invCtx.drawImage(
-    spriteSheet,
-    name.x, name.y,
-    16, 16,
-    x + pad, y + pad,
-    s, s
-  );
-
-  invCtx.font = "10px sans-serif";
-  invCtx.fillStyle = "yellow";
-
-  const amt = playerData.inventory[slotIndex].amount;
-  invCtx.fillText(formatItemAmount(amt), x + pad, y + pad);
-}
-  */
 function drawItemInSlot(item, x, y, size, slotIndex) {
   // --- draw the item normally ---
   let name = base_tiles[itemById[item.id]];
@@ -1698,7 +1500,8 @@ const statsConfig = [
   { key: "craftLvl", name: "Crafting", sx: base_tiles['craftTools'].x, sy: base_tiles['craftTools'].y },
   { key: "woodcuttingLvl", name: "Woodcutting", sx: base_tiles['axe'].x, sy: base_tiles['axe'].y },
   { key: "miningLvl", name: "HP", sx: base_tiles['pickaxe'].x, sy: base_tiles['pickaxe'].y },
-  { key: "archeryLvl", name: "Archery", sx: base_tiles['arrow'].x, sy: base_tiles['arrow'].y }
+  { key: "archeryLvl", name: "Archery", sx: base_tiles['arrow'].x, sy: base_tiles['arrow'].y },
+  { key: "fishingLvl", name: "Fishing", sx: base_tiles['fishingpole'].x, sy: base_tiles['fishingpole'].y }
   // Add more stats here as needed
 ];
 /*
@@ -1899,6 +1702,24 @@ function drawObjects(chunk){
       );
     } catch (err) {
       //haha!
+    }
+    if (chunk.objects['fishingspot']){
+      for (k=0; k<32; k++){
+        for (p = 0; p<32; p++){
+          if (Math.floor(Math.random()*10000<10)){
+            ctx.fillStyle = "#ffffff";   // whatever color
+            ctx.fillRect(j*32+k, i*32+p, 1, 1);
+          }
+        }
+      }
+      if (chunk.objects['fishingspot'].fishing===true){
+        ctx.drawImage(
+          spriteSheet,
+          base_tiles['bobber'].x, base_tiles['bobber'].y,
+          16, 16,
+          j * 32, i * 32, 32, 32
+        );
+      }
     }
   }
 }

@@ -11,24 +11,12 @@ var map = {
 function exportMapForViewer(mapData) {
   if (!players['Admin']) return;
   const outputPath = path.join(__dirname, "viewer", "view_map.js");
-
   // IMPORTANT → match what your renderer expects
   const fileContents =
     "window.map = " + JSON.stringify(mapData, null, 2) + ";";
-
-  fs.writeFileSync(outputPath, fileContents);
-  console.log("Map exported to viewer/view_map.js");
-}function exportMapForViewer(mapData) {
-  const outputPath = path.join(__dirname, "viewer", "view_map.js");
-
-  // IMPORTANT → match what your renderer expects
-  const fileContents =
-    "window.map = " + JSON.stringify(mapData, null, 2) + ";";
-
   fs.writeFileSync(outputPath, fileContents);
   console.log("Map exported to viewer/view_map.js");
 }
-
 
 function flattenTileData() {
   for (let y = 0; y < map.Map.length; y++) {
@@ -48,8 +36,6 @@ function flattenTileData() {
 //cleanup empty pixel tiles
 for (let y = 0; y < map.Map.length; y++) {
   for (let x = 0; x < map.Map[y].length; x++) {
-    //map.Map[y][x]['b-t']=map.Map[y][x]['base-tile'];
-    //delete map.Map[y][x]['base-tile'];
     const tile = map.Map[y][x];
     if (!tile.pixels) continue;
 
@@ -115,8 +101,6 @@ setInterval(async () => {
 }, 60*60*1000);
 
 const { createMob, mobTypes } = require("./mobs");
-
-console.log(mobTypes);
 
 require('dotenv').config();
 const express = require('express');
@@ -269,6 +253,16 @@ async function getLeaderboard() {
 
     UNION ALL
 
+    SELECT 'Fishing' AS skill, player_name, fishingXp AS xp
+    FROM (
+      SELECT player_name, fishingXp
+      FROM players
+      ORDER BY fishingXp DESC
+      LIMIT 1
+    ) AS t
+
+    UNION ALL
+
     SELECT 'Mining' AS skill, player_name, miningXp AS xp
     FROM (
       SELECT player_name, miningXp
@@ -294,6 +288,7 @@ async function initPlayer(name) {
       woodcuttingXp,
       miningXp,
       craftXp,
+      fishingXp,
       murderer,
       criminal
     FROM players
@@ -310,6 +305,7 @@ async function initPlayer(name) {
   let currHp = result[0].hp;
   let hpXp = result[0].hpXp;
   let swordXp = result[0].swordXp;
+  let fishingXp = result[0].fishingXp;
   let archeryXp = result[0].archeryXp;
   let craftXp = result[0].craftXp;
   let miningXp = result[0].miningXp;
@@ -322,6 +318,7 @@ async function initPlayer(name) {
   let craftLvl = await levelFromXp(craftXp);
   let woodcuttingLvl = await levelFromXp(woodcuttingXp);
   let miningLvl = await levelFromXp(miningXp);
+  let fishingLvl = await levelFromXp(fishingXp);
   players[name] = {// Initialize player object
     coords: p_coords,
     lastCoords: p_coords,//gets set in compartChunks
@@ -355,6 +352,8 @@ async function initPlayer(name) {
     name: name,
     swordXpTotal: swordXp,
     archeryXpTotal: archeryXp,
+    fishingXpTotal: fishingXp,
+    fishingLvl: fishingLvl,
     hpXpTotal: hpXp,
     swordXp: 0,//these get written to the db every so often
     hpXp: 0,   //then set back to 0
@@ -389,8 +388,9 @@ async function initPlayer(name) {
 
 async function cleanupPlayer(name){
   console.log("cleaning up disc'd player");
-  delete map.Map[players[name].coords[1]][players[name].coords[0]].players[name];
-  markTileChanged(players[name].coords[0], players[name].coords[1]);
+  let player = players[name];
+  delete map.Map[player.coords[1]][player.coords[0]].players[name];
+  markTileChanged(player.coords[0], player.coords[1]);
   await dbPlayer(name);
   delete players[name];
 }
@@ -409,17 +409,21 @@ async function dbPlayer(name) {
     craftXp = ?,
     woodcuttingXp = ?,
     miningXp = ?,
-    archeryXp = ?
-    WHERE player_name = ?`;
+    archeryXp = ?,
+    fishingXp = ?
+    WHERE player_name = ?
+  `;
+  let player = players[name];
   const params = [
-    players[name].coords[0], players[name].coords[1], 
-    players[name].hp,
-    players[name].swordXpTotal,
-    players[name].hpXpTotal,
-    players[name].craftXpTotal,
-    players[name].woodcuttingXpTotal,
-    players[name].miningXpTotal,
-    players[name].archeryXpTotal,
+    player.coords[0], players[name].coords[1], 
+    player.hp,
+    player.swordXpTotal,
+    player.hpXpTotal,
+    player.craftXpTotal,
+    player.woodcuttingXpTotal,
+    player.miningXpTotal,
+    player.archeryXpTotal,
+    player.fishingXpTotal,
     name];
   await query(sql, params);
 }
@@ -559,27 +563,11 @@ async function syncInventory(playerName) {
 
 async function addPlayerToDb(name, pass){
   console.log("trying to addPlayerToDb");
-  const sql = "INSERT INTO players (player_name, pass, x, y, hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, criminal, criminalTimer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+  const sql = "INSERT INTO players (player_name, pass, x, y, hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, criminal, criminalTimer, fishingXp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
   const params = [name, pass, 49, 49, 100, 0, 0, 0, 0, 0, false, 0, false, 0];
   await query(sql, params);
 }
-/*
-async function setCriminal(playerName, durationMs) {
-  // murderer overrides criminal
-  let player = players[playerName];
-  if (player.murderer) return;
 
-  const expireTime = Date.now() + durationMs;
-
-  player.criminal = true;
-  player.criminalTimer = expireTime;
-
-  await query(
-    "UPDATE players SET criminal = 1, criminalTimer = ? WHERE player_name = ?",
-    [expireTime, playerName]
-  );
-}
-  */
 async function setCriminal(playerName, isCriminal, timerMs = null) {
   // If the player becomes a murderer, criminal is cleared
   if (players[playerName]?.murderer && isCriminal) return;
@@ -676,6 +664,7 @@ function mapPersist(){
 }
 
 function addPlayerToTile(name, x=null, y=null){//x and y for mod coords etc
+  let player = players[name];
   if (x===null){
     x = players[name].coords[0];
   }
@@ -686,15 +675,15 @@ function addPlayerToTile(name, x=null, y=null){//x and y for mod coords etc
     map.Map[y][x].players = {};
   }
   map.Map[y][x].players[name] = {
-    sprite: players[name].sprite,
-    facing: players[name].facing,
-    hand: players[name].hand,//then everything else
-    head: players[name].head,
-    body: players[name].body,
-    feet: players[name].feet,
-    quiver: players[name].quiver, //prob not needed cause not visible
-    murderSprite: players[name].murderSprite,
-    criminalSprite: players[name].criminalSprite
+    sprite: player.sprite,
+    facing: player.facing,
+    hand: player.hand,//then everything else
+    head: player.head,
+    body: player.body,
+    feet: player.feet,
+    quiver: player.quiver, //prob not needed cause not visible
+    murderSprite: player.murderSprite,
+    criminalSprite: player.criminalSprite
   }
   markTileChanged(x, y);
 }
@@ -719,25 +708,20 @@ async function markTileChanged(x, y){
     return;
   }
 
-  // 1️⃣ Replace b-t if applicable
   if (tileData.container === "b-t") {
     tile["b-t"] = name;
   }
 
-  // 2️⃣ Add to normal container (objects, resources, etc.) if not b-t
   if (tileData.container !== "b-t") {
     const type = tileData.container;
     tile[type] ??= {};
     tile[type][name] = { name };
   }
 
-  // 3️⃣ Add to roof if flagged
   if (tileData.roof === true) {
     tile["roof"] ??= {};
     tile["roof"][name] = { name };
   }
-
-  console.log(`Placed ${name} in: b-t=${tileData.container==='b-t'?name:'-'} container=${tileData.container} roof=${tileData.roof}`);
   markTileChanged(x, y);
 }
 
@@ -746,46 +730,27 @@ async function removeObjFromMap(coords){
 }
 
 function clearTile(x, y){
-  console.log("cleared tile");
-  map.Map[y][x]['b-t']="grass";
-  map.Map[y][x]['collision']=false;
-  delete map.Map[y][x].objects;// = {};
-  map.Map[y][x].floor={};
-  map.Map[y][x].roof={};
+  let tile = map.Map[y][x];
+  tile['b-t']="grass";
+  delete tile.objects;
+  delete tile.floor;
+  delete tile.roof;
   const data = map.Map[y][x];
   if (data && data.safeTile !== undefined) {
-    data.safeTile = {};
+    delete data.safeTile;
   }
   markTileChanged(x, y);
 }
 
-//this function to prevent certain actions if safe tile
-//use like
 //if (isSafeActive(tile)) return; blocks interaction
 const isSafeActive = tile => !!tile?.safeTile && Object.keys(tile.safeTile).length > 0;
 
 async function emitPlayerState(player){
-  //console.log("emitting player state");
   if (player.hp<=0){
-    if (player.lastHitBy!==null){
-      io.emit('pk message', {//global chat, user needs toggle for wanting privacy
-        message: `${player.name} was defeated by ${player.lastHitBy}!`
-      });
-      if (!player.murderer && !player.criminal){
-        io.emit('pk message', {//global chat, user needs toggle for wanting privacy
-          message: `${player.lastHitBy} is now a murderer!`
-        });
-        await startMurdererTimer(player.lastHitBy);
-      }
-    }
-    //player.coords[0]=26;
-    //player.coords[1]=54;
-    player.hp=player.maxHp;//change to player level max hp
-    await dropPlayerLootbag(player.name, player.coords[0], player.coords[1]);
-    respawnPlayer(player.name);
+    await playerDeath(player);
   }
   if (player.sock_id!==null){
-    io.to(player.sock_id).emit('playerState', {//might remove this/put somewhere else
+    io.to(player.sock_id).emit('playerState', {
       x: player.coords[0],
       y: player.coords[1],
       hand: player.hand,
@@ -799,6 +764,8 @@ async function emitPlayerState(player){
       hpXpTotal: player.hpXpTotal,
       swordLvl: player.swordLvl,
       swordXpTotal: player.swordXpTotal,
+      fishingXpTotal: player.fishingXpTotal,
+      fishingLvl: player.fishingLvl,
       archeryLvl: player.archeryLvl,
       archeryXpTotal: player.archeryXpTotal,
       craftLvl: player.craftLvl,
@@ -809,23 +776,46 @@ async function emitPlayerState(player){
       miningXpTotal: player.miningXpTotal
     });
   }
-}//need player last state
+}
+
+async function playerDeath(player){
+  if (player.lastHitBy !== null) {
+    sendMessage('pk message', `${player.name} was defeated by ${player.lastHitBy}!`);
+    if (!player.murderer && !player.criminal) {
+      sendMessage('pk message', `${player.lastHitBy} is now a murderer!`);
+      await startMurdererTimer(player.lastHitBy);
+    }
+  }
+  player.hp = player.maxHp;//change to player level max hp
+  await dropPlayerLootbag(player.name, player.coords[0], player.coords[1]);
+  respawnPlayer(player.name);
+}
+
+function sendSound(player, sounds=[]){
+  if (sounds.length===0) return;
+  io.to(player.sock_id).emit('playSound', sounds);
+}
+
+function sendMessage(type, text, player=null){
+  if (player===null){
+    //goes to everybody
+    io.emit(type, { message: text });
+    return;
+  }
+  //player not null, goes to a player
+  io.to(player.sock_id).emit(type, { message: text });
+}
 
 async function startMurdererTimer(name){
   if (!players[name].murderer){
     setMurdererStatus(name, true, 60*30*1000);//to start, make 1 hour in milliseconds 60*60*1000    
-  } /*else {
-    incrementMurderTimer(name, 60*30*1000);
-  }*/
+  }
 }
 
 async function startCriminalTimer(name){
   if (!players[name].criminal){
-    //setCriminal(name, true, 60*10*1000);
     setCriminal(name, true, 60*15*1000);
-  }/* else {
-    incrementCriminalTimer(60*15*1000);
-  }*/
+  }
 }
 
 function getTilesInRadius(x, y, radius) {
@@ -909,6 +899,7 @@ async function updatePlayerState(player) {
   player.craftLvl = await levelFromXp(player.craftXpTotal);
   player.woodcuttingLvl = await levelFromXp(player.woodcuttingXpTotal);
   player.miningLvl = await levelFromXp(player.miningXpTotal);
+  player.fishingLvl = await levelFromXp(player.fishingXpTotal);
 
   const currState = {
     x: player.coords[0],
@@ -925,6 +916,8 @@ async function updatePlayerState(player) {
     hpXpTotal: player.hpXpTotal,
     swordLvl: player.swordLvl,
     swordXpTotal: player.swordXpTotal,
+    fishingXpTotal: player.fishingXpTotal,
+    fishingLvl: player.fishingLvl,
     archeryLvl: player.archeryLvl,
     archeryXpTotal: player.archeryXpTotal,
     craftLvl: player.craftLvl,
@@ -952,8 +945,6 @@ function mapUpdate() {
 
   for (const p in players) {
     const player = players[p];
-    //if (!player.sock_id) continue;
-    //emitPlayerState(player);
     updatePlayerState(player);
     const chunk = map.Fxn.chunk(player.coords);//generates a chunk of coords only
     let newSum = 0;
@@ -1046,10 +1037,7 @@ io.on('connection', async (socket) => {
   Object.entries(players).forEach(([playerName, playerData]) => {
     console.log('Player:', playerName, 'ID:', playerData.sock_id);
   });
-
-  io.emit('server message', {//global chat, user needs toggle for wanting privacy
-    message: `${socket.user} logged in...`
-  });
+  sendMessage('server message', `${socket.user} logged in...`);
 
   socket.on('chat message', (msg) => {
     console.log(`${socket.user}: ${msg}`)
@@ -1064,39 +1052,7 @@ io.on('connection', async (socket) => {
     }
 
   });
-/*
-  socket.on("acceptTrade", fromName => {
-    const toName = socket.user; // the accepter
 
-    console.log(`${toName} accepted ${fromName}'s trade...`);
-
-    // request must exist
-    if (pendingTradeRequests[toName] !== fromName) return;
-
-    // sender must still be online
-    if (!players[fromName] || players[fromName].sock_id === null) {
-      delete pendingTradeRequests[toName];
-      return;
-    }
-
-    // neither already trading
-    if (players[toName].tradingWith || players[fromName].tradingWith) {
-      delete pendingTradeRequests[toName];
-      return;
-    }
-
-    // remove pending request
-    delete pendingTradeRequests[toName];
-
-    // create trade link
-    players[toName].tradingWith = fromName;
-    players[fromName].tradingWith = toName;
-
-    // tell both clients to open UI
-    io.to(players[toName].sock_id).emit("tradeStarted", { with: fromName });
-    io.to(players[fromName].sock_id).emit("tradeStarted", { with: toName });
-  });
-*/
   socket.on("acceptTrade", fromName => {
     const toName = socket.user; // the accepter
 
@@ -1147,9 +1103,7 @@ io.on('connection', async (socket) => {
 
     // notify sender
     if (players[fromName] && players[fromName].sock_id) {
-      io.to(players[fromName].sock_id).emit("pk message", {
-        message: `${toName} declined to trade!`
-      });
+      sendMessage('pk message', `${toName} declined to trade!`, players[fromName])
     }
   });
 
@@ -1368,7 +1322,7 @@ socket.on("tradeOfferUpdate", ({ slot, amount }) => {
 socket.on('bankWithdraw', async (data) => {
   let player = players[socket.user];
   let tile = map.Map[player.coords[1]][player.coords[0]];
-  if (!tile.objects['bankchest']) return;
+  if (!tile.objects?.bankchest) return;
   try {
     const { id, amt } = data;
     console.log(`player withdrawing ${id} x${amt}`);
@@ -1453,18 +1407,14 @@ socket.on('bankDeposit', async (data) => {
   });
   socket.on('disconnect', () => {
     if (players[socket.user].murderer){
-      io.emit('server message', {
-        message: `${socket.user} is afk as a murderer!`
-      });
+      sendMessage('server message', `${socket.user} is afk as a murderer!`);
       //don't cleanup, keep active on server
     } else {
       console.log(`User logged out: ${socket.user}`);
       setActive(socket.user, 0);
       cleanupPlayer(socket.user);
       socket.request.session.destroy();
-      io.emit('server message', {
-        message: `${socket.user} logged out...`
-      });
+      sendMessage('server message', `${socket.user} logged out...`);
     }
   });
 });
@@ -1509,6 +1459,7 @@ const itemById = Object.fromEntries(
 const idByItem = name => ITEMS[name]?.id;
 
 async function parseCmdMsg(name, cmd){
+  let player = players[name];
   const words = cmd.slice(1).trim().split(/\s+/);
   console.log(`words: ${words}`);
   if (words[0]==="tell"){
@@ -1520,43 +1471,31 @@ async function parseCmdMsg(name, cmd){
         message: msg
       })
     } else {
-      io.to(players[name].sock_id).emit('pk message', {
-        message: `${words[1]} is not online...`
-      })
+      sendMessage('pk message', `${words[1]} is not online...`, player);
     }
   }
   if (words[0]==="trade"){
     let targetName = words[1];
     if (targetName===name){
-      io.to(players[name].sock_id).emit('pk message', {
-        message: `You must be high af...`
-      });
+      sendMessage('pk message', `You must be high af...`, player);
       return;
     }
     if (players[name].murderer){
-      io.to(players[name].sock_id).emit('pk message', {
-        message: `As a murderer, you cannot trade...`
-      });
+      sendMessage('pk message', `As a murderer, you cannot trade...`, player);
       return;
     }
     if (players[targetName]?.sock_id){
       if (players[targetName].murderer){
-        io.to(players[name].sock_id).emit('pk message', {
-          message: `You cannot trade with murderers...`
-        })
+        sendMessage('pk message', `You cannot trade with murderers...`, player);
       } else {
         sendTradeRequest(name, targetName);
       }
     } else{
-      io.to(players[name].sock_id).emit('pk message', {
-        message: `${targetName} is not online...`
-      })
+      sendMessage('pk message', `${targetName} is not online...`, player);
     }
   }
   if (words[0]==="who"){
-    io.to(players[name].sock_id).emit('server message', {
-      message: `\n${Object.keys(players)}`
-    })
+    sendMessage('server message', `\n${Object.keys(players)}`, player);
   }
 }
 
@@ -1564,27 +1503,18 @@ async function sendTradeRequest(fromName, toName) {
   console.log(`${fromName} attempting to trade ${toName}`);
 
   if (!players[toName] || players[toName].sock_id === null) {
-    io.to(players[fromName].sock_id).emit("pk message", {
-      message: `${toName} is not online...`
-    });
+    sendMessage('pk message', `${toName} is not online...`, players[fromName]);
     return;
   }
 
   if (pendingTradeRequests[toName]) {
-    io.to(players[fromName].sock_id).emit('pk message', {
-      message: `${toName} already has a pending request.`
-    });
+    sendMessage('pk message', `${toName} already has a pending request.`, players[fromName]);
     return;
   }
   
   pendingTradeRequests[toName] = fromName;
   // sender sees confirmation
-  io.to(players[fromName].sock_id).emit("server message", 
-    {
-      message: `Trade request sent to ${toName}`
-    }
-  );
-
+  sendMessage('server message', `Trade request sent to ${toName}`, players[fromName]);
   // receiver gets the request
   io.to(players[toName].sock_id).emit("chatEvent", {
     type: "tradeRequest",
@@ -1737,7 +1667,7 @@ function movePlayer(name, data){
       }
       delete map.Map[players[name].coords[1]][players[name].coords[0]].players[name];
       markTileChanged(players[name].coords[0], players[name].coords[1]);
-      io.to(players[name].sock_id).emit('playSound', [players[name].step]);
+      sendSound(players[name], [players[name].step]);
       if (players[name].step==="stepR"){
         players[name].step="stepL";
       } else {
@@ -1752,7 +1682,7 @@ function movePlayer(name, data){
 
 const tileMaxX = map.Map[0].length;
 const tileMaxY = map.Map.length;
-console.log(`${tileMaxX}, ${tileMaxY}`);
+
 function checkCollision(name, coords){
   if (coords[0]< 0 || coords[0]>tileMaxX-1){  //need next map on collision with edge
     return true;
@@ -1791,11 +1721,7 @@ function checkCollision(name, coords){
     // Special: allow owners to walk through their own doors
     if (obj.name === "door" && obj.owner === name) {
       if (players[name].murderer){
-        io.to(players[name].sock_id).emit('pk message',
-          {
-            message: `As a murderer,  you cannot hide...`
-          }
-        );
+        sendMessage('pk message', `As a murderer,  you cannot hide...`, players[name]);
         return true;
       } else {
         continue; // skip collision for this object
@@ -1807,20 +1733,16 @@ function checkCollision(name, coords){
     return true;
   }
   if (players[name].murderer && map.Map[coords[1]][coords[0]].safeTile){
-    io.to(players[name].sock_id).emit('pk message',
-      {
-        message: `As a murderer,  you cannot enter safe places...`
-      }
-    );
+    sendMessage('pk message', `As a murderer, you cannot enter safe places...`, players[name]);
     return true;//lol they can't go to safe area!
   }
   return false; 
 }
 
 function checkMelee(name, coords) {
-    if (players[name].hand === null) {
-        return false;
-    }
+    let player = players[name];
+    if (player.hand === null) return false;
+    if (player.slow === true) return false;//can't attack if slowed!
     const tile = map.Map[coords[1]][coords[0]];
     const isSafe = isSafeActive(tile);
 
@@ -1832,7 +1754,6 @@ function checkMelee(name, coords) {
       // allow attack if tile is not safe OR target is a murderer
       if (!isSafe || (players[playerTarget] && players[playerTarget].murderer)) {
         meleeAttack(name, playerTarget);
-        console.log("player on tile, attacked");
         return true;
       }
     }
@@ -1887,24 +1808,20 @@ function damagePlayer(player, targetPlayer, damage, type) {
   if (!targetPlayer.criminal && !targetPlayer.murderer){
     if (!player.criminal && !player.murderer){
       startCriminalTimer(player.name);//15 min criminal!
+      sendMessage('pk message', 'You are now wanted!', player);
     }
   }
-  console.log(`Attacked ${targetPlayer.name}!`);
   targetPlayer.lastHitBy = player.name;
   player.lastPlayerHit = targetPlayer.name;
   if (damage > 0) {
-    io.to(player.sock_id).emit('playSound', ['hit']);
-    io.to(targetPlayer.sock_id).emit('playSound', ['hit', 'damage']);
-    io.to(targetPlayer.sock_id).emit('pk message',
-      { message: `${player.name} hit you for ${damage} damage!` }
-    )
-    io.to(player.sock_id).emit('pk message',
-      { message: `You hit ${targetPlayer.name} for ${damage} damage!` }
-    )
+    sendSound(player, ['hit']);
+    sendSound(targetPlayer, ['hit', 'damage']);
+    sendMessage('pk message', `${player.name} hit you for ${damage} damage!`, targetPlayer);
+    sendMessage('pk message', `You hit ${targetPlayer.name} for ${damage} damage!`, player);
   }
   else {
-    io.to(player.sock_id).emit('playSound', ['miss']);
-    io.to(targetPlayer.sock_id).emit('playSound', ['miss']);
+    sendSound(player, ['miss']);
+    sendSound(targetPlayer, ['miss']);
   }
 }
 
@@ -1925,7 +1842,7 @@ function meleeAttackMob(playerName, mobId) {
     if (damage!==0){
       damageMob(playerName, mobId, damage, "melee");
     } else {
-      io.to(players[playerName].sock_id).emit('playSound', ['miss']);
+      sendSound(players[playerName], ['miss']);
     }
 }
 
@@ -1941,13 +1858,11 @@ async function damageMob(playerName, mobId, damage, type){
   }
   await giveXp(playerName, xp, type);
   if (damage < 0) {
-    damage = 0;//just a safeguard, might not need here
+    damage = 0;
   }
   targetMob.hp -= damage;
-  io.to(players[playerName].sock_id).emit('playSound', ['hit']);
-  io.to(players[playerName].sock_id).emit('pk message',
-    { message: `You hit the ${targetMob.type} for ${damage} damage!` }
-  )
+  sendSound(players[playerName], ['hit']);
+  sendMessage('pk message', `You hit the ${targetMob.type} for ${damage} damage!`, players[playerName]);
 }
 
 async function giveXp(playerName, xp, type){
@@ -1963,17 +1878,17 @@ async function giveXp(playerName, xp, type){
     case "mage":
       player.mageXpTotal += xp;
       break;
+    case "fishing":
+      player.fishingXpTotal +=xp;
   }
 }
 
 async function killMob(mob) {
     const tile = map.Map[mob.y][mob.x];
     delete tile.mob;
-    //addToMap(mob.drop, mob.x, mob.y);
-    await dropMobLoot(mob.drop, mob.x, mob.y);//random bag o loot
+    await dropMobLoot(mob.drop, mob.x, mob.y);
     mobs.delete(mob.id);
     markTileChanged(mob.x, mob.y);
-
     // ♻️ respawn
     const spawn = mob.spawnRef;
     if (spawn) {
@@ -1985,19 +1900,16 @@ async function killMob(mob) {
 
 async function dropMobLoot(drops, x, y) {
   if (!drops || !drops.length) return;
-
   const lootbag = {
     name: "lootbag",
     items: {},
     locked: false
   };
-
   const first = drops[0];
   lootbag.items[first.name] = {
     id: first.id,
     amt: Math.floor(Math.random() * (first.max - first.min + 1)) + first.min
   };
-
   for (let i = 1; i < drops.length; i++) {
     const drop = drops[i];
     const chance = drop.weight / 100;
@@ -2008,9 +1920,7 @@ async function dropMobLoot(drops, x, y) {
       };
     }
   }
-
   const tilesToCheck = getTilesInRadius(x, y, 3);
-
   for (const { nx, ny } of tilesToCheck) {
     const nTile = map.Map[ny]?.[nx];
     if (!nTile) continue;
@@ -2020,49 +1930,6 @@ async function dropMobLoot(drops, x, y) {
       break; // dropped successfully
     }
   }
-}
-
-function rollWeighted(weight) {
-  return Math.random() * 100 < weight;
-}
-
-function placeOrMergeLootbag(x, y, newItems) {
-  const tile = map.Map[y][x];
-  tile ??= {};
-  tile.objects ??= {};
-
-  let lootbag = tile.objects.lootbag;
-
-  // 🔒 lock starts here
-  if (lootbag?.locked) return;
-
-  if (!lootbag) {
-    // create new lootbag
-    tile.objects.lootbag = {
-      name: "lootbag",
-      items: { ...newItems },
-      locked: false
-    };
-    markTileChanged(x, y);
-    return;
-  }
-
-  lootbag.locked = true;
-
-  try {
-    // merge into existing lootbag
-    for (const key in newItems) {
-      if (!lootbag.items[key]) {
-        lootbag.items[key] = newItems[key];
-      } else {
-        lootbag.items[key].amt += newItems[key].amt;
-      }
-    }
-  } finally {
-    lootbag.locked = false;
-  }
-
-  markTileChanged(x, y);
 }
 
 async function checkObjectCollision(playerName, coords, objName) {
@@ -2099,31 +1966,131 @@ async function playerAction(playerName){
   if (player.hand!==null){
     playerHeldItemAction(playerName);
   }
+  //what other actions are there if nothing held and
+  //nothing to interact with on tile?
 }
 
 async function playerHeldItemAction(playerName){
   let player = players[playerName];
+  if (player.slow===true) return;
   if (itemById[player.hand].startsWith("bow")) {
-    //change to a function
-    //change "arrow" to player.quiver, dir to last dir etc
-    if (Date.now() < player.lastMelee + 1000) {//change to -level?
-      return;
-    }
-    player.lastMelee=Date.now();
-    if (player.quiver===null) return;
-    let projName = itemById[player.quiver];
-    //check amount, decrement if shoots
-    let projAmount = await getItemAmount(playerName, player.quiver);
-    if (projAmount===0){
-      console.log("out of arrows");
-      player.quiver=null;
-      return;
-    }
-    await removeItem(playerName, player.quiver, 1);
-    await syncInventory(playerName);
-    const arrow = createProjectile(projName, player.lastDir, player.coords[0], player.coords[1], playerName);
-    addProjectileToTile(arrow);
+    await playerShootBow(player);
+    return;
   }
+  if (itemById[player.hand].startsWith("fishingpole")){
+    await playerTryFishing(player);
+    return;
+  }
+}
+
+async function playerTryFishing(player){
+  console.log("fishin!");
+  //check for water +1 to last dir
+  //check if it's a fishing spot
+  //same timer as teleport
+  //bobber on fishing spot
+  //check quiver for bait, higher chance for fish/different fish
+  //chance to catch fish, catch nothing, or break pole (fishing lvl)
+  let fishTileCoords = checkOnNextTile(player.coords, player.lastDir, "fishingspot");
+  if (fishTileCoords===false) return;
+  //else it's coords!
+  sendMessage('server message', 'You cast out your line.', player);
+  //add bobber to tile, only on front end?
+  //add fishing=true/false so others can see too
+  map.Map[fishTileCoords.y][fishTileCoords.x].objects['fishingspot'].fishing=true;
+  markTileChanged(fishTileCoords.x, fishTileCoords.y);
+  startChannel({
+    playerName: player.name,
+    duration: 5000,
+    cancelOnMove: true,
+
+    onComplete: async () => {
+      console.log("you reel in your line");
+      map.Map[fishTileCoords.y][fishTileCoords.x].objects['fishingspot'].fishing=false;
+      markTileChanged(fishTileCoords.x, fishTileCoords.y);
+      sendMessage('server message', "You reel in your line.", player);
+      //random chance for fish
+      await randomChanceForFish(player, fishTileCoords);
+      setTimeout(() => {
+        playerTryFishing(player, fishTileCoords);
+      }, 500);
+    },
+
+    onCancel: () => {
+      console.log("Fishing canceled");
+      map.Map[fishTileCoords.y][fishTileCoords.x].objects['fishingspot'].fishing=false;
+      markTileChanged(fishTileCoords.x, fishTileCoords.y);
+      sendMessage('server message', "You stop fishing.", player);
+    }
+  });
+}
+
+let fish = [
+  'cod',
+  'goldfish',
+  'redfish'
+]
+
+async function randomChanceForFish(player, spot){
+  //random chance for fish, if get fish, fishTileCoords .amount-=1;
+  //if amount===0, delete fishingspot!
+  //change this to fishing level, list of fish, etc
+  if (roll(player.fishingLvl)){
+    sendMessage('server message', 'You caught a fish!', player);
+    let caughtFish = fish[Math.floor(Math.random()*fish.length)];
+    await addItem(player.name, idByItem(caughtFish), 1);
+    await syncInventory(player.name);
+    let xp = baseTiles[caughtFish].xp;
+    giveXp(player.name, xp, 'fishing');
+    let tile = map.Map[spot.y][spot.x];
+    tile.objects['fishingspot'].amount-=1;
+    if (tile.objects['fishingspot'].amount<=0){
+      delete tile.objects;
+      markTileChanged(spot.x, spot.y);
+    }
+  }
+}
+
+function roll(level) {
+  const base = 0.30;                    // early generosity (30%)
+  const chance = base + (1 - base) * (1 - Math.pow(0.97, level));
+  return Math.random() < chance;
+}
+function checkOnNextTile(coords, lastDir, thing){
+  let check = { x:0, y:0 };
+  switch (lastDir) {
+    case "up": check.y -= 1; break;
+    case "down": check.y += 1; break;
+    case "left": check.x -= 1; break;
+    case "right": check.x += 1; break;
+  }
+  let newCoords = { x: coords[0]+check.x, y: coords[1]+check.y }
+  let tile = map.Map[newCoords.y][newCoords.x];
+  if (tile?.objects){
+    if (tile.objects[thing]){
+      return newCoords;
+    }
+  }
+  return false;
+}
+
+async function playerShootBow(player){
+  if (Date.now() < player.lastMelee + 1000) {//change to -level?
+    return;
+  }
+  player.lastMelee = Date.now();
+  if (player.quiver === null) return;
+  let projName = itemById[player.quiver];
+  //check amount, decrement if shoots
+  let projAmount = await getItemAmount(player.name, player.quiver);
+  if (projAmount === 0) {
+    player.quiver = null;
+    return;
+  }
+  await removeItem(player.name, player.quiver, 1);
+  await syncInventory(player.name);
+  const arrow = createProjectile(projName, player.lastDir, player.coords[0], player.coords[1], player.name, 10);
+  addProjectileToTile(arrow);
 }
 
 async function interactTile(playerName) {
@@ -2189,10 +2156,8 @@ function removeObjFromMapSync(coords) {
 
 function restoreObjToMap(coords, removed) {
   if (!removed) return;
-
   const tile = map.Map[coords[1]][coords[0]];
   tile.objects ??= {};
-
   tile.objects[removed.key] = removed.obj;
 }
   
@@ -2245,9 +2210,11 @@ function checkInteract(name, objName){
   }
   if (objName==='sign'){
     readSign(name);
+    return true;
   }
   if (objName==='leaderboard'){
     readLeaderboard(name);
+    return true;
   }
   return false;
 }
@@ -2261,9 +2228,9 @@ function readSign(name){
   let player = players[name];
   let coords = players[name].coords;
   let tile = map.Map[coords[1]][coords[0]];
-  let text = tile.objects['sign'].text;
-  console.log(tile.objects['sign'].text);
-  io.to(players[name].sock_id).emit('readSign', text);
+  let text = String(tile.objects['sign'].text);
+  console.log(tile.objects['sign']);
+  sendMessage('readSign', text, player);
 }
 
 async function useDoor(name) {
@@ -2304,11 +2271,7 @@ async function useDoor(name) {
   } else {
     lockMsg='unlocked';
   }
-  io.to(players[name].sock_id).emit('server message',
-    {
-      message: `Door ${lockMsg}!`
-    }
-  )
+  sendMessage('server message', `Door ${lockMsg}!`, players[name]);
   markTileChanged(x, y);
 }
 
@@ -2323,12 +2286,12 @@ async function resourceInteract(playerName, coords, objName) {
   if (!objDef || objDef.kind !== "resource") return;
   let lvlBonus = 0;
   if (itemById[player.hand]==='axe'){
-    io.to(player.sock_id).emit('playSound', ['chop']);
+    sendSound(player, ['chop']);
     player.woodcuttingXpTotal+=1;
     lvlBonus=Math.floor(player.woodcuttingLvl/10);
   }
   if (itemById[player.hand]==='pickaxe'){
-    io.to(player.sock_id).emit('playSound', ['pickaxe']);
+    sendSound(player, ['pickaxe']);
     player.miningXpTotal+=1;
     lvlBonus=Math.floor(player.miningLvl/10);
   }
@@ -2459,7 +2422,7 @@ async function consume(playerName, id){
   if (itemDef.hp){
     player.hp+=itemDef.hp;
     if (player.hp>player.maxHp){
-      player.hp=player.maxHp;//change this to maxhp, need in db and in memory
+      player.hp=player.maxHp;
     }
     await removeItem(playerName, itemDef.id, 1);
     await syncInventory(playerName);
@@ -2544,13 +2507,10 @@ function startChannel({
 async function dropItem(name, item){
   let player = players[name];
   if (player.murderer) {
-    io.to(player.sock_id).emit('pk message',
-      {
-        message: `As a murderer,  you cannot drop items...`
-      }
-    );
+    sendMessage('pk message', `As a murderer, you cannot drop items...`, player);
     return;
   }
+  /*
   try {
     if (itemById[player.inventory[item].id]==="axe"){
       return;//take this out when get axe on death or whatever
@@ -2558,12 +2518,15 @@ async function dropItem(name, item){
   } catch(err){
     return;
   }
+  */
+  /*
   if (itemById[player.inventory[item].id]==="axe"){
     return;//take this out when get axe on death or whatever
   }
+  */
   if (map.Map[player.coords[1]][player.coords[0]].objects){
     if (Object.keys(map.Map[player.coords[1]][player.coords[0]].objects).length !== 0) {
-      return;//only one object on tile, need to change this
+      return;
     }
   }
 
@@ -2582,21 +2545,27 @@ async function dropItem(name, item){
 
   // only set owner if the base tile defines it
   if ("owner" in baseTiles[dropName]) {
+    await dropOwnedItem(player, baseName);
+    /*
     tileItem.owner = name; // player name
     console.log(`name: ${baseName}`);
     if (baseName==='door'){
       tileItem.locked=true;
     }
+    */
   }
-
   tile[container][dropName] = tileItem;
-
-  //markTileChanged(player.coords[0], player.coords[1]);
-  //map.Map[player.coords[1]][player.coords[0]].objects[itemById[player.inventory[item].id]] = {"name": itemById[player.inventory[item].id]};
   await removeItem(name, players[name].inventory[item].id, 1);
   await ifEquippedRemove(name, players[name].inventory[item].id);
   markTileChanged(player.coords[0], player.coords[1]);
   await syncInventory(name);
+}
+
+async function dropOwnedItem(player, baseName){
+  tileItem.owner = player.name; // player name
+  if (baseName === 'door') {
+    tileItem.locked = true;
+  }
 }
 
 async function ifEquippedRemove(name, itemId){
@@ -2618,8 +2587,6 @@ async function ifEquippedRemove(name, itemId){
   }
 }
 
-//uncomment and remove old craftItem on 33rd item creation!
-
 async function craftItem(playerName, itemName, smelt=false) {
   if (!itemName) return;
 
@@ -2633,6 +2600,10 @@ async function craftItem(playerName, itemName, smelt=false) {
   const itemDef = baseTiles[itemName];
   if (!itemDef?.craft && !itemDef?.smelt) return; // not craftable
   // ---------- check materials ----------
+  let craftAmount = 1;
+  if (itemDef?.craftAmount){
+    craftAmount = itemDef.craftAmount;
+  }
   if (itemDef?.craft){
     for (const [materialName, requiredAmount] of Object.entries(itemDef.craft)) {
       const materialId = idByItem(materialName);
@@ -2670,22 +2641,21 @@ async function craftItem(playerName, itemName, smelt=false) {
 
   if (existing > 0) {
     // stacking is always allowed
-    added = await addItem(playerName, craftedId, 1);
+    added = await addItem(playerName, craftedId, craftAmount);
   } else {
     // new slot → check capacity
     const slotsUsed = await getInventoryCount(playerName);
 
     if (slotsUsed < 32) {
-      added = await addItem(playerName, craftedId, 1);
+      added = await addItem(playerName, craftedId, craftAmount);
     }
   }
 
   // if inventory couldn't accept it → send to bank
   if (added === 0) {
-    await addBankItem(playerName, craftedId, 1);
+    await addBankItem(playerName, craftedId, craftAmount);
     console.log(`Inventory full — crafted ${itemName} sent to bank`);
   }
-
   await syncInventory(playerName);
 }
 
@@ -2726,25 +2696,6 @@ function pickWeighted(list) {
   }
 }
 
-let test = {
-  "x": 0, "y": 0,
-  "data": {
-    "b-t": "grass",
-    "collision": false,
-    "objects": {},
-    "typing": false,
-    "version": 0,
-    "pixels": [
-      [-1, -1, -1, -1],
-      [-1, -1, -1, -1],
-      [-1, -1, -1, -1],
-      [-1, -1, -1, -1]],
-    "roof": {}
-  }, "players": {
-
-  }
-}
-
 async function playerBank(playerName) {
   console.log("player opened bank");
   const rows = await query(`
@@ -2772,6 +2723,14 @@ async function replenishResources() {
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
       const tile = map.Map[y][x];
+      if (tile['b-t'] === "water"){
+        if (tile?.objects){//gets rid of fishing spots AND lost arrows lol
+          delete tile.objects;
+        }
+        if (Math.floor(Math.random()*500)<10){
+          randomFishingSpot(tile);
+        }
+      }
       const isEmpty = obj => !obj || Object.keys(obj).length === 0;
       //delete all flowers first
       //plant regens like this need separate fxns
@@ -2865,6 +2824,33 @@ async function replenishResources() {
   }
   console.log(`${mobs.size}`);
 }
+
+async function randomFishingSpot(tile){
+  //check surrounding tiles for b-t with no collision, e.g. grass
+  //must be up/down/left/right tile, not corners
+  const spots = [
+    { x: tile.x,     y: tile.y - 1 }, // up
+    { x: tile.x,     y: tile.y + 1 }, // down
+    { x: tile.x - 1, y: tile.y },     // left
+    { x: tile.x + 1, y: tile.y }      // right
+  ];
+  let valid = false;
+  for (const s of spots) {
+    if (!map.Map[s.y] || !map.Map[s.y][s.x]) continue;
+    if (baseTiles[map.Map[s.y][s.x]['b-t']].collision === false) {
+      valid=true;
+      continue;
+    }
+  }
+  if (valid===true){
+    //add a fishing spot!
+    console.log("added fishing spot!");
+    addToMap('fishingspot', tile.x, tile.y);
+    map.Map[tile.y][tile.x].objects['fishingspot'].fishing=false;
+    map.Map[tile.y][tile.x].objects['fishingspot'].amount=Math.floor(Math.random()*24);
+  }
+}
+
 replenishResources();//run at server start to add random ores n shit
 setInterval(replenishResources, 60000*180);//every 3 hours
 setInterval(mapUpdate, 200);
@@ -2873,30 +2859,6 @@ setInterval(mapPersist, 60000);//save map every minute
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
 });
-replenishResources();
-
-//mob testing
-//create mob registry
-//const mobs = new Map();
-//create a rat
-/*
-const rat1 = createMob('rat', 50, 50);
-//put rat1 in registry
-mobs.set(rat1.id, rat1);
-//put rat on tile
-map.Map[50][50].mob = {
-    id: rat1.id,
-    sprite: "ratL"
-};
-*/
-/*
-const mushroom1 = createMob('mushroom', 42, 57);
-mobs.set(mushroom1.id, mushroom1);
-map.Map[57][42].mob = {
-  id: mushroom1.id,
-  sprite: "mushroomL"
-}
-*/
 
 async function removeMobType(type) {
   for (const [id, mob] of mobs) {
@@ -2964,19 +2926,19 @@ const mobSpawns = [
       count: 1,
       respawnTime: 30000
     },
-    {
+    {//goblins in mountain pass room
       type: "goblin",
       x:160, y:71,
       count: 2,
       respawnTime: 30000
     },
-    {
+    {//goblins outside of shop
       type: "goblin",
       x:223, y:79,
       count: 4,
       respawnTime: 30000
     },
-    {
+    {//rats northeast of shop
         type: "rat",
         x: 229,
         y: 66,
@@ -2984,7 +2946,7 @@ const mobSpawns = [
         respawnTime: 20000 // ms
     },
     //zorg mini-boss!
-    {
+    {//south of mountains south of Old Haven
       type: "zorg",
       x: 42,
       y: 135,
@@ -3035,14 +2997,6 @@ const mobSpawns = [
       count: 1,
       respawnTime: 30000
     }
-    /*
-    let testZorg = createMob('zorg', 42, 135);
-mobs.set(testZorg.id, testZorg);
-map.Map[135][42].mob = {
-  id: testZorg.id,
-  sprite: "zorgL"
-}
-    */
 ];
 
 function countMobsByType(type) {
@@ -3119,13 +3073,6 @@ function updateMob(mob, now) {
 }
 
 function spawnMinion(mob){
-  //mob.spawnMinion="minizorg";
-  //mob.spawnMax=5;
-  //mob.spawnCount=n; get from mob.type
-  //only spawns if health below max
-  //only spawns up to .spawnMax
-  //for zorg, needs to count mini zorgs in mobs
-  //if gets killed, spawnCount gets reset
   if (mob.hp<mob.maxHp && mob.spawnCount<mob.spawnMax){
     let testMinion = createMob(mob.spawnMinion, mob.x, mob.y);
     mobs.set(testMinion.id, testMinion);
@@ -3250,17 +3197,15 @@ function moveToward(mob, target) {
 
 function mobRangeAttack(mob, target){
   if (Date.now()<mob.lastAttack+1000) return;
-  console.log("mob range attack!");
   mob.lastAttack=Date.now();
   let projType = mob.rangeAttack.type;
   const dir = getDirectionToward(mob.x, mob.y, target.coords[0], target.coords[1]);
   if (mob.rangeAttack?.slow===true){
-    console.log("making projectile with slow property");
     let slowTime = mob.rangeAttack.slowTime;
-    const mobProj = createProjectile(projType, dir, mob.x, mob.y, mob.id, true, slowTime);
+    const mobProj = createProjectile(projType, dir, mob.x, mob.y, mob.id, 10, true, slowTime);
     addProjectileToTile(mobProj);
   } else {
-    const mobProj = createProjectile(projType, dir, mob.x, mob.y, mob.id);//fix "right" lol
+    const mobProj = createProjectile(projType, dir, mob.x, mob.y, mob.id);
     addProjectileToTile(mobProj);
   }
 }
@@ -3308,11 +3253,8 @@ function attackPlayer(mob, player) {
       if (damage>0){
         player.hp -= damage;
         player.lastHitBy = null;
-        //io.to(player.sock_id).emit('playSound', ['hit']);
-        io.to(player.sock_id).emit('playSound', ['hit', 'damage']);
-        io.to(player.sock_id).emit('pk message', {//global chat, user needs toggle for wanting privacy
-          message: `You got hit by the ${mob.type} for ${damage} damage!`
-        });
+        sendSound(player, ['hit', 'damage']);
+        sendMessage('pk message', `You got hit by the ${mob.type} for ${damage} damage!`, player);
       }
     }
 }
@@ -3357,7 +3299,7 @@ setInterval(updateMobs, 250);
 async function initMurderers() {
   // Get all players who are murderers with a remaining timer
   const rows = await query(
-    `SELECT player_name, x, y, hp, hpXp, swordXp, archeryXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer
+    `SELECT player_name, x, y, hp, hpXp, swordXp, archeryXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, fishingXp
      FROM players
      WHERE murderer = 1 AND murderTimer > 0`
   );
@@ -3378,6 +3320,7 @@ async function initMurderers() {
     // Calculate levels
     const hpLvl = await levelFromXp(result.hpXp);
     const swordLvl = await levelFromXp(result.swordXp);
+    const fishingLvl = await levelFromXp(result.fishingXp);
     const archeryLvl = await levelFromXp(result.archeryXp);
     const craftLvl = await levelFromXp(result.craftXp);
     const woodcuttingLvl = await levelFromXp(result.woodcuttingXp);
@@ -3449,11 +3392,7 @@ setInterval(async () => {
       if (players[player.player_name]) {
         players[player.player_name].murderer = false;
         players[player.player_name].murderSprite = null;
-
-        io.emit("server message", {
-          message: `${player.player_name} has been cleared of murder charges...`,
-        });
-
+        sendMessage('server message', `${player.player_name} has been cleared of murder charges...`, players[player.player_name]);
         if (players[player.player_name].sock_id === null) {
           cleanupPlayer(player.player_name);
         }
@@ -3488,9 +3427,7 @@ setInterval(async () => {
       if (players[player.player_name]) {
         players[player.player_name].criminal = false;
         players[player.player_name].criminalSprite = null;
-        io.emit("server message", {
-          message: `${player.player_name} is no longer a criminal.`,
-        });
+        sendMessage('server message', `${player.player_name} is no longer a criminal.`);
         if (players[player.player_name].sock_id === null) {
           cleanupPlayer(player.player_name);
         }
@@ -3511,7 +3448,7 @@ setInterval(async () => {
 const projectiles = new Map();
 let nextProjectileId = 1;
 
-function createProjectile(type, direction, x, y, ownerId, slow=false, slowTime=null) {
+function createProjectile(type, direction, x, y, ownerId, decay=10, slow=false, slowTime=null) {
   const id = nextProjectileId++;
   const damage = baseTiles[type].attack;
   const projectile = {
@@ -3522,7 +3459,7 @@ function createProjectile(type, direction, x, y, ownerId, slow=false, slowTime=n
     x,          // tile coordinates
     y,
     ownerId,
-    life: 10,    // max ticks
+    life: decay,    // max ticks
     prevTile: null,  // track where it is on the map
   };
 
@@ -3592,7 +3529,6 @@ function rangeAttackMob(proj, mob){
   if (mobs.get(proj.ownerId)!==undefined) return;
   let mobObj = mobs.get(mob.id);
   let player = players[proj.ownerId];
-  console.log(`Hit ${mobObj.type} with ${proj.type} for ${proj.damage}`);
   let damage = Math.floor(Math.random()*baseTiles[proj.type].attack);
   damageMob(proj.ownerId, mob.id, damage, "archery");
 }
@@ -3620,10 +3556,8 @@ function mobRangeDamagePlayer(proj, targetPlayer){
   //other logic for combat triangle, armour etc
   targetPlayer.hp-=damage;
   let mobName = mobs.get(proj.ownerId);
-  io.to(targetPlayer.sock_id).emit('playSound', ['hit', 'damage']);
-  io.to(targetPlayer.sock_id).emit('pk message',
-    { message: `The ${mobName.type} hit you for ${damage} damage!` }
-  )
+  sendSound(targetPlayer, ['hit', 'damage']);
+  sendMessage('pk message', `The ${mobName.type} hit you for ${damage} damage!`, targetPlayer);
 }
 
 function removeProjectileFromTile(proj) {
@@ -3663,12 +3597,8 @@ function updateProjectiles() {
     }
   }
 }
-/*
-const arrow = createProjectile("arrow", "right", 116, 144, "player1");
-addProjectileToTile(arrow);
-*/
+
 //projectiles interval
 setInterval(() => {
-  //if (!players['Admin']) return;
   updateProjectiles();
 },100)
