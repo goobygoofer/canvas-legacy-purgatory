@@ -3664,7 +3664,6 @@ function rangeAttackMob(proj, mob){
 //else have to rewrite murder status, sounds etc
 function rangeAttackPlayer(proj, targetName){
   let damage = Math.floor(Math.random()*baseTiles[proj.type].attack);
-  damage += Math.floor(Math.random()*players[proj.owner].archeryLvl);
   let targetPlayer = players[targetName];
   if (proj?.slow===true){
     targetPlayer.slow=true;
@@ -3674,6 +3673,7 @@ function rangeAttackPlayer(proj, targetName){
     mobRangeDamagePlayer(proj, targetPlayer);
   }else {
     let player = players[proj.ownerId];
+    damage += Math.floor(Math.random()*players[proj.owner].archeryLvl);
     console.log(`${proj.ownerId} hit ${targetName} with ${proj.type} for ${damage} damage!`);
     damagePlayer(player, targetPlayer, damage, "archery");
   }
