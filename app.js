@@ -1841,6 +1841,7 @@ function areaDamage(projId, x, y, radius, type, damage){
   for (tile in affectedTiles){
     let mapTile = map.Map[affectedTiles[tile].ny][affectedTiles[tile].nx];
     if (mapTile?.mob && players[projId]){
+      console.log(`tile damage: ${affectedTiles[tile].x},${affectedTiles[tile].y}`);
       damageMob(projId, mapTile.mob.id, damage);
     }
     if (mapTile?.players){
@@ -1849,7 +1850,11 @@ function areaDamage(projId, x, y, radius, type, damage){
         let targetPlayer = players[p];
         console.log(`targetPlayer: ${targetPlayer}`);
         if (targetPlayer){
-          damagePlayer(players[projId], targetPlayer, damage, 'fire');
+          let fromPlayer = players[projId];
+          if (!fromPlayer){
+            fromPlayer=null;
+          }
+          damagePlayer(fromPlayer, targetPlayer, damage, 'fire');
         }
       }
     }
@@ -3714,7 +3719,8 @@ function updateProjectiles() {
       if (proj.type.startsWith("arrow") && players[proj.ownerId]) {//still not perfect, fix
         if (proj.type.startsWith('arrowfire')){
           io.emit('explosion', { x:proj.x, y:proj.y, color:'orange' });
-          areaDamage(proj.ownerId, proj.x, proj.y, 1, 12);
+          console.log("end damage");
+          areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 12);
         } else {
           spreadDropItem(proj.x, proj.y, proj.type);
         }
@@ -3726,7 +3732,11 @@ function updateProjectiles() {
       proj.life=0;
       if (proj.type.startsWith('arrowfire')) {
         io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
-        areaDamage(proj.ownerId, proj.x, proj.y, 1, 12);
+        console.log('added false damage');
+        areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 12);
+        removeProjectileFromTile(proj);
+        projectiles.delete(id);
+        return;
       }
     }
 
@@ -3738,7 +3748,8 @@ function updateProjectiles() {
       markTileChanged(proj.x, proj.y);
         if (proj.type.startsWith('arrowfire')){
           io.emit('explosion', { x:proj.x, y:proj.y, color:'orange' });
-          areaDamage(proj.ownerId, proj.x, proj.y, 1, 12);
+          console.log('end of life damage');
+          areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 15);
         }
       if (proj.type.startsWith("arrow") && players[proj.ownerId] && added!=='end' && added!==false){//still not perfect, fix
        if (!proj.type.startsWith('arrowfire')){

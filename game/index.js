@@ -1721,7 +1721,6 @@ function drawObjects(chunk){
     if (chunk?.projectile){
       console.log(chunk.projectile);
       if (Object.keys(chunk?.projectile)[0].startsWith('arrowfire')) {
-        console.log("fire arrow animate!");
         animateFire(chunk, i, j);
       }
     }
@@ -2066,7 +2065,6 @@ function drawProjectiles(chunk){
   //draw arrows n shit
   const proj = chunk?.projectile;
   if (!proj) return;
-  console.log("drawing projectile");
   ctx.drawImage(
     spriteSheet,
     base_tiles[proj.name].x, base_tiles[proj.name].y,

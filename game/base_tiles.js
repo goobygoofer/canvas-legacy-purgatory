@@ -232,7 +232,7 @@ base_tiles = {
   "arrowfire": {
     "x":80, "y":962,
     id: 43,
-    craft: { log: 1, ironbar: 1, yellowdust: 10 },
+    craft: { log: 1, ironbar: 1, yellowdust: 100 },
   },
   "arrowfireUp":{
     "x":96,"y":962,

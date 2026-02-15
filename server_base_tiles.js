@@ -166,7 +166,7 @@ module.exports = {
       container: "objects",
       collision: false,
       hp: 5,
-      time: 1000,
+      time: 2000,
       consume: true
     },
   "hide": {
@@ -208,7 +208,7 @@ module.exports = {
     container: "objects",
     collision:false,
     hp: 25,
-    time: 3000,
+    time: 1000,
     consume: true,
     craft: { orangedust: 10 }
   },

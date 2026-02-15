@@ -238,7 +238,7 @@ const mobTypes = {
         leashRadius: 7,
 
         nextThink: 0,
-        thinkSpeed: 250+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
         drop: [
