@@ -38,7 +38,7 @@ module.exports = {
     roof: false,
     equip: { slot: "hand" },
     craft: { log: 1, rock: 2 },
-    attack: 5//may need to tweak these
+    attack: 5,//may need to tweak these
   },
   "woodblock": {
     kind: "item",
@@ -166,6 +166,7 @@ module.exports = {
       container: "objects",
       collision: false,
       hp: 5,
+      time: 1000,
       consume: true
     },
   "hide": {
@@ -207,6 +208,7 @@ module.exports = {
     container: "objects",
     collision:false,
     hp: 25,
+    time: 3000,
     consume: true,
     craft: { orangedust: 10 }
   },
@@ -331,6 +333,16 @@ module.exports = {
     collision: false,
     xp: 15
   },
+  "arrowfire": {
+    kind: "item",
+    id: 43,
+    container: "objects",
+    collision: false,
+    craft: { log: 1, ironbar: 1, yellowdust: 100 },
+    craftAmount: 1,
+    equip: { slot: "quiver" },
+    attack: 12
+  },
   "fishingspot":{
     container: "objects",
     collision: false
@@ -346,6 +358,10 @@ module.exports = {
   },
   "web": {
     attack: 5
+  },
+  "campfire1": {
+    container: "objects",
+    collision: true
   },
   // -----------------------------------resources----------------------------------------
   "tree0": {
@@ -850,7 +866,6 @@ module.exports = {
   //"stoneblock": {},
   "stump2": {},
   "stump3": {},
-  "campfire": {},
   "rain": {},
   "fenceV": {},
   "fenceH": {},

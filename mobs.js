@@ -64,7 +64,7 @@ const mobTypes = {
         spawnY: y,
 
         hp: 75,
-        attack: 10,
+        attack: 12,
         lastAttack:Date.now(),
         state: "idle",
         target: null,
@@ -73,7 +73,7 @@ const mobTypes = {
         leashRadius: 7,
 
         nextThink: 0,
-        thinkSpeed: 250+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
         drop: [
@@ -81,7 +81,7 @@ const mobTypes = {
             { name: "hide", min: 1, max: 2, weight: 200 },
             { name: "flowercrown", min: 1, max: 2, weight: 100 },
             { name: "goblinsword", min: 1, max: 1, weight: 1 },
-            { name: "healthpotion", min: 1, max: 2, weight: 100 }
+            { name: "healthpotion", min: 1, max: 1, weight: 50 }
         ]
     }),
     mushroom: (x, y) => ({

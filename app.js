@@ -153,6 +153,7 @@ app.post('/login', async (req, res) => {
     await setActive(name, 1);
     req.session.user = name;
     res.redirect('/game/game.html');
+
   } catch (err) {
     console.error("Login failed:", err.message);
     res.redirect('/?error=401incorrect_password');
@@ -290,7 +291,12 @@ async function initPlayer(name) {
       craftXp,
       fishingXp,
       murderer,
-      criminal
+      criminal,
+      head,
+      body,
+      hand,
+      feet,
+      quiver
     FROM players
     WHERE player_name = ?
   `;
@@ -340,11 +346,11 @@ async function initPlayer(name) {
     lastChunkKey: null,
     activeInventory: 0,
     inventory: [],//activeInventory used for position here
-    hand: null,
-    head: null,
-    body: null,
-    feet: null,
-    quiver:null,//other stuff can go here than arrows
+    hand: result[0].hand,
+    head: result[0].head,
+    body: result[0].body,
+    feet: result[0].feet,
+    quiver:result[0].quiver,//other stuff can go here than arrows
     lastGather: Date.now(),
     hp:currHp,//change to null, get hp from db
     maxHp: 100+Math.floor(hpLvl*2),//300hp at lvl 100
@@ -410,7 +416,12 @@ async function dbPlayer(name) {
     woodcuttingXp = ?,
     miningXp = ?,
     archeryXp = ?,
-    fishingXp = ?
+    fishingXp = ?,
+    head = ?,
+    body = ?,
+    hand = ?,
+    feet = ?,
+    quiver = ?
     WHERE player_name = ?
   `;
   let player = players[name];
@@ -424,6 +435,11 @@ async function dbPlayer(name) {
     player.miningXpTotal,
     player.archeryXpTotal,
     player.fishingXpTotal,
+    player.head,
+    player.body,
+    player.hand,
+    player.feet,
+    player.quiver,
     name];
   await query(sql, params);
 }
@@ -451,6 +467,7 @@ async function getItemAmount(playerName, itemId) {
 const MAX_SLOTS = 32;
 
 async function addItem(playerName, itemId, amount) {
+  let player = players[playerName];
   // 1. Try stacking first (no slot cost)
   const stackResult = await query(
     `
@@ -563,8 +580,22 @@ async function syncInventory(playerName) {
 
 async function addPlayerToDb(name, pass){
   console.log("trying to addPlayerToDb");
-  const sql = "INSERT INTO players (player_name, pass, x, y, hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, criminal, criminalTimer, fishingXp) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-  const params = [name, pass, 49, 49, 100, 0, 0, 0, 0, 0, false, 0, false, 0];
+  const sql = `INSERT INTO players (
+    player_name, pass, x, y,
+    hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp,
+    murderer, murderTimer, criminal, criminalTimer, 
+    fishingXp, archeryXp,
+    hand, head, body, feet, quiver
+    ) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  const params = [
+    name, pass, 49, 49,
+    100, 0, 0, 0, 0, 0, 
+    false, 0, false, 0,
+    0, 0,
+    1, null, null, null, null
+  ];
   await query(sql, params);
 }
 
@@ -621,7 +652,9 @@ async function setMurdererStatus(playerName, isMurderer, timerMs = null) {
   params.push(playerName);
 
   await query(sql, params);
-  players[playerName].murderer=isMurderer;
+  if (players[playerName]){
+    players[playerName].murderer=isMurderer;
+  } 
 }
 
 async function incrementMurderTimer(playerName, ms) {
@@ -779,7 +812,7 @@ async function emitPlayerState(player){
 }
 
 async function playerDeath(player){
-  if (player.lastHitBy !== null) {
+  if (player.lastHitBy !== null && player.lastHitBy !== player.name) {
     sendMessage('pk message', `${player.name} was defeated by ${player.lastHitBy}!`);
     if (!player.murderer && !player.criminal) {
       sendMessage('pk message', `${player.lastHitBy} is now a murderer!`);
@@ -1463,11 +1496,16 @@ async function parseCmdMsg(name, cmd){
   const words = cmd.slice(1).trim().split(/\s+/);
   console.log(`words: ${words}`);
   if (words[0]==="tell"){
+    console.log("tell running");
     if (players[words[1]]){
       let recipient = words[1];
-      let msg = words.slice(2);
+      let msg = words.slice(2).join(" ");
       io.to(players[words[1]]?.sock_id).emit('chat message', {
-        user: name,
+        user: "From: " + name,
+        message: msg
+      })
+      io.to(player.sock_id).emit('chat message', {
+        user: "To: " + player.name,
         message: msg
       })
     } else {
@@ -1787,41 +1825,85 @@ async function meleeAttack(name, targetName){
   }
 }
 
-function damagePlayer(player, targetPlayer, damage, type) {
-  if (targetPlayer.head !== null) {
-    let headName = itemById[targetPlayer.head];
-    damage -= Math.floor(Math.random() * baseTiles[headName].defense);
+async function randomBeeSting(playerName){
+  let player = players[playerName];
+  if (Math.floor(Math.random()*10<5)){
+    sendMessage('pk message', 'You got stung by a bee while trying to pick the flower!', player);
+    damagePlayer(null, player, 5, 'melee');
+    return true;
   }
-  if (targetPlayer.body !== null) {
-    let bodyName = itemById[targetPlayer.body];
-    damage -= Math.floor(Math.random() * baseTiles[bodyName].defense);
-  }
-  if (targetPlayer.feet !== null) {
-    let feetName = itemById[targetPlayer.feet];
-    damage -= Math.floor(Math.random() * baseTiles[feetName].defense);
-  }
+  return false;
+}
 
-  if (damage < 0) {
-    damage = 0;
-  }
-  targetPlayer.hp -= damage;//change to playerattack-targetdefense etc
-  if (!targetPlayer.criminal && !targetPlayer.murderer){
-    if (!player.criminal && !player.murderer){
-      startCriminalTimer(player.name);//15 min criminal!
-      sendMessage('pk message', 'You are now wanted!', player);
+function areaDamage(projId, x, y, radius, type, damage){
+  let affectedTiles = getTilesInRadius(x, y, radius);
+  //check for players and mobs on those tiles
+  for (tile in affectedTiles){
+    let mapTile = map.Map[affectedTiles[tile].ny][affectedTiles[tile].nx];
+    if (mapTile?.mob && players[projId]){
+      damageMob(projId, mapTile.mob.id, damage);
+    }
+    if (mapTile?.players){
+      for (p in mapTile.players){
+        console.log(`p: ${p}, mapTile.players[p]: ${mapTile.players[p]}`);
+        let targetPlayer = players[p];
+        console.log(`targetPlayer: ${targetPlayer}`);
+        if (targetPlayer){
+          damagePlayer(players[projId], targetPlayer, damage, 'fire');
+        }
+      }
     }
   }
-  targetPlayer.lastHitBy = player.name;
-  player.lastPlayerHit = targetPlayer.name;
+}
+
+function damagePlayer(player, targetPlayer, damage, type) {
+  if (player!==null){
+    if (targetPlayer.head !== null) {
+      let headName = itemById[targetPlayer.head];
+      damage -= Math.floor(Math.random() * baseTiles[headName].defense);
+    }
+    if (targetPlayer.body !== null) {
+      let bodyName = itemById[targetPlayer.body];
+      damage -= Math.floor(Math.random() * baseTiles[bodyName].defense);
+    }
+    if (targetPlayer.feet !== null) {
+      let feetName = itemById[targetPlayer.feet];
+      damage -= Math.floor(Math.random() * baseTiles[feetName].defense);
+    }
+
+    if (damage < 0) {
+      damage = 0;
+    }
+  }
+
+  targetPlayer.hp -= damage;//change to playerattack-targetdefense etc
+  if (player!==null){
+    if (!targetPlayer.criminal && !targetPlayer.murderer && targetPlayer.name!==player.name) {
+      if (!player.criminal && !player.murderer) {
+        startCriminalTimer(player.name);//15 min criminal!
+        sendMessage('pk message', 'You are now wanted!', player);
+      }
+    }
+  }
+  if (player!==null){
+    targetPlayer.lastHitBy = player.name;
+    player.lastPlayerHit = targetPlayer.name;
+  }
+
   if (damage > 0) {
-    sendSound(player, ['hit']);
+    if (player!==null) sendSound(player, ['hit']);
     sendSound(targetPlayer, ['hit', 'damage']);
-    sendMessage('pk message', `${player.name} hit you for ${damage} damage!`, targetPlayer);
-    sendMessage('pk message', `You hit ${targetPlayer.name} for ${damage} damage!`, player);
+    if (player!==null){
+      sendMessage('pk message', `${player.name} hit you for ${damage} damage!`, targetPlayer);
+      sendMessage('pk message', `You hit ${targetPlayer.name} for ${damage} damage!`, player);
+    }
+
   }
   else {
-    sendSound(player, ['miss']);
-    sendSound(targetPlayer, ['miss']);
+    if (player!==null){
+      sendSound(player, ['miss']);
+      sendSound(targetPlayer, ['miss']);
+    }
   }
 }
 
@@ -1966,6 +2048,11 @@ async function playerAction(playerName){
   if (player.hand!==null){
     playerHeldItemAction(playerName);
   }
+  /*
+  if (itemById[player.inventory[player.activeInventory].id]==='townteleport'){
+    //come back to this
+  }
+  */
   //what other actions are there if nothing held and
   //nothing to interact with on tile?
 }
@@ -2111,7 +2198,12 @@ async function interactTile(playerName) {
   if (objDef.kind === "item" && objDef.container === "objects") {
     const itemId = objDef.id;
     if (!itemId) return;
-
+    if (itemById[itemId].startsWith('flower')) {
+      let beeSting = await randomBeeSting(playerName);
+      if (beeSting) {
+        return 0;
+      }
+    }
     // 1. REMOVE OBJECT FIRST (atomic, synchronous)
     const removed = removeObjFromMapSync(player.coords);
     if (!removed) return; // someone else already took it
@@ -2420,18 +2512,36 @@ async function consume(playerName, id){
   const itemDef = baseTiles[itemName];
   if (!itemDef || !itemDef.consume) return;
   if (itemDef.hp){
-    player.hp+=itemDef.hp;
-    if (player.hp>player.maxHp){
-      player.hp=player.maxHp;
-    }
-    await removeItem(playerName, itemDef.id, 1);
-    await syncInventory(playerName);
+    await eatDrinkTimed(playerName, itemDef);
+    return;
   }
   if (itemDef.teleport){
     await removeItem(playerName, itemDef.id, 1);
     await syncInventory(playerName);
     await teleportPlayer(playerName);
   }
+}
+
+async function eatDrinkTimed(name, itemObj){
+  startChannel({
+    playerName: name,
+    duration: itemObj.time,
+    cancelOnMove: true,
+
+    onComplete: async () => {
+      const player = players[name];
+      player.hp += itemObj.hp;
+      if (player.hp > player.maxHp) {
+        player.hp = player.maxHp;
+      }
+      await removeItem(name, itemObj.id, 1);
+      await syncInventory(name);
+    },
+
+    onCancel: () => {
+      //literally anything can go here
+    }
+  });
 }
 
 const activeChannels = {};//can be used for other stuff
@@ -2450,6 +2560,7 @@ async function teleportPlayer(name) {
       const y = player.coords[1];
 
       delete map.Map[y][x].players[name];
+      io.emit('explosion', { x:x, y:y, color:"blue"});
       markTileChanged(x, y);
 
       player.coords[0] = 49;
@@ -3299,7 +3410,8 @@ setInterval(updateMobs, 250);
 async function initMurderers() {
   // Get all players who are murderers with a remaining timer
   const rows = await query(
-    `SELECT player_name, x, y, hp, hpXp, swordXp, archeryXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, fishingXp
+    `SELECT player_name, x, y, hp, hpXp, swordXp, archeryXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, fishingXp,
+     head, hand, body, quiver, feet
      FROM players
      WHERE murderer = 1 AND murderTimer > 0`
   );
@@ -3365,6 +3477,10 @@ async function initCriminals() {
 const STATUS_TICK_INTERVAL = 1000; // 1 second
 
 setInterval(async () => {
+  if (players['Admin']){
+    clearCriminal('Admin');//tee
+    setMurdererStatus('Admin', false, 0);//hee
+  }
   // =============================
   // MURDERERS
   // =============================
@@ -3484,16 +3600,22 @@ function addProjectileToTile(proj) {
     markTileChanged(proj.x, proj.y);
     return false;
   }
-  if (checkProjectileCollision(proj)===true){
+  let projCollision = checkProjectileCollision(proj);
+  if (projCollision===true){
     projectiles.delete(proj.id);
     delete tile.projectile;
     markTileChanged(proj.x, proj.y);
     return false;
   }
-  tile.projectile = { name: proj.tileName };
-  proj.prevTile = { x: proj.x, y: proj.y };
-  markTileChanged(proj.x, proj.y);
-  return true;
+  if (projCollision===false){
+    tile.projectile = { name: proj.tileName };
+    proj.prevTile = { x: proj.x, y: proj.y };
+    markTileChanged(proj.x, proj.y);
+    return true;
+  }
+  if (projCollision==='end'){
+    return 'end';
+  }
 }
 
 function checkProjectileCollision(proj){
@@ -3501,7 +3623,11 @@ function checkProjectileCollision(proj){
   if (tile?.objects){
     for (obj in tile.objects){
       if (baseTiles[tile.objects[obj].name].collision){
-        return true;
+        if (tile.objects[obj].name.startsWith('rock')){
+          return 'end';
+        } else {
+          return true;
+        }
       }
     }
   }
@@ -3530,6 +3656,7 @@ function rangeAttackMob(proj, mob){
   let mobObj = mobs.get(mob.id);
   let player = players[proj.ownerId];
   let damage = Math.floor(Math.random()*baseTiles[proj.type].attack);
+  damage += Math.floor(Math.random()*players[proj.ownerId].archeryLvl);
   damageMob(proj.ownerId, mob.id, damage, "archery");
 }
 
@@ -3537,6 +3664,7 @@ function rangeAttackMob(proj, mob){
 //else have to rewrite murder status, sounds etc
 function rangeAttackPlayer(proj, targetName){
   let damage = Math.floor(Math.random()*baseTiles[proj.type].attack);
+  damage += Math.floor(Math.random()*players[proj.owner].archeryLvl);
   let targetPlayer = players[targetName];
   if (proj?.slow===true){
     targetPlayer.slow=true;
@@ -3582,18 +3710,56 @@ function updateProjectiles() {
 
     // add to new tile
     const added = addProjectileToTile(proj);
-    if (!added) continue; // destroyed due to collision
+    if (added==='end') { // destroyed due to collision
+      if (proj.type.startsWith("arrow") && players[proj.ownerId]) {//still not perfect, fix
+        if (proj.type.startsWith('arrowfire')){
+          io.emit('explosion', { x:proj.x, y:proj.y, color:'orange' });
+          areaDamage(proj.ownerId, proj.x, proj.y, 1, 12);
+        } else {
+          spreadDropItem(proj.x, proj.y, proj.type);
+        }
+        
+      }
+      proj.life=0;
+    }
+    if (added===false){
+      proj.life=0;
+      if (proj.type.startsWith('arrowfire')) {
+        io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
+        areaDamage(proj.ownerId, proj.x, proj.y, 1, 12);
+      }
+    }
+
 
     // decrease lifespan
     proj.life--;
     if (proj.life <= 0) {
       removeProjectileFromTile(proj);
       markTileChanged(proj.x, proj.y);
-      if (proj.type.startsWith("arrow")){//still not perfect, fix
-        addToMap(proj.type, proj.x, proj.y);
+        if (proj.type.startsWith('arrowfire')){
+          io.emit('explosion', { x:proj.x, y:proj.y, color:'orange' });
+          areaDamage(proj.ownerId, proj.x, proj.y, 1, 12);
+        }
+      if (proj.type.startsWith("arrow") && players[proj.ownerId] && added!=='end' && added!==false){//still not perfect, fix
+       if (!proj.type.startsWith('arrowfire')){
+         spreadDropItem(proj.x, proj.y, proj.type);
+       }
       }
      //change to drop proper item (or not for spells etc)
       projectiles.delete(id);
+    }
+  }
+}
+
+function spreadDropItem(x, y, item, player=null){
+  const tilesToCheck = getTilesInRadius(x, y, 3);
+  for (const { nx, ny } of tilesToCheck) {
+    const nTile = map.Map[ny]?.[nx];
+    if (!nTile) continue;
+    if (!nTile.objects || Object.keys(nTile.objects).length === 0) {
+      addToMap(item, nx, ny);
+      markTileChanged(nx, ny);
+      break; // dropped successfully
     }
   }
 }

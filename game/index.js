@@ -979,19 +979,25 @@ socket.on("tradeStatus", data => {
 
 socket.on("tradeComplete", () => {
   console.log("trade complete!");
+  messages.innerHTML += `<div><strong style="color: green;">Trade successful!!</strong></div>`;
   isTrading=false;
   closeTradeWindow();
 });
 
 socket.on("tradeCanceled", () => {
   console.log("They aint wanna trade with you");
+  messages.innerHTML += `<div><strong style="color: red;">Trade cancelled!</strong></div>`;
   closeTradeWindow();
 });
+
+socket.on('explosion', (data) => {
+  spawnExplosion(data.x, data.y, data.color);
+})
 
 function closeTradeWindow(){
   isTrading=false;
   document.getElementById("tradeWindow")?.remove();
-  messages.innerHTML += `<div><strong style="color: red;">Trade cancelled!</strong></div>`;
+  messages.innerHTML += `<div><strong style="color: black;">Trade ended!</strong></div>`;
   messages.scrollTop = messages.scrollHeight;
 }
 
@@ -1704,23 +1710,263 @@ function drawObjects(chunk){
       //haha!
     }
     if (chunk.objects['fishingspot']){
-      for (k=0; k<32; k++){
-        for (p = 0; p<32; p++){
-          if (Math.floor(Math.random()*10000<10)){
-            ctx.fillStyle = "#ffffff";   // whatever color
-            ctx.fillRect(j*32+k, i*32+p, 1, 1);
-          }
-        }
-      }
-      if (chunk.objects['fishingspot'].fishing===true){
-        ctx.drawImage(
-          spriteSheet,
-          base_tiles['bobber'].x, base_tiles['bobber'].y,
-          16, 16,
-          j * 32, i * 32, 32, 32
-        );
+      animateFishing(chunk);
+    }
+    if (chunk.objects.forge || chunk.objects.campfire1){
+      animateForge(chunk);
+    }
+    if (Object.keys(chunk.objects)[0].startsWith('flower')){
+      drawBees(chunk, i, j);
+    }
+    if (chunk?.projectile){
+      console.log(chunk.projectile);
+      if (Object.keys(chunk?.projectile)[0].startsWith('arrowfire')) {
+        console.log("fire arrow animate!");
+        animateFire(chunk, i, j);
       }
     }
+  }
+}
+
+function animateFire(chunk, i, j) {
+  const tileSize = 32;
+  const centerX = j * tileSize + tileSize / 2;
+  const centerY = i * tileSize + tileSize / 2;
+
+  // flicker factor for pulsing
+  const flicker = 0.6 + Math.random() * 0.4;
+
+  // create radial gradient: strong center -> transparent edge
+  const gradient = ctx.createRadialGradient(centerX, centerY, 4, centerX, centerY, 32);
+  gradient.addColorStop(0, `rgb(255, 174, 0,${0.6 * flicker})`); // bright center
+  gradient.addColorStop(1, `rgba(255, 187, 0, 0)`);                // fade outward
+
+  ctx.save();
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(centerX, centerY, 32, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+//all bees will move in unison but that's fine lol
+function drawBees(chunk) {
+  // j = x, i = y
+  const baseX = j * 32;
+  const baseY = i * 32;
+
+  // slightly inside tile so sprite never clips out
+  const cx = baseX + 15;
+  const cy = baseY + 15;
+
+  // slower movement
+  const radius = 9;
+  const speed = 900; // bigger = slower
+
+  const t = Date.now() / speed;
+
+  // circular motion
+  let beeX = cx + Math.cos(t) * radius;
+  let beeY = cy + Math.sin(t) * radius;
+
+  // small jitter (feels buzzy)
+  beeX += Math.sin(t * 7) * 1.5;
+  beeY += Math.cos(t * 9) * 1.5;
+
+  drawPixelBee(Math.floor(beeX), Math.floor(beeY));
+}
+
+function drawPixelBee(x, y) {
+  const p = 1;
+
+  function px(dx, dy, color) {
+    ctx.fillStyle = color;
+    ctx.fillRect(x + dx * p, y + dy * p, p, p);
+  }
+
+  // wings/body
+  px(1, 0, "black");
+  px(2, 0, "black");
+  px(3, 0, "yellow");
+  px(4, 0, "black");
+
+  px(0, 1, "black");
+  px(1, 1, "yellow");
+  px(2, 1, "yellow");
+  px(3, 1, "yellow");
+  px(4, 1, "yellow");
+  px(5, 1, "black");
+
+  px(1, 2, "black");
+  px(2, 2, "yellow");
+  px(3, 2, "black");
+  px(4, 2, "black");
+}
+
+
+
+function animateForge(chunk){
+  for (k = 0; k < 32; k++) {
+    for (p = 0; p < 32; p++) {
+      if (Math.floor(Math.random() * 10000 < 10)) {
+        ctx.fillStyle = "#ff5e00";   // whatever color
+        ctx.fillRect(j * 32 + k, i * 32 + p - 16 , 2, 2);
+        ctx.fillStyle = "#ffd900";   // whatever color
+        ctx.fillRect(j * 32 + k, i * 32 + p  - 18 , 1, 1);
+      }
+    }
+  }
+}
+
+function drawForgeGlow(i, j) {
+  const tileSize = 32;
+
+  const centerX = j * tileSize + 16;
+  const topY = i * tileSize - 4;
+
+  const maxRadius = 14;
+
+  // flicker factor: oscillates 0.7 → 1.3
+  const flicker = 0.8 + Math.sin(Date.now() / 500 + i + j) * 0.1;
+
+  for (let r = maxRadius; r > 0; r--) {
+    // fade based on distance
+    const alpha = ((maxRadius - r) / maxRadius) * 0.35 * flicker;
+
+    ctx.fillStyle = `rgba(255,208,0,${alpha})`;
+    // draw half circle with horizontal strips
+    const width = Math.sqrt(maxRadius * maxRadius - r * r) * flicker;
+
+    ctx.fillRect(
+      centerX - width,
+      topY + r * 0.6,
+      width * 2,
+      1
+    );
+  }
+}
+
+function animateFishing(chunk){
+  for (k = 0; k < 32; k++) {
+    for (p = 0; p < 32; p++) {
+      if (Math.floor(Math.random() * 10000 < 10)) {
+        ctx.fillStyle = "#ffffff";   // whatever color
+        ctx.fillRect(j * 32 + k, i * 32 + p, 1, 1);
+      }
+    }
+  }
+  if (chunk.objects['fishingspot'].fishing === true) {
+    ctx.drawImage(
+      spriteSheet,
+      base_tiles['bobber'].x, base_tiles['bobber'].y,
+      16, 16,
+      j * 32, i * 32, 32, 32
+    );
+  }
+}
+
+function worldTileToScreen(worldI, worldJ) {
+  const tilesAcross = 20;
+  const tilesDown = 10;
+
+  const viewCenterX = Math.floor(tilesAcross / 2);
+  const viewCenterY = Math.floor(tilesDown / 2);
+
+  const topLeftTileX = playerData.x - viewCenterX;
+  const topLeftTileY = playerData.y - viewCenterY;
+
+  const offsetX = (worldJ - topLeftTileX) * 32; // screen pixels
+  const offsetY = (worldI - topLeftTileY) * 32; // screen pixels
+
+  return { x: offsetX, y: offsetY };
+}
+
+let explosions = [];
+
+function spawnExplosion(worldJ, worldI, mainColor = "orange") {
+  const { x: screenX, y: screenY } = worldTileToScreen(worldI, worldJ);
+
+  const numParticles = 80;
+  const particles = [];
+
+  // define RGB palettes for main colors
+  const colorPalettes = {
+    orange: [[255,140,0],[255,200,0]],  // main, secondary
+    yellow: [[255,255,0],[255,220,0]],
+    blue:   [[0,150,255],[0,200,255]],
+    red:    [[255,60,0],[255,100,0]],
+    green:  [[50,255,50],[0,200,0]],
+    purple: [[200,0,255],[150,0,255]],
+    default:[[255,140,0],[255,200,0]]
+  };
+
+  const palette = colorPalettes[mainColor] || colorPalettes.default;
+
+  for (let p = 0; p < numParticles; p++) {
+    const angle = Math.random() * 2 * Math.PI;
+    const speed = 1 + Math.random() * 10;
+    const maxDist = 32 + Math.random() * 32;
+    const size = 2 + Math.floor(Math.random() * 2);
+
+    const roll = Math.random();
+    let color = palette[0]; // main color
+    if (roll > 0.7) color = palette[1]; // secondary
+    else if (roll > 0.9) color = [128,128,128]; // gray
+
+    particles.push({
+      worldX: worldJ * 32 + 16,
+      worldY: worldI * 32 + 16,
+      angle,
+      speed,
+      traveled: 0,
+      maxDist,
+      size,
+      color,
+      alpha: 1
+    });
+  }
+
+  explosions.push(particles);
+}
+
+// Call every frame
+function drawExplosions() {
+  for (let e = explosions.length - 1; e >= 0; e--) {
+    const particles = explosions[e];
+    let allDead = true;
+
+    for (let p of particles) {
+      if (p.alpha <= 0) continue;
+      allDead = false;
+
+      // move particle
+      p.worldX += Math.cos(p.angle) * p.speed;
+      p.worldY += Math.sin(p.angle) * p.speed;
+      p.traveled += p.speed;
+
+      // fade
+      p.alpha = 1 - p.traveled / p.maxDist;
+
+      // convert world → screen using playerData (like coordsOnMap)
+      const screen = worldTileToScreen(
+        Math.floor(p.worldY / 32),
+        Math.floor(p.worldX / 32)
+      );
+
+      // add sub-tile pixel offset
+      const pixelX = screen.x + (p.worldX % 32);
+      const pixelY = screen.y + (p.worldY % 32);
+
+      // draw pixel
+      let r = p.color === "orange" ? 255 : p.color === "yellow" ? 255 : 128;
+      let g = p.color === "orange" ? 140 : p.color === "yellow" ? 255 : 128;
+      let b = 0;
+
+      ctx.fillStyle = `rgba(${p.color[0]},${p.color[1]},${p.color[2]},${p.alpha})`;
+      ctx.fillRect(Math.floor(pixelX), Math.floor(pixelY), p.size, p.size);
+    }
+
+    if (allDead) explosions.splice(e, 1);
   }
 }
 
@@ -2106,6 +2352,22 @@ function updateView(data){
       drawDepletedResources(chunk);
       drawPixels(chunk);
       drawObjects(chunk);
+      const above = latestView[i - 1]?.[j];
+      if (above?.objects?.forge) {
+        drawForgeGlow(i, j);
+      }
+      const upLeft = latestView[i-1]?.[j-1];
+      if (upLeft?.objects?.campfire1){
+        animateFire(chunk, i-1, j-1);
+      }
+      if (latestView[i-1]) {
+        if (latestView[i-1][j-1]){
+          if (latestView[i - 1][j - 1]?.projectile?.name.startsWith('arrowfire')) {
+            console.log("fire arrow animate!");
+            animateFire(latestView[i - 1][j - 1], i-1, j-1);
+          }
+        }
+      }
       drawMobs(chunk);
       drawPlayers(chunk);
       drawProjectiles(chunk);
@@ -2114,6 +2376,7 @@ function updateView(data){
       drawChatBubbles(chunk);
     }
   }
+  drawExplosions();
   drawRain();
   drawVignette(ctx, canvas.width, canvas.height);
   drawHUD();

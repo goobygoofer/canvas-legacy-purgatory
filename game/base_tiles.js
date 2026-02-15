@@ -229,6 +229,23 @@ base_tiles = {
     "x":208,"y":480,
     id: 42,
   },
+  "arrowfire": {
+    "x":80, "y":962,
+    id: 43,
+    craft: { log: 1, ironbar: 1, yellowdust: 10 },
+  },
+  "arrowfireUp":{
+    "x":96,"y":962,
+  },
+  "arrowfireDown":{
+    "x":112,"y":962,
+  },
+  "arrowfireLeft":{
+    "x":128,"y":962,
+  },
+  "arrowfireRight":{
+    "x":144,"y":962,
+  },
   "fishingspot":{
     "x":272,"y":1264,
   },
@@ -237,6 +254,12 @@ base_tiles = {
   },
   "fishingpoleR":{
     "x":0,"y":496
+  },
+  "campfire1": {
+    "x":48, "y":1072
+  },
+  "campfire2": {
+    "x":160,"y":1072
   },
   "bowL":{
     "x":144,"y":240
@@ -595,7 +618,6 @@ base_tiles = {
   "stump1": { "x": 192, "y": 448, 'roof': false, 'type': 'depletedResource', 'collision': false },
   "stump2": { "x": 64, "y": 1120 },
   "stump3": { "x": 80, "y": 1120 },
-  "campfire": { "x": 32, "y": 384 },//
   "rain": { "x": 144, "y": 432 },//
   "fenceV": { "x": 0, "y": 160 },
   "fenceH": { "x": 16, "y": 160 },
