@@ -1157,7 +1157,7 @@ function renderTradeItems() {
       }
     }
 
-    document.getElementById("label_" + slot).textContent = `${item.name || item.id} x`;
+    //document.getElementById("label_" + slot).textContent = `${item.name || item.id} x`;
   }
 
   // --- Their Offer ---
@@ -1198,7 +1198,7 @@ function renderTradeItems() {
       }
     }
 
-    document.getElementById("theirLabel_" + slot).textContent = `${item.name || item.id} x${item.amount}`;
+    document.getElementById("theirLabel_" + slot).textContent = `${item.amount}`;
   }
 }
 

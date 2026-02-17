@@ -234,6 +234,299 @@ base_tiles = {
     id: 43,
     craft: { log: 1, ironbar: 1, yellowdust: 100 },
   },
+  "coal": {
+    "x":256,"y":32,
+    id: 44
+  },
+  "silver": {
+    "x":288,"y":32,
+    id: 45
+  },
+  "silverbar": {
+    "x":304,"y":112,
+    id: 46,
+    smelt: { silver: 1, coal: 1 },
+  },
+  "copper": {
+    "x":272,"y":32,
+    id: 47,
+  },
+  "copperbar": {
+    "x":288,"y":128,
+    id: 48,
+    smelt: { copper: 5, coal: 1 },
+  },
+  "gold": {
+    "x":288,"y":16,
+    id: 49,
+  },
+  "goldbar": {
+    "x":288,"y":112,
+    id: 50,
+    smelt: { gold: 5, coal: 5 },
+  },
+  "diamond": {
+    "x":240,"y":720,
+    id: 51,
+  },
+  "diamondbar": {
+    "x":160,"y":720,
+    id: 52,
+    smelt: { diamond: 5, coal: 10 },
+  },
+  "copperhelmet": {
+    "x":192,"y":352,
+    id:53,
+    craft: { copperbar: 2, ironbar: 1, hide: 1 },
+  },
+  "silverhelmet": {
+    "x":208,"y":352,
+    id:54,
+    craft: { silverbar: 2, ironbar: 1, hide: 1 },
+  },
+  "goldhelmet": {
+    "x":224,"y":352,
+    id:55,
+    craft: { goldbar: 2, ironbar: 1, hide: 1 },
+  },
+  "diamondhelmet": {
+    "x":176,"y":704,
+    id:56,
+    craft: { diamondbar: 2, ironbar: 1, hide: 1 },
+  },
+  "copperarmor": {
+    "x":272,"y":272,
+    id:57,
+    craft: { copperbar: 5, ironbar: 2, hide: 2 },
+  },
+  "silverarmor": {
+    "x":288,"y":272,
+    id:58,
+    craft: { silverbar: 5, ironbar: 2, hide: 2 },
+  },
+  "goldarmor": {
+    "x":304,"y":224,
+    id:59,
+    craft: { goldbar: 5, ironbar: 2, hide: 2 },
+  },
+  "diamondarmor": {
+    "x":160,"y":704,
+    id:60,
+    craft: { diamondbar: 5, ironbar: 2, hide: 2 },
+  },
+  "coppersword": {
+    "x":288,"y":144,
+    id: 61,
+    craft: { copperbar: 2, log: 1, ironbar: 1 },
+  },
+  "silversword": {
+    "x":302,"y":144,
+    id: 62,
+    craft: { silverbar: 2, log: 1, ironbar: 1 }
+  },
+  "goldsword": {
+    "x":302,"y":128,
+    id: 63,
+    craft: { goldbar: 2, log: 1, ironbar: 1 },
+  },
+  "diamondsword": {
+    "x":176,"y":720,
+    id: 64,
+    craft: { diamondbar: 2, log: 1, ironbar: 1 },
+  },
+  "bowoak":{
+    "x":0,"y":1120,
+    id: 65,
+    craft: { oaklog: 2, hide: 1, string: 1 },
+  },
+  "axeiron": {
+    "x":80,"y":64,
+    id: 66,
+    craft: { log: 1, ironbar: 1 },
+  },
+  "axecopper": {
+    "x":288,"y":192,
+    id: 67,
+    craft: { log: 1, copperbar: 1 },
+  },
+  "axesilver": {
+    "x":302,"y":192,
+    id: 68,
+    craft: { log: 1, silverbar: 1 },
+  },
+  "axegold": {
+    "x":302,"y":208,
+    id: 69,
+    craft: { log: 1, goldbar: 1 },
+  },
+  "axediamond": {
+    "x":224,"y":720,
+    id: 70,
+    craft: { log: 1, diamondbar: 1 },
+  },
+  "pickaxeiron": {
+    "x":48,"y":64,
+    id: 71,
+    craft: { log: 2, ironbar: 2 },
+  },
+  "pickaxecopper": {
+    "x":288,"y":176,
+    id: 72,
+    craft: { log: 2, copperbar: 2 },
+  },
+  "pickaxesilver": {
+    "x":272,"y":176,
+    id: 73,
+    craft: { log: 2, silverbar: 2 },
+  },
+  "pickaxegold": {
+    "x":302,"y":176,
+    id: 74,
+    craft: { log: 2, goldbar: 2 },
+  },
+  "pickaxediamond": {
+    "x":144,"y":720,
+    id: 75,
+    craft: { log: 2, diamondbar: 2 },
+  },
+  "pickaxediamondL":{
+    "x":272,"y":704,
+  },
+  "pickaxediamondR":{
+    "x":256,"y":704,
+  },
+  "pickaxegoldL":{
+    "x":272,"y":208,
+  },
+  "pickaxegoldR":{
+    "x":256,"y":208,
+  },
+  "pickaxesilverL":{
+    "x":240,"y":208,
+  },
+  "pickaxesilverR":{
+    "x":224,"y":208,
+  },
+  "pickaxecopperL":{
+    "x":208,"y":208,
+  },
+  "pickaxecopperR":{
+    "x":192,"y":208,
+  },
+  "pickaxeironL":{
+    "x":224,"y":192,
+  },
+  "pickaxeironR":{
+    "x":48,"y":192,
+  },
+  "axediamondL":{
+    "x":272,"y":720,
+  },
+  "axediamondR":{
+    "x":256,"y":720,
+  },
+  "axegoldL":{
+    "x":272,"y":224,
+  },
+  "axegoldR":{
+    "x":256,"y":224,
+  },
+  "axesilverL":{
+    "x":240,"y":224,
+  },
+  "axesilverR":{
+    "x":224,"y":224,
+  },
+  "axecopperL":{
+    "x":208,"y":224,
+  },
+  "axecopperR":{
+    "x":192,"y":224,
+  },
+  "axeironL":{
+    "x":240,"y":192,
+  },
+  "axeironR":{
+    "x":32,"y":192,
+  },
+  "bowoakL":{
+    "x":32,"y":1120,
+  },
+  "bowoakR":{
+    "x":16,"y":1120,
+  },
+  "diamondswordL":{
+    "x":128,"y":720,    
+  },
+  "diamondswordR":{
+    "x":112,"y":720,
+  },
+  "goldswordL":{
+    "x":144,"y":192,    
+  },
+  "goldswordR":{
+    "x":128,"y":192,
+  },
+  "silverswordL":{
+    "x":160,"y":192,    
+  },
+  "silverswordR":{
+    "x":112,"y":192,
+  },
+  "copperswordL":{
+    "x":144,"y":192,    
+  },
+  "copperswordR":{
+    "x":96,"y":192,
+  },
+  "diamondarmorL":{
+    "x":241,"y":704,
+  },
+  "diamondarmorR":{
+    "x":191,"y":704,
+  },
+  "goldarmorL":{
+    "x":49,"y":288,
+  },
+  "goldarmorR":{
+    "x":-1,"y":288,
+  },
+  "silverarmorL":{
+    "x":177,"y":288,
+  },
+  "silverarmorR":{
+    "x":127,"y":288,
+  },
+  "copperarmorL":{
+    "x":113,"y":288,
+  },
+  "copperarmorR":{
+    "x":63,"y":288,
+  },
+  "diamondhelmetL":{
+    "x":209,"y":720
+  },
+  "diamondhelmetR":{
+    "x":191,"y":720
+  },
+  "goldhelmetL":{
+    "x":113,"y":368
+  },
+  "goldhelmetR":{
+    "x":95,"y":368
+  },
+  "silverhelmetL":{
+    "x":145,"y":368
+  },
+  "silverhelmetR":{
+    "x":127,"y":368
+  },
+  "copperhelmetL":{
+    "x":177,"y":368
+  },
+  "copperhelmetR":{
+    "x":159,"y":368
+  },
   "arrowfireUp":{
     "x":96,"y":962,
   },
@@ -553,6 +846,81 @@ base_tiles = {
     container: "depletedResource",
     collision: false,
     regrowsTo: "rock0"
+  },
+  "coalrock0": {
+    "x": 176, "y": 0,
+  },
+  "coalrock1": {
+    "x": 192, "y": 32,
+  },
+  "coalrock2": {
+    "x": 208, "y": 32,
+  },
+  "coalrock3": {
+    "x": 224, "y": 32,
+  },
+  "coalrock4": {
+    "x": 240, "y": 32,
+  },
+  "silverrock0": {
+    "x":176,"y":0
+  },
+  "silverrock1": {
+    "x":192,"y":160
+  },
+  "silverrock2": {
+    "x":208,"y":160
+  },
+  "silverrock3": {
+    "x":224,"y":160
+  },
+  "silverrock4": {
+    "x":240,"y":160
+  },
+  "copperrock0": {
+    "x":176,"y":0
+  },
+  "copperrock1": {
+    "x":192,"y":176
+  },
+  "copperrock2": {
+    "x":208,"y":176
+  },
+  "copperrock3": {
+    "x":224,"y":176
+  },
+  "copperrock4": {
+    "x":240,"y":176
+  },
+  "goldrock0": {
+    "x":176,"y":0
+  },
+  "goldrock1": {
+    "x":192,"y":144
+  },
+  "goldrock2": {
+    "x":208,"y":144
+  },
+  "goldrock3": {
+    "x":224,"y":144
+  },
+  "goldrock4": {
+    "x":240,"y":144
+  },
+  "diamondrock0": {
+    "x":176,"y":0
+  },
+  "diamondrock1": {
+    "x":48,"y":720
+  },
+  "diamondrock2": {
+    "x":64,"y":720
+  },
+  "diamondrock3": {
+    "x":80,"y":720
+  },
+  "diamondrock4": {
+    "x":96,"y":720
   },
   "web": { "x": 208, "y": 400 },
   "webRight": { "x": 208, "y": 400 },

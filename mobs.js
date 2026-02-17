@@ -275,4 +275,134 @@ function createMob(type, x, y) {
     if (!factory) throw new Error("Unknown mob type: " + type);
     return factory(x, y);
 }
-module.exports = { createMob, mobTypes };
+
+const mobSpawns = [
+  {//rats south of Old Haven
+    type: "rat",
+    x: 35,
+    y: 76,
+    count: 5,
+    respawnTime: 20000 // ms
+  },
+  {
+    type: "skeleton",
+    x: 40, y: 35,
+    count: 1,
+    respawnTime: 20000
+  },
+  {
+    type: "skeleton",
+    x: 44, y: 35,
+    count: 1,
+    respawnTime: 20000
+  },
+  {
+    type: "skeleton",
+    x: 40, y: 33,
+    count: 1,
+    respawnTime: 20000
+  },
+  {
+    type: "skeleton",
+    x: 44, y: 33,
+    count: 1,
+    respawnTime: 20000
+  },
+  {
+    type: "goblin",
+    x: 77, y: 17,
+    count: 1,
+    respawnTime: 30000
+  },
+  {
+    type: "goblin",
+    x: 121, y: 46,
+    count: 1,
+    respawnTime: 30000
+  },
+  {
+    type: "goblin",
+    x: 70, y: 36,
+    count: 1,
+    respawnTime: 30000
+  },
+  {
+    type: "goblin",
+    x: 98, y: 9,
+    count: 1,
+    respawnTime: 30000
+  },
+  {//goblins in mountain pass room
+    type: "goblin",
+    x: 160, y: 71,
+    count: 2,
+    respawnTime: 30000
+  },
+  {//goblins outside of shop
+    type: "goblin",
+    x: 223, y: 79,
+    count: 4,
+    respawnTime: 30000
+  },
+  {//rats northeast of shop
+    type: "rat",
+    x: 229,
+    y: 66,
+    count: 8,
+    respawnTime: 20000 // ms
+  },
+  //zorg mini-boss!
+  {//south of mountains south of Old Haven
+    type: "zorg",
+    x: 42,
+    y: 135,
+    count: 1,
+    respawnTime: 30000
+  },
+  {
+    type: "spider",
+    x: 131,
+    y: 108,
+    count: 2,
+    respawnTime: 5000
+  },
+  {
+    type: "spider",
+    x: 150,
+    y: 98,
+    count: 3,
+    respawnTime: 5000
+  },
+  {
+    type: "spiderweb",
+    x: 97, y: 111,
+    count: 1,
+    respawnTime: 30000
+  },
+  {
+    type: "spiderweb",
+    x: 110, y: 118,
+    count: 1,
+    respawnTime: 30000
+  },
+  {
+    type: "spiderweb",
+    x: 123, y: 114,
+    count: 1,
+    respawnTime: 30000
+  },
+  {
+    type: "spiderweb",
+    x: 135, y: 106,
+    count: 1,
+    respawnTime: 30000
+  },
+  {
+    type: "spiderweb",
+    x: 144, y: 101,
+    count: 1,
+    respawnTime: 30000
+  }
+];
+
+module.exports = { createMob, mobTypes, mobSpawns };

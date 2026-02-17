@@ -7,7 +7,8 @@ module.exports = {
     container: "objects",
     collision: false,
     equip: { slot: "hand" },
-    attack: 0
+    attack: 0,
+    timeBonus: 0
   },
   "log": {
     kind: "item",
@@ -22,7 +23,8 @@ module.exports = {
     collision: false,
     equip: { slot: "hand" },
     craft: { log: 5 },
-    attack: 0
+    attack: 0,
+    timeBonus: 0
   },
   "rock": {
     kind: "item",
@@ -39,6 +41,7 @@ module.exports = {
     equip: { slot: "hand" },
     craft: { log: 1, rock: 2 },
     attack: 5,//may need to tweak these
+    timeBonus: 0
   },
   "woodblock": {
     kind: "item",
@@ -69,6 +72,7 @@ module.exports = {
     container: "objects",
     collision: false,
     smelt: { ironore: 5 },
+    craftLvl: 10,
   },
   "ironsword": {
     kind: "item",
@@ -78,7 +82,9 @@ module.exports = {
     roof: false,
     equip: { slot: "hand" },
     craft: { log: 1, ironbar: 2 },
-    attack: 7
+    attack: 7,
+    craftLvl: 10,
+    timeBonus: 0
   },
   "oaklog": {
     kind: "item",
@@ -92,7 +98,8 @@ module.exports = {
     container:"floor",
     collision: false,
     roof: false,
-    craft: { log: 5 }
+    craft: { log: 5 },
+    craftLvl: 10
   },
   "stoneplate": {
     kind: 'item',
@@ -100,7 +107,8 @@ module.exports = {
     container:'floor',
     collision: false,
     roof:false,
-    craft: { rock: 5}
+    craft: { rock: 5},
+    craftLvl: 10
   },
   "woodroof":{
     kind: 'item',
@@ -108,7 +116,8 @@ module.exports = {
     container:"roof",
     collision: false,
     roof:true,
-    craft: { log: 5}
+    craft: { log: 5},
+    craftLvl: 10
   },
   "stoneroof": {
     kind: 'item',
@@ -116,7 +125,8 @@ module.exports = {
     container:'roof',
     collision: false,
     roof: true,
-    craft: { rock: 5}
+    craft: { rock: 5},
+    craftLvl: 10
   },
   "door": {
     kind: 'item',
@@ -125,7 +135,8 @@ module.exports = {
     collision: true,
     roof: false,
     craft: { ironbar: 2, oaklog: 5},
-    owner:null
+    owner:null,
+    craftLvl: 20
   },
   "flowerred": {
     kind: 'item',
@@ -152,7 +163,8 @@ module.exports = {
     collision: false,
     equip: {slot: "head"},
     craft: {'flowerred':1, 'flowerwhite':1, 'floweryellow':1},
-    defense: 1
+    defense: 1,
+    craftLvl: 10
   },
   "coin": {
     kind: "item",
@@ -168,7 +180,7 @@ module.exports = {
       hp: 5,
       time: 2000,
       consume: true
-    },
+  },
   "hide": {
     kind: "item",
     id: 23,
@@ -182,7 +194,8 @@ module.exports = {
     collision: false,
     roof: false,
     equip: { slot: "hand" },
-    attack: 30
+    attack: 25,
+    timeBonus: 100
   },
   "orangedust": {
     kind: "item",
@@ -210,7 +223,8 @@ module.exports = {
     hp: 25,
     time: 1000,
     consume: true,
-    craft: { orangedust: 10 }
+    craft: { orangedust: 10 },
+    craftLvl: 25
   },
   "leatherarmor": {
     kind: "item",
@@ -220,7 +234,8 @@ module.exports = {
     roof: false,
     equip: { slot: "body" },
     craft: { hide: 5 },
-    defense: 3//may need to tweak these
+    defense: 3,//may need to tweak these
+    craftLvl: 5
   },
   "leatherhelmet": {
     kind: "item",
@@ -230,7 +245,8 @@ module.exports = {
     roof: false,
     equip: { slot: "head" },
     craft: { hide: 4 },
-    defense: 2
+    defense: 2,
+    craftLvl: 5
   },
   "ironarmor": {
     kind: "item",
@@ -240,7 +256,8 @@ module.exports = {
     roof: false,
     equip: { slot: "body" },
     craft: { hide: 2, ironbar: 5 },
-    defense: 5
+    defense: 5,
+    craftLvl: 10
   },
   "ironhelmet": {
     kind: "item",
@@ -250,7 +267,8 @@ module.exports = {
     roof: false,
     equip: { slot: "head" },
     craft: { hide: 1, ironbar: 2 },
-    defense: 3
+    defense: 3,
+    craftLvl: 10
   },
   "bucket": {
     kind: "item",
@@ -266,7 +284,8 @@ module.exports = {
     collision: false,
     craft: { hide: 1, bluedust: 50 },
     consume: true,
-    teleport: true
+    teleport: true,
+    craftLvl: 10
   },
   "speedboots": {
     kind: "item",
@@ -276,7 +295,8 @@ module.exports = {
     craft: { hide: 4, bluedust: 100000 },
     equip: {slot: "feet"},
     defense: 1,
-    speed: 115
+    speed: 115,
+    craftLvl: 99
   },
   "arrow": {
     kind: "item",
@@ -286,7 +306,8 @@ module.exports = {
     craft: { log: 1, ironbar: 1 },
     craftAmount: 12,
     equip: { slot: "quiver" },
-    attack: 10
+    attack: 10,
+    craftLvl: 5
   },
   "bow":{
     kind: "item",
@@ -295,7 +316,9 @@ module.exports = {
     collision: false,
     craft: { log: 1, hide: 1, string: 1 },
     equip: { slot: "hand" },
-    attack: 1
+    attack: 5,
+    craftLvl: 5,
+    timeBonus: 0
   },
   "string": { 
     kind: "item",
@@ -310,7 +333,8 @@ module.exports = {
     collision: false,
     craft: { log: 1, hide: 1, string: 1, ironbar: 1 },
     equip: { slot: "hand" },
-    attack: 0//lol
+    attack: 0,//lol
+    craftLvl: 5
   },
   "cod":{
     kind: "item",
@@ -341,7 +365,315 @@ module.exports = {
     craft: { log: 1, ironbar: 1, yellowdust: 100 },
     craftAmount: 1,
     equip: { slot: "quiver" },
-    attack: 12
+    attack: 12,
+    craftLvl: 20
+  },
+  "coal": {
+    id: 44,
+    kind: "item",
+    container: "objects",
+    collision: false
+  },
+  "silver": {
+    id: 45,
+    kind: "item",
+    container: "objects",
+    collision: false
+  },
+  "silverbar": {
+    kind: "item",
+    id: 46,
+    container: "objects",
+    collision: false,
+    smelt: { silver: 5, coal: 1 },
+    craftLvl: 25,
+  },
+  "copper": {
+    id: 47,
+    kind: "item",
+    container: "objects",
+    collision: false
+  },
+  "copperbar": {
+    kind: "item",
+    id: 48,
+    container: "objects",
+    collision: false,
+    smelt: { copper: 5, coal: 1 },
+    craftLvl: 20,
+  },
+  "gold": {
+    id: 49,
+    kind: "item",
+    container: "objects",
+    collision: false
+  },
+  "goldbar": {
+    kind: "item",
+    id: 50,
+    container: "objects",
+    collision: false,
+    smelt: { gold: 5, coal: 5 },
+    craftLvl: 40,
+  },
+  "diamond": {
+    id: 51,
+    kind: "item",
+    container: "objects",
+    collision: false
+  },
+  "diamondbar": {
+    kind: "item",
+    id: 52,
+    container: "objects",
+    collision: false,
+    smelt: { diamond: 5, coal: 10 },
+    craftLvl: 75,
+  },
+  "copperhelmet": {
+    kind: "item",
+    id:53,
+    container:"objects",
+    collision: false,
+    equip: { slot: "head" },
+    craft: { copperbar: 2, ironbar: 1, hide: 1 },
+    defense: 8,
+    craftLvl: 20
+  },
+  "silverhelmet": {
+    kind: "item",
+    id:54,
+    container:"objects",
+    collision: false,
+    equip: { slot: "head" },
+    craft: { silverbar: 2, ironbar: 1, hide: 1 },
+    defense: 10,
+    craftLvl: 25
+  },
+  "goldhelmet": {
+    kind: "item",
+    id:55,
+    container:"objects",
+    collision: false,
+    equip: { slot: "head" },
+    craft: { goldbar: 2, ironbar: 1, hide: 1 },
+    defense: 20,
+    craftLvl: 40
+  },
+  "diamondhelmet": {
+    kind: "item",
+    id:56,
+    container:"objects",
+    collision: false,
+    equip: { slot: "head" },
+    craft: { diamondbar: 2, ironbar: 1, hide: 1 },
+    defense: 30,
+    craftLvl: 75
+  },
+  "copperarmor": {
+    kind: "item",
+    id:57,
+    container:"objects",
+    collision: false,
+    equip: { slot: "body" },
+    craft: { copperbar: 5, ironbar: 2, hide: 2 },
+    defense: 10,
+    craftLvl: 22
+  },
+  "silverarmor": {
+    kind: "item",
+    id:58,
+    container:"objects",
+    collision: false,
+    equip: { slot: "body" },
+    craft: { silverbar: 5, ironbar: 2, hide: 2 },
+    defense: 15,
+    craftLvl: 27
+  },
+  "goldarmor": {
+    kind: "item",
+    id:59,
+    container:"objects",
+    collision: false,
+    equip: { slot: "body" },
+    craft: { goldbar: 5, ironbar: 2, hide: 2 },
+    defense: 20,
+    craftLvl: 42
+  },
+  "diamondarmor": {
+    kind: "item",
+    id:60,
+    container:"objects",
+    collision: false,
+    equip: { slot: "body" },
+    craft: { diamondbar: 5, ironbar: 2, hide: 2 },
+    defense: 30,
+    craftLvl: 77
+  },
+  "coppersword": {
+    kind: "item",
+    id: 61,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { copperbar: 2, log: 1, ironbar: 1 },
+    attack: 12,
+    craftLvl: 25,
+    timeBonus: 10
+  },
+  "silversword": {
+    kind: "item",
+    id: 62,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { silverbar: 2, log: 1, ironbar: 1 },
+    attack: 18,
+    craftLvl: 30,
+    timeBonus: 50
+  },
+  "goldsword": {
+    kind: "item",
+    id: 63,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { goldbar: 2, log: 1, ironbar: 1 },
+    attack: 25,
+    craftLvl: 45,
+    timeBonus: 75
+  },
+  "diamondsword": {
+    kind: "item",
+    id: 64,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { diamondbar: 2, log: 1, ironbar: 1 },
+    attack: 35,
+    craftLvl: 80,
+    timeBonus: 100
+  },
+  "bowoak":{
+    kind: "item",
+    id: 65,
+    container: "objects",
+    collision: false,
+    craft: { oaklog: 2, hide: 1, string: 1 },
+    equip: { slot: "hand" },
+    attack: 15,
+    craftLvl: 30,
+    timeBonus: 100
+  },
+  "axeiron": {
+    id: 66,
+    kind: "item",
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    attack: 0,
+    timeBonus: 10,
+    craft: { log: 1, ironbar: 1 },
+    craftLvl: 10
+  },
+  "axecopper": {
+    id: 67,
+    kind: "item",
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    attack: 0,
+    timeBonus: 25,
+    craft: { log: 1, copperbar: 1 },
+    craftLvl: 20
+  },
+  "axesilver": {
+    id: 68,
+    kind: "item",
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    attack: 0,
+    timeBonus: 55,
+    craft: { log: 1, silverbar: 1 },
+    craftLvl: 25
+  },
+  "axegold": {
+    id: 69,
+    kind: "item",
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    attack: 0,
+    timeBonus: 75,
+    craft: { log: 1, goldbar: 1 },
+    craftLvl: 40
+  },
+  "axediamond": {
+    id: 70,
+    kind: "item",
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    attack: 0,
+    timeBonus: 125,
+    craft: { log: 1, diamondbar: 1 },
+    craftLvl: 75
+  },
+  "pickaxeiron": {
+    kind: "item",
+    id: 71,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { log: 2, ironbar: 2 },
+    attack: 0,
+    timeBonus: 10,
+    craftLvl: 10
+  },
+  "pickaxecopper": {
+    kind: "item",
+    id: 72,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { log: 2, copperbar: 2 },
+    attack: 0,
+    timeBonus: 25,
+    craftLvl: 20
+  },
+  "pickaxesilver": {
+    kind: "item",
+    id: 73,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { log: 2, silverbar: 2 },
+    attack: 0,
+    timeBonus: 55,
+    craftLvl: 25
+  },
+  "pickaxegold": {
+    kind: "item",
+    id: 74,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { log: 2, goldbar: 2 },
+    attack: 0,
+    timeBonus: 75,
+    craftLvl: 40
+  },
+  "pickaxediamond": {
+    kind: "item",
+    id: 75,
+    container: "objects",
+    collision: false,
+    equip: { slot: "hand" },
+    craft: { log: 2, diamondbar: 2 },
+    attack: 0,
+    timeBonus: 125,
+    craftLvl: 75
   },
   "fishingspot":{
     container: "objects",
@@ -477,8 +809,13 @@ module.exports = {
     depletesTo: "ironrock1",
     requiresTool: "pickaxe",
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
   "ironrock1": {
@@ -490,8 +827,13 @@ module.exports = {
     depletesTo: "ironrock2",
     requiresTool: "pickaxe",
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
   "ironrock2": {
@@ -503,8 +845,13 @@ module.exports = {
     depletesTo: "ironrock3",
     requiresTool: "pickaxe",
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
   "ironrock3": {
@@ -516,8 +863,13 @@ module.exports = {
     depletesTo: "ironrock4",
     requiresTool: "pickaxe",
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
   "ironrock4": {
@@ -525,8 +877,13 @@ module.exports = {
     container: "depletedResource",
     collision: false,
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
   "rock0": {
@@ -538,8 +895,13 @@ module.exports = {
     depletesTo: "rock1",
     requiresTool: "pickaxe",
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
 
@@ -551,8 +913,13 @@ module.exports = {
     depletesTo: "rock2",
     requiresTool: "pickaxe",
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
   "rock2": {
@@ -563,8 +930,13 @@ module.exports = {
     depletesTo: "rock3",
     requiresTool: "pickaxe",
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
   "rock3": {
@@ -575,8 +947,13 @@ module.exports = {
     depletesTo: "rock4",
     requiresTool: "pickaxe",
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
   "rock4": {
@@ -584,10 +961,446 @@ module.exports = {
     container: "depletedResource",
     collision: false,
     regrowsTo: [
-      { name: "rock0", weight: 80 },
-      { name: "ironrock0", weight: 20 }
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
     ]
   },
+  "coalrock0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { coal: 1 },
+    depletesTo: "coalrock1",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "coalrock1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { coal: 1 },
+    depletesTo: "coalrock2",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "coalrock2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { coal: 1 },
+    depletesTo: "coalrock3",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "coalrock3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { coal: 1 },
+    depletesTo: "coalrock4",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "coalrock4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "silverrock0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { silver: 1 },
+    depletesTo: "silverrock1",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "silverrock1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { silver: 1 },
+    depletesTo: "silverrock2",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "silverrock2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { silver: 1 },
+    depletesTo: "silverrock3",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "silverrock3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { silver: 1 },
+    depletesTo: "silverrock4",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "silverrock4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "copperrock0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { copper: 1 },
+    depletesTo: "copperrock1",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "copperrock1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { copper: 1 },
+    depletesTo: "copperrock2",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "copperrock2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { copper: 1 },
+    depletesTo: "copperrock3",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "copperrock3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { copper: 1 },
+    depletesTo: "copperrock4",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "copperrock4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "goldrock0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { gold: 1 },
+    depletesTo: "goldrock1",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "goldrock1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { gold: 1 },
+    depletesTo: "goldrock2",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "goldrock2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { gold: 1 },
+    depletesTo: "goldrock3",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "goldrock3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { gold: 1 },
+    depletesTo: "goldrock4",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "goldrock4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "diamondrock0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { diamond: 1 },
+    depletesTo: "diamondrock1",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "diamondrock1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { diamond: 1 },
+    depletesTo: "diamondrock2",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "diamondrock2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { diamond: 1 },
+    depletesTo: "diamondrock3",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "diamondrock3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    roof: true,
+    drops: { diamond: 1 },
+    depletesTo: "diamondrock4",
+    requiresTool: "pickaxe",
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+  "diamondrock4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "rock0", weight: 1000 },
+      { name: "ironrock0", weight: 200 },
+      { name: "coalrock0", weight: 175 },
+      { name: "silverrock0", weight: 90 },
+      { name: "copperrock0", weight: 90 },
+      { name: "goldrock0", weight: 45},
+      { name: "diamondrock0", weight: 5 }
+    ]
+  },
+
   "woodblock0": {
     kind: "resource",
     container: "objects",
@@ -720,6 +1533,13 @@ module.exports = {
     'collision': false,
     'container':"objects",
   },
+  "dungeonStairs": {
+    kind: "interactable",
+    'roof':false,
+    'collision': false,
+    'container':"objects",
+    toX:null,toY:null
+  },
   "forge": {
     kind: "interactable",
     container: "objects",
@@ -739,9 +1559,10 @@ module.exports = {
     roof: false
   },
   "abyss": {
-    'roof': false,
-    'type': 'b-t',
-    'collision': true
+    kind: "b-t",
+    container: "b-t",
+    collision: true,
+    roof: false
   },
   "void": {
     'roof': false,
@@ -902,7 +1723,6 @@ module.exports = {
   "fPoleR": {},
   "fPoleL": {},
   "fPole": {},
-  "dungeonStairs": {},
   "bobber": {},
   "chest2": {},
   "raft": {},
