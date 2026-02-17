@@ -378,7 +378,8 @@ module.exports = {
     id: 45,
     kind: "item",
     container: "objects",
-    collision: false
+    collision: false,
+    smelt: "silverbar"
   },
   "silverbar": {
     kind: "item",
@@ -392,7 +393,8 @@ module.exports = {
     id: 47,
     kind: "item",
     container: "objects",
-    collision: false
+    collision: false,
+    "smelt": "goldbar"
   },
   "copperbar": {
     kind: "item",
@@ -406,7 +408,8 @@ module.exports = {
     id: 49,
     kind: "item",
     container: "objects",
-    collision: false
+    collision: false,
+    smelt: "goldbar"
   },
   "goldbar": {
     kind: "item",
@@ -420,7 +423,8 @@ module.exports = {
     id: 51,
     kind: "item",
     container: "objects",
-    collision: false
+    collision: false,
+    smelt: "diamondbar"
   },
   "diamondbar": {
     kind: "item",

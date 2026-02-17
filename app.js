@@ -1209,6 +1209,10 @@ async function loadLeaderboard(socket){
 
 async function bankDeposit(socket, data){
   let player = players[socket.user];
+  if (Object.keys(player.tradeOffer).length>0){
+    sendMessage('pk message', `DON'T`, player);
+    return;
+  }
   let tile = map.Map[player.coords[1]][player.coords[0]];
   if (!tile.objects['bankchest']) return;
   try {
@@ -2809,8 +2813,11 @@ async function ifEquippedRemove(name, itemId) {
 
 async function craftItem(playerName, itemName, smelt = false) {
   if (!itemName) return;
-
   const player = players[playerName];
+  if (Object.keys(player.tradeOffer).length>0){
+    sendMessage('pk message', `DON'T`, player);
+    return;
+  }
   const coords = player.coords;
   const tileObjects = map.Map[coords[1]][coords[0]].objects;
 
@@ -2826,7 +2833,7 @@ async function craftItem(playerName, itemName, smelt = false) {
   }
   if (itemDef?.craft || itemDef?.smelt) {
     if (itemDef?.craftLvl > player.craftLvl) {
-      sendMessage('pk message', `You need a crafting level of ${itemDef.craftLvl} to make this item...`);
+      sendMessage('pk message', `You need a crafting level of ${itemDef.craftLvl} to make this item...`, player);
       return;
     }
     let materialSlot;
@@ -2837,7 +2844,7 @@ async function craftItem(playerName, itemName, smelt = false) {
       const materialId = idByItem(materialName);
       const playerAmount = await getItemAmount(playerName, materialId);
       if (playerAmount < requiredAmount){
-        sendMessage('pk message', `You don't have enough ${materialName} to make this...`);
+        sendMessage('pk message', `You don't have enough ${materialName} to make this...`, player);
         return;
       };
     }
@@ -2878,13 +2885,17 @@ async function craftItem(playerName, itemName, smelt = false) {
     console.log(`Inventory full — crafted ${itemName} sent to bank`);
     sendMessage('server message', `${itemName} was put in your bank because your inventory was full!`, player);
   } else {
-    sendMessage('server message', `You made a ${itemName}!`);
+    sendMessage('server message', `You made a ${itemName}!`, player);
   }
   await syncInventory(playerName);
 }
 
 async function smeltOre(playerName) {
   const player = players[playerName];
+  if (Object.keys(player.tradeOffer).length>0){
+    sendMessage('pk message', `DON'T`, player);
+    return;
+  }
   const coords = player.coords;
   const tileObjects = map.Map[coords[1]][coords[0]].objects;
 

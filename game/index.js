@@ -1236,7 +1236,14 @@ document.getElementById("bankClose").onclick = closeBank;
 // Render bank grid from global bankData
 function renderBank() {
   bankGrid.innerHTML = "";
+  bankGrid.style.maxHeight = "300px";   // adjust to fit your popup
+  bankGrid.style.overflowY = "auto";
+  bankGrid.style.overflowX = "hidden";
 
+  // Optional: keep grid layout clean
+  bankGrid.style.display = "grid";
+  bankGrid.style.gridTemplateColumns = "repeat(auto-fill, 32px)";
+  bankGrid.style.gap = "4px";
   for (const key in bankData) {
     const item = bankData[key]; // {id, amt}
     const slot = document.createElement("div");
