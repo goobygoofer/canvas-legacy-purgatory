@@ -187,9 +187,10 @@ var rain = true;
 var crafting = false;
 
 const settingsButtons = [
-  { label: "music", x: 120, y: 80, width: 160, height: 40 },
-  { label: "sfx", x: 120, y: 130, width: 160, height: 40 },
-  { label: "rain", x: 120, y: 180, width: 160, height: 40 }
+  { label: "music", x: 120, y: 70, width: 160, height: 25 },
+  { label: "sfx", x: 120, y: 110, width: 160, height: 25 },
+  { label: "rain", x: 120, y: 150, width: 160, height: 25 },
+  { label: "tool_tips", x: 120, y: 190, width: 160, height: 25 }
 ];
 
 var mapDownload = [];
@@ -323,6 +324,17 @@ invCanvas.addEventListener("contextmenu", (e) => {
 invCanvas.addEventListener("mousedown", e => {
   handleInvCanvClick(e, 'left');
 });
+invCanvas.addEventListener("mousemove", e => {
+  handleInvCanvClick(e, null);
+})
+invCanvas.addEventListener("mouseout", e => {
+  hoverInvItem = null;
+  const tooltip = document.getElementById('inv-tooltip');
+  if (tooltip) tooltip.style.display = 'none';
+  const statTip = document.getElementById('stat-tooltip');
+  if (statTip) statTip.style.display = 'none';
+  //drawInventory();
+})
 
 form.addEventListener('submit', (e) => {
     e.preventDefault();
@@ -513,10 +525,19 @@ function toggleMusic(){
 }
 
 function toggleRain(){
-  if (rain){
+  if (rain===true){
     rain = false;
   } else {
     rain = true;
+  }
+}
+
+let tool_tips = true;
+function toggleInvNames(){
+  if (tool_tips===true){
+    tool_tips = false;
+  } else {
+    tool_tips = true;
   }
 }
 
@@ -534,84 +555,147 @@ function handleInvCanvClick(e, leftRight){
   const rect = invCanvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
+  if (leftRight!==null){
+    if (my <= TAB_HEIGHT) {
+      invCtx.font = "14px sans-serif";
 
-  if (my <= TAB_HEIGHT) {
-    invCtx.font = "14px sans-serif";
+      let cursorX = 0;
+      for (const tab of tabs) {
+        const width = invCtx.measureText(tab.label).width + TAB_PADDING * 2;
 
-    let cursorX = 0;
-    for (const tab of tabs) {
-      const width = invCtx.measureText(tab.label).width + TAB_PADDING * 2;
-
-      if (mx >= cursorX && mx <= cursorX + width) {//this part messy
-        activeTab = tab.id;
-        drawTabs();
-        if (activeTab==="paint"){togglePaint()}
-        if (activeTab==="inventory"){
-          drawInventory();
-          if (painting===true){togglePaint()}
+        if (mx >= cursorX && mx <= cursorX + width) {//this part messy
+          activeTab = tab.id;
+          drawTabs();
+          if (activeTab === "paint") { togglePaint() }
+          if (activeTab === "inventory") {
+            drawInventory();
+            if (painting === true) { togglePaint() }
+          }
+          if (activeTab === "stats") {
+            drawStats();
+            if (painting === true) { togglePaint() }
+          }
+          return;
         }
-        if (activeTab==="stats"){
-          drawStats();
-          if (painting===true){togglePaint()}
-        }
-        return;
+
+        cursorX += width;
       }
-
-      cursorX += width;
+      return;
     }
-    return;
   }
+
   handleActiveTabClick(mx, my, leftRight);
 }
 
 function handleActiveTabClick(x, y, leftRight){
-  if (activeTab==='paint'){
+  if (activeTab==='paint' && leftRight !== null){
     handlePaintClick(x, y);
+    return;
   }
   if (activeTab==='inventory'){
     handleInvClick(x, y, leftRight);
+    return;
+  }
+  if (activeTab==='stats'){
+    handleInvClick(x, y, leftRight);
+    return;
   }
 }
+
+let hoverInvItem = null;
+let hoverStat = null;
 
 function handleInvClick(mx, my, leftRight) {
   if (my < TAB_HEIGHT) return null;
 
   const invY = my - TAB_HEIGHT;
 
-  const col = Math.floor(mx / SLOT_SIZE);
-  const row = Math.floor(invY / SLOT_SIZE);
+  
+    const col = Math.floor(mx / SLOT_SIZE);
+    const row = Math.floor(invY / SLOT_SIZE);
 
-  if (
-    col < 0 || col >= INV_COLS ||
-    row < 0 || row >= INV_ROWS
-  ) {
-    activeInvItem = null;
-    return;
-  }
-
-  activeInvItem = row * INV_COLS + col; // 0–31
-
-  // ⭐⭐⭐ IF TRADING → SEND TO TRADE ⭐⭐⭐
-  if (isTrading) {
-    if (leftRight === "left") {
-      socket.emit("tradeOfferUpdate", {
-        slot: activeInvItem,
-        amount: 1
-      });
+    if (
+      col < 0 || col >= INV_COLS ||
+      row < 0 || row >= INV_ROWS
+    ) {
+      activeInvItem = null;
+      return;
     }
-    return;
-  }
+  if (leftRight!==null && activeTab==="inventory"){
+    activeInvItem = row * INV_COLS + col; // 0–31
 
-  // normal behaviour
-  if (leftRight === 'left') {
-    socket.emit('activeInvItem', activeInvItem);
-  }
+    // ⭐⭐⭐ IF TRADING → SEND TO TRADE ⭐⭐⭐
+    if (isTrading) {
+      if (leftRight === "left") {
+        socket.emit("tradeOfferUpdate", {
+          slot: activeInvItem,
+          amount: 1
+        });
+      }
+      return;
+    }
 
-  if (leftRight === 'right') {
-    socket.emit('dropItem', activeInvItem);
-  }
+    // normal behaviour
+    if (leftRight === 'left') {
+      socket.emit('activeInvItem', activeInvItem);
+    }
 
-  drawInventory();
+    if (leftRight === 'right') {
+      socket.emit('dropItem', activeInvItem);
+    }
+    drawInventory();
+  } else {
+    if (my < TAB_HEIGHT) return null;
+    if (activeTab==='inventory'){
+      hoverInvItem = row * INV_COLS + col;
+      drawInventory(mx, my);
+      return;
+    }
+    if (activeTab==='stats'){
+      const iconSize = 16;
+      const padding = 4;
+      const columns = 4;
+
+      const columnWidth = iconSize + padding + 24; // 44
+      const rowHeight = iconSize + 6;              // 22
+      const startY = 14;
+
+      // Adjust mouse relative to stats grid
+      const statsY = my - startY;
+
+      if (statsY < 0) {
+        hoverStat = null;
+      } else {
+        const col = Math.floor(mx / columnWidth);
+        const row = Math.floor(statsY / rowHeight);
+
+        if (col < 0 || col >= columns || row < 0) {
+          hoverStat = null;
+        } else {
+          // Compute hoverStat as index like drawStats
+          let index = 0;
+          for (const stat of statsConfig) {
+            if (!stat || !(stat.key in playerData)) continue;
+
+            const statCol = index % columns;
+            const statRow = Math.floor(index / columns);
+
+            if (statCol === col && statRow === row) {
+              hoverStat = index;
+              break;
+            }
+
+            index++;
+          }
+          if (hoverStat === undefined){
+            hoverStat = null;
+          } else {
+            drawStats(mx, my);
+          }
+        }
+      }
+    }
+  }
 }
 
 function handlePaintClick(mx, my) {
@@ -760,6 +844,9 @@ function handleSettingsClick(mouseX, mouseY) {
         case "rain":
           toggleRain();
           break;
+        case "tool_tips":
+          toggleInvNames();
+          break;
       }
     }
   });
@@ -781,8 +868,8 @@ function toggleCrafting(){
   activeTab = "inventory";
   if (painting===true){
     togglePaint();
-    drawInventory();
   }
+  drawInventory();
   crafting = true;
 }
 
@@ -852,11 +939,13 @@ socket.on("chatEvent", (data) => {
   }
 });
 
+
 socket.on('chat message', (data) => {
   const { user, message } = data;
   messages.innerHTML += `<div><strong>${user}:</strong> ${message}</div>`;
   messages.scrollTop = messages.scrollHeight;
 });
+
 
 socket.on('server message', (data) => {
   const { message } = data;
@@ -1289,9 +1378,52 @@ function renderBank() {
       selectedBankItemId = item.id;
       renderBank();
     };
-
+    if (tool_tips===true){
+      attachSlotHover(slot, tileDef.prettyName ?? itemName);
+    }
     bankGrid.appendChild(slot);
   }
+}
+
+function attachSlotHover(slot, prettyName) {
+  let tooltipEl = null;
+
+  slot.onmouseenter = (e) => {
+    // Create tooltip when hover starts
+    tooltipEl = document.createElement('div');
+    tooltipEl.textContent = prettyName;
+    Object.assign(tooltipEl.style, {
+      position: 'absolute',
+      pointerEvents: 'none',
+      background: 'gray',
+      border: '1px solid black',
+      padding: '2px 4px',
+      fontSize: '12px',
+      fontFamily: 'Arial',
+      zIndex: '1000'
+    });
+    document.body.appendChild(tooltipEl);
+
+    // Position tooltip initially
+    tooltipEl.style.left = `${e.pageX + 8}px`;
+    tooltipEl.style.top = `${e.pageY - 20}px`;
+  };
+
+  slot.onmousemove = (e) => {
+    if (tooltipEl) {
+      // Update position while moving
+      tooltipEl.style.left = `${e.pageX + 8}px`;
+      tooltipEl.style.top = `${e.pageY - 20}px`;
+    }
+  };
+
+  slot.onmouseleave = () => {
+    // Destroy tooltip when hover ends
+    if (tooltipEl) {
+      tooltipEl.remove();
+      tooltipEl = null;
+    }
+  };
 }
 
 // Withdraw button — emits to server
@@ -1395,7 +1527,7 @@ function drawTabs() {
   for (const tab of tabs) {
     const width = invCtx.measureText(tab.label).width + TAB_PADDING * 2;
 
-    invCtx.fillStyle = tab.id === activeTab ? "#333" : "#111";
+    invCtx.fillStyle = tab.id === activeTab ? "#696969" : "#3b3b3b";
     invCtx.fillRect(x, 0, width, TAB_HEIGHT);
 
     invCtx.strokeStyle = "#555";
@@ -1408,7 +1540,7 @@ function drawTabs() {
   }
 }
 
-function drawInventory() {
+function drawInventory(mouseX, mouseY) {
   invCtx.clearRect(0, TAB_HEIGHT, invCanvas.width, invCanvas.height);
   const slotSize = SLOT_SIZE;
 
@@ -1434,6 +1566,33 @@ function drawInventory() {
         invCtx.strokeRect(x + 1, y + 1, slotSize - 2, slotSize - 2);
         invCtx.lineWidth = 1;
       }
+    }
+  }
+  // optional: draw tooltip/item next to mouse
+  if (mouseX !== undefined && mouseY !== undefined && playerData.inventory[hoverInvItem] && tool_tips === true) {
+
+    const item = base_tiles[itemById[playerData.inventory[hoverInvItem].id]]?.prettyName ?? itemById[playerData.inventory[hoverInvItem].id];
+    if (item) {
+      const tooltip = document.getElementById('inv-tooltip') || (() => {
+        const t = document.createElement('div');
+        t.id = 'inv-tooltip';
+        t.style.position = 'absolute';
+        t.style.background = "#a0732fc2";
+        t.style.border = '1px solid black';
+        t.style.fontSize = '12px';
+        t.style.padding = '2px 4px';
+        t.style.pointerEvents = 'none';
+        document.body.appendChild(t);
+        return t;
+      })();
+
+      tooltip.style.display = 'block';
+      tooltip.textContent = item;
+      tooltip.style.left = (mouseX + invCanvas.offsetLeft + 10) + 'px';
+      tooltip.style.top = (mouseY + invCanvas.offsetTop + 10) + 'px';
+    } else {
+      const tooltip = document.getElementById('inv-tooltip');
+      if (tooltip) tooltip.style.display = 'none';
     }
   }
 }
@@ -1508,53 +1667,17 @@ function drawPaintPalette() {
 }
 
 const statsConfig = [
-  { key: "swordLvl", name: "Swordsmanship", sx: base_tiles['ironsword'].x, sy: base_tiles['ironsword'].y },       // icon at (0,0) in spritesheet
-  { key: "hpLvl", name: "HP", sx: base_tiles['heart'].x, sy: base_tiles['heart'].y }, // icon at (16,0)
-  { key: "craftLvl", name: "Crafting", sx: base_tiles['craftTools'].x, sy: base_tiles['craftTools'].y },
-  { key: "woodcuttingLvl", name: "Woodcutting", sx: base_tiles['axe'].x, sy: base_tiles['axe'].y },
-  { key: "miningLvl", name: "HP", sx: base_tiles['pickaxe'].x, sy: base_tiles['pickaxe'].y },
-  { key: "archeryLvl", name: "Archery", sx: base_tiles['arrow'].x, sy: base_tiles['arrow'].y },
-  { key: "fishingLvl", name: "Fishing", sx: base_tiles['fishingpole'].x, sy: base_tiles['fishingpole'].y }
-  // Add more stats here as needed
+  { key: "swordLvl", name: "Swordsmanship", sx: base_tiles['ironsword'].x, sy: base_tiles['ironsword'].y, xpTotalKey: "swordXpTotal" },
+  { key: "hpLvl", name: "HP", sx: base_tiles['heart'].x, sy: base_tiles['heart'].y, xpTotalKey: "hpXpTotal" },
+  { key: "craftLvl", name: "Crafting", sx: base_tiles['craftTools'].x, sy: base_tiles['craftTools'].y, xpTotalKey: "craftXpTotal" },
+  { key: "woodcuttingLvl", name: "Woodcutting", sx: base_tiles['axe'].x, sy: base_tiles['axe'].y, xpTotalKey: "woodcuttingXpTotal" },
+  { key: "miningLvl", name: "Mining", sx: base_tiles['pickaxe'].x, sy: base_tiles['pickaxe'].y, xpTotalKey: "miningXpTotal" },
+  { key: "archeryLvl", name: "Archery", sx: base_tiles['arrow'].x, sy: base_tiles['arrow'].y, xpTotalKey: "archeryXpTotal" },
+  { key: "fishingLvl", name: "Fishing", sx: base_tiles['fishingpole'].x, sy: base_tiles['fishingpole'].y, xpTotalKey: "fishingXpTotal" }
 ];
+
 /*
-function drawStats() {
-  if (!playerData) return;
-
-  const iconSize = 16;
-  const padding = 4;
-  const rowHeight = iconSize + 6;
-
-  let y = 14; // top of stats panel
-
-  for (const stat of statsConfig) {
-    if (!stat || !stat.key) continue;
-    if (!(stat.key in playerData)) continue;
-
-    const level = playerData[stat.key];
-
-    // icon (panel-relative)
-    invCtx.drawImage(
-      spriteSheet,
-      stat.sx, stat.sy, iconSize, iconSize,
-      0, y, iconSize, iconSize
-    );
-
-    // text
-    invCtx.fillStyle = "black";
-    invCtx.font = "12px Arial";
-    invCtx.textBaseline = "middle";
-    invCtx.fillText(
-      level,
-      iconSize + padding,
-      y + iconSize / 2
-    );
-
-    y += rowHeight;
-  }
-}
-*/
-function drawStats() {
+function drawStats(mx, my) {
   if (!playerData) return;
 
   const iconSize = 16;
@@ -1603,6 +1726,86 @@ function drawStats() {
     index++;
   }
 }
+*/
+function drawStats(mx, my) {
+  if (!playerData) return;
+  invCtx.clearRect(0, TAB_HEIGHT, invCanvas.width, invCanvas.height);
+  const iconSize = 16;
+  const padding = 4;
+
+  const columns = 4;
+  const columnWidth = iconSize + padding + 24;
+  const rowHeight = iconSize + 6;
+  const startY = 14;
+
+  let index = 0;
+
+  for (const stat of statsConfig) {
+    if (!stat || !stat.key) continue;
+    if (!(stat.key in playerData)) continue;
+
+    const level = playerData[stat.key];
+
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+
+    const x = col * columnWidth;
+    const y = startY + row * rowHeight;
+
+    // icon
+    invCtx.drawImage(
+      spriteSheet,
+      stat.sx, stat.sy, iconSize, iconSize,
+      x, y, iconSize, iconSize
+    );
+
+    // level text
+    invCtx.fillStyle = "black";
+    invCtx.font = "12px Arial";
+    invCtx.textBaseline = "middle";
+    invCtx.fillText(
+      level,
+      x + iconSize + padding,
+      y + iconSize / 2
+    );
+
+    // ---------- Tooltip ----------
+
+    index++;
+  }
+  if (hoverStat !== null && tool_tips===true) {
+
+    const stat = statsConfig[hoverStat];
+    if (stat && playerData[stat.xpTotalKey] !== undefined) {
+      let tooltipEl = document.getElementById('stat-tooltip');
+      if (!tooltipEl) {
+        tooltipEl = document.createElement('div');
+        tooltipEl.id = 'stat-tooltip';
+        tooltipEl.style.position = 'absolute';
+        tooltipEl.style.pointerEvents = 'none';
+        tooltipEl.style.background = "#a0732fc2";
+        tooltipEl.style.border = '1px solid black';
+        tooltipEl.style.padding = '2px 4px';
+        tooltipEl.style.fontSize = '12px';
+        tooltipEl.style.fontFamily = 'Arial';
+        tooltipEl.style.display = 'none';
+        tooltipEl.style.zIndex = '1000';
+        document.body.appendChild(tooltipEl);
+      }
+
+      const xp = playerData[stat.xpTotalKey];
+      tooltipEl.textContent = `${stat.name} XP: ${xp}`;
+
+      tooltipEl.style.left = `${invCanvas.offsetLeft + mx + 10}px`;
+      tooltipEl.style.top = `${invCanvas.offsetTop + my + 10}px`;
+      tooltipEl.style.display = 'block';
+    }
+  } else {
+    const tooltipEl = document.getElementById('stat-tooltip');
+    if (tooltipEl) tooltipEl.style.display = 'none';
+  }
+}
+
 
 function drawVignette(ctx, w, h, strength = 0.8) {
   if (!rain) return;
@@ -2179,6 +2382,7 @@ if (hoveredCraftItem) {
 }
 
 function drawCraftTooltip(itemName, x, y) {
+  if (tool_tips===false) return;
   const recipe = base_tiles[itemName]?.craft;
   if (!recipe) return;
 
@@ -2258,7 +2462,7 @@ function drawSettings() {
   ctx.fillRect(100, 50, 400, 200);
 
   // draw buttons
-  ctx.font = "18px sans-serif";
+  ctx.font = "14px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
 

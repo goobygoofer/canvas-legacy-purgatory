@@ -33,6 +33,7 @@ module.exports = {
     collision: false
   },
   "stoneSword": {
+    prettyName: "stone sword",
     kind: "item",
     id: 5,
     container: "objects",
@@ -44,6 +45,7 @@ module.exports = {
     timeBonus: 0
   },
   "woodblock": {
+    prettyName: "wood block",
     kind: "item",
     id: 6,
     container: "objects",
@@ -52,6 +54,7 @@ module.exports = {
     dropChange: "woodblock0"
   },
   "stoneblock": {
+    prettyName: "stone block",
     kind: "item",
     id: 7,
     container: "objects",
@@ -60,6 +63,7 @@ module.exports = {
     dropChange: "stoneblock0"
   },
   "ironore": {
+    prettyName: "iron ore",
     kind: "item",
     id: 8,
     container: "objects",
@@ -67,6 +71,7 @@ module.exports = {
     smelt: "ironbar"
   },
   "ironbar": {
+    prettyName: "iron bar",
     kind: "item",
     id: 9,
     container: "objects",
@@ -75,6 +80,7 @@ module.exports = {
     craftLvl: 10,
   },
   "ironsword": {
+    prettyName: "iron sword",
     kind: "item",
     id: 10,
     container: "objects",
@@ -87,12 +93,14 @@ module.exports = {
     timeBonus: 0
   },
   "oaklog": {
+    prettyName: "oak log",
     kind: "item",
     id: 11,
     container: "objects",
     collision: false,
   },
   "woodplate": {
+    prettyName: "wood floor",
     kind: 'item',
     id: 12,
     container:"floor",
@@ -102,6 +110,7 @@ module.exports = {
     craftLvl: 10
   },
   "stoneplate": {
+    prettyName: "stone floor",
     kind: 'item',
     id: 13,
     container:'floor',
@@ -111,6 +120,7 @@ module.exports = {
     craftLvl: 10
   },
   "woodroof":{
+    prettyName: "wood ceiling",
     kind: 'item',
     id: 14,
     container:"roof",
@@ -120,6 +130,7 @@ module.exports = {
     craftLvl: 10
   },
   "stoneroof": {
+    prettyName: "stone ceiling",
     kind: 'item',
     id: 15,
     container:'roof',
@@ -139,24 +150,28 @@ module.exports = {
     craftLvl: 20
   },
   "flowerred": {
+    prettyName: "red flower",
     kind: 'item',
     id: 17,
     container: 'objects',
     collision: false
   },
   "flowerwhite": {
+    prettyName: "white flower",
     kind: 'item',
     id: 18,
     container: 'objects',
     collision: false
   },
   "floweryellow": {
+    prettyName: "yellow flower",
     kind: 'item',
     id: 19,
     container: 'objects',
     collision: false
   },
   "flowercrown":{
+    prettyName: "flower crown",
     kind: "item",
     id: 20,
     container: "objects",
@@ -188,6 +203,7 @@ module.exports = {
     collision: false,
   },
   "goblinsword": {
+    prettyName: "goblin sword",
     kind: "item",
     id: 24,
     container: "objects",
@@ -198,24 +214,28 @@ module.exports = {
     timeBonus: 100
   },
   "orangedust": {
+    prettyName: "orange dust",
     kind: "item",
     id: 25,
     container: "objects",
     collision: false
   },
   "bluedust": {
+    prettyName: "blue dust",
     kind: "item",
     id: 26,
     container: "objects",
     collision: false
   },
   "yellowdust": {
+    prettyName: "yellow dust",
     kind: "item",
     id: 27,
     container: "objects",
     collision: false
   },
   "healthpotion":{
+    prettyName: "health potion",
     kind: "item",
     id: 28,
     container: "objects",
@@ -227,6 +247,7 @@ module.exports = {
     craftLvl: 25
   },
   "leatherarmor": {
+    prettyName: "leather armor",
     kind: "item",
     id: 29,
     container: "objects",
@@ -238,6 +259,7 @@ module.exports = {
     craftLvl: 5
   },
   "leatherhelmet": {
+    prettyName: "leather helmet",
     kind: "item",
     id: 30,
     container: "objects",
@@ -249,6 +271,7 @@ module.exports = {
     craftLvl: 5
   },
   "ironarmor": {
+    prettyName:"iron armor",
     kind: "item",
     id:31,
     container:"objects",
@@ -260,6 +283,7 @@ module.exports = {
     craftLvl: 10
   },
   "ironhelmet": {
+    prettyName:"iron helmet",
     kind: "item",
     id:32,
     container:"objects",
@@ -278,6 +302,7 @@ module.exports = {
     craft: {log: 3, hide: 1, ironbar: 1}
   },
   "townteleport": {
+    prettyName: "Old Haven teleport",
     kind: "item",
     id: 34,
     container: "objects",
@@ -288,6 +313,7 @@ module.exports = {
     craftLvl: 10
   },
   "speedboots": {
+    prettyName: "speed boots",
     kind: "item",
     id: 35,
     container: "objects",
@@ -299,6 +325,7 @@ module.exports = {
     craftLvl: 99
   },
   "arrow": {
+    prettyName: "iron arrow",
     kind: "item",
     id: 36,
     container: "objects",
@@ -327,6 +354,7 @@ module.exports = {
     collision: false
   },
   "fishingpole": {
+    prettyName: "fishing pole",
     kind: "item",
     id: 39,
     container: "objects",
@@ -358,6 +386,7 @@ module.exports = {
     xp: 15
   },
   "arrowfire": {
+    prettyName: "bomb arrow",
     kind: "item",
     id: 43,
     container: "objects",
@@ -382,6 +411,7 @@ module.exports = {
     smelt: "silverbar"
   },
   "silverbar": {
+    prettyName: "silver bar",
     kind: "item",
     id: 46,
     container: "objects",
@@ -394,9 +424,10 @@ module.exports = {
     kind: "item",
     container: "objects",
     collision: false,
-    "smelt": "goldbar"
+    "smelt": "copperbar"
   },
   "copperbar": {
+    prettyName: "copper bar",
     kind: "item",
     id: 48,
     container: "objects",
@@ -412,6 +443,7 @@ module.exports = {
     smelt: "goldbar"
   },
   "goldbar": {
+    prettyName: "gold bar",
     kind: "item",
     id: 50,
     container: "objects",
@@ -427,6 +459,7 @@ module.exports = {
     smelt: "diamondbar"
   },
   "diamondbar": {
+    prettyName: "diamond bar",
     kind: "item",
     id: 52,
     container: "objects",
@@ -435,6 +468,7 @@ module.exports = {
     craftLvl: 75,
   },
   "copperhelmet": {
+    prettyName: "copper helmet",
     kind: "item",
     id:53,
     container:"objects",
@@ -445,6 +479,7 @@ module.exports = {
     craftLvl: 20
   },
   "silverhelmet": {
+    prettyName: "silver helmet",
     kind: "item",
     id:54,
     container:"objects",
@@ -455,6 +490,7 @@ module.exports = {
     craftLvl: 25
   },
   "goldhelmet": {
+    prettyName: "gold helmet",
     kind: "item",
     id:55,
     container:"objects",
@@ -465,6 +501,7 @@ module.exports = {
     craftLvl: 40
   },
   "diamondhelmet": {
+    prettyName: "diamond helmet",
     kind: "item",
     id:56,
     container:"objects",
@@ -475,6 +512,7 @@ module.exports = {
     craftLvl: 75
   },
   "copperarmor": {
+    prettyName: "copper armor",
     kind: "item",
     id:57,
     container:"objects",
@@ -485,6 +523,7 @@ module.exports = {
     craftLvl: 22
   },
   "silverarmor": {
+    prettyName: "silver armor",
     kind: "item",
     id:58,
     container:"objects",
@@ -495,6 +534,7 @@ module.exports = {
     craftLvl: 27
   },
   "goldarmor": {
+    prettyName: "gold armor",
     kind: "item",
     id:59,
     container:"objects",
@@ -505,6 +545,7 @@ module.exports = {
     craftLvl: 42
   },
   "diamondarmor": {
+    prettyName: "diamond armor",
     kind: "item",
     id:60,
     container:"objects",
@@ -515,6 +556,7 @@ module.exports = {
     craftLvl: 77
   },
   "coppersword": {
+    prettyName: "copper sword",
     kind: "item",
     id: 61,
     container: "objects",
@@ -526,6 +568,7 @@ module.exports = {
     timeBonus: 10
   },
   "silversword": {
+    prettyName: "silver sword",
     kind: "item",
     id: 62,
     container: "objects",
@@ -537,6 +580,7 @@ module.exports = {
     timeBonus: 50
   },
   "goldsword": {
+    prettyName: "gold sword",
     kind: "item",
     id: 63,
     container: "objects",
@@ -548,6 +592,7 @@ module.exports = {
     timeBonus: 75
   },
   "diamondsword": {
+    prettyName: "diamond sword",
     kind: "item",
     id: 64,
     container: "objects",
@@ -559,6 +604,7 @@ module.exports = {
     timeBonus: 100
   },
   "bowoak":{
+    prettyName: "oak bow",
     kind: "item",
     id: 65,
     container: "objects",
@@ -570,6 +616,7 @@ module.exports = {
     timeBonus: 100
   },
   "axeiron": {
+    prettyName: "iron axe",
     id: 66,
     kind: "item",
     container: "objects",
@@ -581,6 +628,7 @@ module.exports = {
     craftLvl: 10
   },
   "axecopper": {
+    prettyName: "copper axe",
     id: 67,
     kind: "item",
     container: "objects",
@@ -592,6 +640,7 @@ module.exports = {
     craftLvl: 20
   },
   "axesilver": {
+    prettyName: "silver axe",
     id: 68,
     kind: "item",
     container: "objects",
@@ -603,6 +652,7 @@ module.exports = {
     craftLvl: 25
   },
   "axegold": {
+    prettyName: "gold axe",
     id: 69,
     kind: "item",
     container: "objects",
@@ -614,6 +664,7 @@ module.exports = {
     craftLvl: 40
   },
   "axediamond": {
+    prettyName: "diamond axe",
     id: 70,
     kind: "item",
     container: "objects",
@@ -625,6 +676,7 @@ module.exports = {
     craftLvl: 75
   },
   "pickaxeiron": {
+    prettyName: "iron pickaxe",
     kind: "item",
     id: 71,
     container: "objects",
@@ -636,6 +688,7 @@ module.exports = {
     craftLvl: 10
   },
   "pickaxecopper": {
+    prettyName: "copper pickaxe",
     kind: "item",
     id: 72,
     container: "objects",
@@ -647,6 +700,7 @@ module.exports = {
     craftLvl: 20
   },
   "pickaxesilver": {
+    prettyName: "silver pickaxe",
     kind: "item",
     id: 73,
     container: "objects",
@@ -658,6 +712,7 @@ module.exports = {
     craftLvl: 25
   },
   "pickaxegold": {
+    prettyName: "gold pickaxe",
     kind: "item",
     id: 74,
     container: "objects",
@@ -669,6 +724,7 @@ module.exports = {
     craftLvl: 40
   },
   "pickaxediamond": {
+    prettyName: "diamond pickaxe",
     kind: "item",
     id: 75,
     container: "objects",
@@ -678,6 +734,106 @@ module.exports = {
     attack: 0,
     timeBonus: 125,
     craftLvl: 75
+  },
+  "arrowcopper": {
+    prettyName: "copper arrow",
+    kind: "item",
+    id: 76,
+    container: "objects",
+    collision: false,
+    craft: { log: 1, copperbar: 1 },
+    craftAmount: 12,
+    equip: { slot: "quiver" },
+    attack: 15,
+    craftLvl: 20
+  },
+  "arrowsilver": {
+    prettyName: "silver arrow",
+    kind: "item",
+    id: 77,
+    container: "objects",
+    collision: false,
+    craft: { log: 1, silverbar: 1 },
+    craftAmount: 12,
+    equip: { slot: "quiver" },
+    attack: 20,
+    craftLvl: 25
+  },
+  "arrowgold": {
+    prettyName: "gold arrow",
+    kind: "item",
+    id: 78,
+    container: "objects",
+    collision: false,
+    craft: { log: 1, goldbar: 1 },
+    craftAmount: 12,
+    equip: { slot: "quiver" },
+    attack: 25,
+    craftLvl: 40
+  },
+  "arrowdiamond": {
+    prettyName: "diamond arrow",
+    kind: "item",
+    id: 79,
+    container: "objects",
+    collision: false,
+    craft: { log: 1, diamondbar: 1 },
+    craftAmount: 12,
+    equip: { slot: "quiver" },
+    attack: 35,
+    craftLvl: 75
+  },
+
+/*------------------npc shop items-------------------*/
+  "healthpotionShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 100},
+    amount: 1,
+    item: "healthpotion"
+  },
+  "silverswordShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 5000},
+    amount: 1,
+    item: "silversword"
+  },
+  "arrowcopperShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 100},
+    amount: 5,
+    item: "arrowcopper"
+  },
+  "axegoldShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 3000},
+    amount: 1,
+    item: "axegold"
+  },
+  "pickaxeShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 0},
+    amount: 1,
+    item: "pickaxe"
+  },
+  "axeShop":
+  {
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 0},
+    amount: 1,
+    item: "axe"
+  },
+  "bedShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 5},
+    amount: 0,
+    item: "coin"//lol
   },
   "fishingspot":{
     container: "objects",
@@ -816,10 +972,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "ironrock1": {
@@ -834,10 +990,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "ironrock2": {
@@ -852,10 +1008,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "ironrock3": {
@@ -870,10 +1026,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "ironrock4": {
@@ -884,10 +1040,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "rock0": {
@@ -902,10 +1058,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
 
@@ -920,10 +1076,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "rock2": {
@@ -937,10 +1093,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "rock3": {
@@ -954,10 +1110,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "rock4": {
@@ -968,10 +1124,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "coalrock0": {
@@ -986,10 +1142,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "coalrock1": {
@@ -1004,10 +1160,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "coalrock2": {
@@ -1022,10 +1178,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "coalrock3": {
@@ -1040,10 +1196,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "coalrock4": {
@@ -1054,10 +1210,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "silverrock0": {
@@ -1072,10 +1228,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "silverrock1": {
@@ -1090,10 +1246,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "silverrock2": {
@@ -1108,10 +1264,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "silverrock3": {
@@ -1126,10 +1282,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "silverrock4": {
@@ -1140,10 +1296,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "copperrock0": {
@@ -1158,10 +1314,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "copperrock1": {
@@ -1176,10 +1332,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "copperrock2": {
@@ -1194,10 +1350,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "copperrock3": {
@@ -1212,10 +1368,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "copperrock4": {
@@ -1226,10 +1382,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "goldrock0": {
@@ -1244,10 +1400,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "goldrock1": {
@@ -1262,10 +1418,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "goldrock2": {
@@ -1280,10 +1436,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "goldrock3": {
@@ -1298,10 +1454,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "goldrock4": {
@@ -1312,10 +1468,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "diamondrock0": {
@@ -1330,10 +1486,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "diamondrock1": {
@@ -1348,10 +1504,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "diamondrock2": {
@@ -1366,10 +1522,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "diamondrock3": {
@@ -1384,10 +1540,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
   "diamondrock4": {
@@ -1398,10 +1554,10 @@ module.exports = {
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
-      { name: "silverrock0", weight: 90 },
+      { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 45},
-      { name: "diamondrock0", weight: 5 }
+      { name: "goldrock0", weight: 20},
+      { name: "diamondrock0",weight: 2 }
     ]
   },
 
@@ -1544,6 +1700,13 @@ module.exports = {
     'container':"objects",
     toX:null,toY:null
   },
+  "upStairs": {
+    kind: "interactable",
+    'roof':false,
+    'collision':false,
+    'container': "objects",
+    toX:null, toY:null
+  },
   "forge": {
     kind: "interactable",
     container: "objects",
@@ -1567,6 +1730,16 @@ module.exports = {
     container: "b-t",
     collision: true,
     roof: false
+  },
+/*---------------NPCS----------------*/
+  "shopkeep": {
+    kind: "npc",
+    container: "objects",
+    collision: true,
+    prettyName: "Shopkeep",
+    does: {
+      speech: "Stand on an item in the shop and press Shift to buy it!"
+    }
   },
   "void": {
     'roof': false,
@@ -1787,7 +1960,6 @@ module.exports = {
   "ratL": {},
   "spiderR": {},
   "spiderL": {},
-  "shopkeepR": {},
   "gnollR": {},
   "gnollL": {},
   "rangeGoblinR": {},

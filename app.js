@@ -862,7 +862,8 @@ async function dropPlayerLootbag(playerName) {
   const lootbag = {
     name: "lootbag",
     items: {},
-    locked: false
+    locked: false,
+    owner: playerName
   };
 
   // move items from inventory into lootbag keyed by name
@@ -1535,8 +1536,12 @@ function chatMessage(socket, msg){
     console.log("command message");
     parseCmdMsg(socket.user, msg);
   } else {
+    let senderName = socket.user;
+    if (players[socket.user].murderer===true){
+      senderName = `<span style="color: red;">${socket.user}</span>`;
+    }
     io.emit('chat message', {
-      user: socket.user,
+      user: senderName,
       message: msg
     });
   }
@@ -1818,6 +1823,10 @@ function checkCollision(name, coords) {
         continue; // skip collision for this object
       }
     }
+    if (npcs.includes(obj.name)){
+      npcInteract(name, obj.name);
+      return true;
+    }
 
     // Normal collision otherwise
     checkObjectCollision(name, coords, obj.name);
@@ -1828,6 +1837,15 @@ function checkCollision(name, coords) {
     return true;//lol they can't go to safe area!
   }
   return false;
+}
+
+let npcs = ['shopkeep'];
+
+function npcInteract(name, npcName){
+  let npcObject = baseTiles[npcName];
+  if (npcObject?.does){
+    sendMessage('server message', `${npcObject.prettyName}: ${npcObject.does.speech}`, players[name]);
+  }
 }
 
 function checkMelee(name, coords) {
@@ -2331,13 +2349,13 @@ function restoreObjToMap(coords, removed) {
   tile.objects[removed.key] = removed.obj;
 }
 
-
+/*
 async function openLootbag(playerName, lootbagObject, x, y) {
   if (!lootbagObject || !lootbagObject.items) return;
 
   if (lootbagObject.locked) return;
   lootbagObject.locked = true;
-
+  let lootChat = {};
   try {
     for (const name of Object.keys(lootbagObject.items)) {
       const item = lootbagObject.items[name];
@@ -2360,9 +2378,71 @@ async function openLootbag(playerName, lootbagObject, x, y) {
     lootbagObject.locked = false;
   }
 }
+*/
+async function openLootbag(playerName, lootbagObject, x, y) {
+  if (!lootbagObject || !lootbagObject.items) return;
+
+  if (lootbagObject.locked) return;
+  lootbagObject.locked = true;
+
+  let lootChat = {};
+
+  try {
+    for (const name of Object.keys(lootbagObject.items)) {
+      const item = lootbagObject.items[name];
+      const itemId = baseTiles[name]?.id;
+      if (!itemId) continue;
+
+      const added = await addItem(playerName, itemId, item.amt);
+
+      // ----- TRACK LOOT -----
+      if (added > 0) {
+        if (!lootChat[name]) {
+          lootChat[name] = 0;
+        }
+        lootChat[name] += added;
+      }
+      // ----------------------
+
+      item.amt -= added;
+
+      if (item.amt <= 0) delete lootbagObject.items[name];
+    }
+
+    // remove lootbag only if empty
+    if (Object.keys(lootbagObject.items).length === 0) {
+      const tile = map.Map[y][x];
+      delete tile.objects.lootbag;
+      markTileChanged(x, y);
+    }
+    let ownerName = null;
+    if (lootbagObject?.owner){
+      ownerName = lootbagObject.owner;
+    }
+    // ----- SEND SUMMARY MESSAGE -----
+    const entries = Object.entries(lootChat);
+    if (entries.length > 0) {
+      const lootString = entries
+        .map(([name, amount]) => `${amount}x ${baseTiles[name].prettyName}`)
+        .join(" , ");
+      if (ownerName!==null){
+         sendMessage('server message', `<span style="color: purple;">${ownerName}'s</span> loot: ${lootString}`, players[playerName]);
+      } else {
+        sendMessage('server message', `You received: ${lootString}`, players[playerName]);
+      }
+    } else {
+      sendMessage('pk message', `Your inventory is full.`, players[playerName]);
+    }
+    // --------------------------------
+
+  } finally {
+    lootbagObject.locked = false;
+  }
+}
 
 let exits = [
-  'dungeonStairs'
+  'dungeonStairs',
+  'upStairs'
 ]
 
 function checkInteract(name, mapObjects) {
@@ -2400,7 +2480,90 @@ function checkInteract(name, mapObjects) {
     readLeaderboard(name);
     return true;
   }
+  if (baseTiles[objName]?.cost){
+    purchaseItem(name, objName);
+  }
+  if (objName === 'bedShop'){
+    restUnownedBed(name);
+  }
   return false;
+}
+
+async function restUnownedBed(name){
+  let player = players[name];
+  sendMessage('server message', 'You pay to get some rest...', player);
+  await purchaseItem(name, 'bedShop');
+  startChannel({
+    playerName: name,
+    duration: 5000,
+    cancelOnMove: true,
+
+    onComplete: () => {
+      player.hp = player.maxHp;
+      emitPlayerState(player);
+      sendMessage('server message', 'You feel well rested!', player);
+    },
+
+    onCancel: () => {
+      damagePlayer(null, player, 5, "insomnia");
+      sendMessage('pk message', 'You wake up groggy and had to pay for the bed anyway!', player);
+    }
+  });
+}
+
+async function purchaseItem(playerName, objName) {
+    if (!objName) return;
+    const player = players[playerName];
+    if (!player) return;
+
+    // prevent buying during trade
+    if (Object.keys(player.tradeOffer).length > 0) {
+        sendMessage('pk message', `You cannot buy while trading!`, player);
+        return;
+    }
+
+    const itemDef = baseTiles[objName];
+    if (!itemDef?.cost || !itemDef?.item) return; // nothing to buy
+
+    const costItemName = Object.keys(itemDef.cost)[0];
+    const costAmount = itemDef.cost[costItemName];
+    const buyItemId = idByItem(itemDef.item);
+    const buyAmount = itemDef.amount;
+
+    // ---------- check if player has enough of the cost item ----------
+    const costItemId = idByItem(costItemName);
+    const playerCostAmount = await getItemAmount(playerName, costItemId);
+    if (playerCostAmount < costAmount) {
+        sendMessage('pk message', `You need ${costAmount} ${costItemName} to purchase this.`, player);
+        return;
+    }
+
+    // ---------- deduct cost ----------
+    await removeItem(playerName, costItemId, costAmount);
+
+    // ---------- add the purchased item safely ----------
+    const existingAmount = await getItemAmount(playerName, buyItemId);
+    let added = 0;
+
+    if (existingAmount > 0) {
+        // stack on existing slot
+        added = await addItem(playerName, buyItemId, buyAmount);
+    } else {
+        const slotsUsed = await getInventoryCount(playerName);
+        if (slotsUsed < 32) { // assuming 32-slot inventory
+            added = await addItem(playerName, buyItemId, 1);
+        } else {
+            // no space
+            sendMessage('pk message', `Your inventory is full!`, player);
+            return;
+        }
+    }
+
+    if (added > 0) {
+        sendMessage('server message', `You bought ${buyAmount} ${itemDef?.prettyName ?? itemDef.item}!`, player);
+        syncInventory(playerName);
+    }
+    syncInventory(playerName);
 }
 
 async function enterExit(name, exitObject){
@@ -2745,7 +2908,7 @@ async function dropItem(name, item) {
     sendMessage('pk message', `As a murderer, you cannot drop items...`, player);
     return;
   }
-
+  
   if (map.Map[player.coords[1]][player.coords[0]].objects) {
     if (Object.keys(map.Map[player.coords[1]][player.coords[0]].objects).length !== 0) {
       return;
@@ -2761,6 +2924,20 @@ async function dropItem(name, item) {
   const tile = map.Map[player.coords[1]][player.coords[0]];
   const container = baseTiles[dropName]?.container ?? "objects";
 
+  if (isSafeActive(tile) && player.name!=='Admin'){
+    console.log("checking if no drop");
+    switch (dropName){
+      case "stoneblock0":
+      case "woodblock0":
+      case "woodroof":
+      case "woodplate":
+      case "stoneroof":
+      case "stoneplate":
+        sendMessage('pk message', `You cannot drop this item in a safe zone.`, player);
+        return;
+    }
+  }
+
   tile ??= {};
   tile[container] ??= {};
 
@@ -2769,14 +2946,7 @@ async function dropItem(name, item) {
 
   // only set owner if the base tile defines it
   if ("owner" in baseTiles[dropName]) {
-    await dropOwnedItem(player, baseName);
-    /*
-    tileItem.owner = name; // player name
-    console.log(`name: ${baseName}`);
-    if (baseName==='door'){
-      tileItem.locked=true;
-    }
-    */
+    await dropOwnedItem(player, baseName, tileItem);
   }
   tile[container][dropName] = tileItem;
   await removeItem(name, players[name].inventory[item].id, 1);
@@ -2785,7 +2955,7 @@ async function dropItem(name, item) {
   await syncInventory(name);
 }
 
-async function dropOwnedItem(player, baseName) {
+async function dropOwnedItem(player, baseName, tileItem) {
   tileItem.owner = player.name; // player name
   if (baseName === 'door') {
     tileItem.locked = true;
