@@ -362,7 +362,7 @@ base_tiles = {
     craft: { copperbar: 2, log: 1, ironbar: 1 },
   },
   "silversword": {
-    "x":302,"y":144,
+    "x":303,"y":144,
     prettyName: "silver sword",
     id: 62,
     craft: { silverbar: 2, log: 1, ironbar: 1 }
@@ -478,7 +478,7 @@ base_tiles = {
     item: "healthpotion"
   },
   "silverswordShop":{
-    "x":302,"y":144,
+    "x":303,"y":144,
     container: "objects",
     kind: "interactable",
     cost: {coin: 5000},

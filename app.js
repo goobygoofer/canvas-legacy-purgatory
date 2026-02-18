@@ -2423,7 +2423,7 @@ async function openLootbag(playerName, lootbagObject, x, y) {
     const entries = Object.entries(lootChat);
     if (entries.length > 0) {
       const lootString = entries
-        .map(([name, amount]) => `${amount}x ${baseTiles[name].prettyName}`)
+        .map(([name, amount]) => `${amount}x ${baseTiles[name]?.prettyName ?? name}`)
         .join(" , ");
       if (ownerName!==null){
          sendMessage('server message', `<span style="color: purple;">${ownerName}'s</span> loot: ${lootString}`, players[playerName]);
