@@ -77,15 +77,53 @@ function drawObjects(chunk, i, j) {
     const obj = chunk.objects[objKey];
     const tile = base_tiles[obj.name];
     if (!tile) continue;
+    if (obj.name==='diamondrock0'){
+      ctx.fillStyle='blue';
+      ctx.fillRect(
+        offsetX + j * TILE_SIZE,           // dest X
+        offsetY + i * TILE_SIZE,           // dest Y
+        TILE_SIZE,                         // width 4 px
+        TILE_SIZE   
+      )
+    }
+    else if (obj.name==='goldrock0'){
+            ctx.fillStyle='yellow';
+      ctx.fillRect(
+        offsetX + j * TILE_SIZE,           // dest X
+        offsetY + i * TILE_SIZE,           // dest Y
+        TILE_SIZE,                         // width 4 px
+        TILE_SIZE   
+      )
+    }
+    else if (obj.name==='silverrock0'){
+            ctx.fillStyle='white';
+      ctx.fillRect(
+        offsetX + j * TILE_SIZE,           // dest X
+        offsetY + i * TILE_SIZE,           // dest Y
+        TILE_SIZE,                         // width 4 px
+        TILE_SIZE   
+      )
+    }
+    else if (obj.name==='copperrock0'){
+            ctx.fillStyle='orange';
+      ctx.fillRect(
+        offsetX + j * TILE_SIZE,           // dest X
+        offsetY + i * TILE_SIZE,           // dest Y
+        TILE_SIZE,                         // width 4 px
+        TILE_SIZE   
+      )
+    }
+    else {
+      ctx.drawImage(
+        spriteSheet,
+        tile.x, tile.y, 16, 16,            // source 16x16
+        offsetX + j * TILE_SIZE,           // dest X
+        offsetY + i * TILE_SIZE,           // dest Y
+        TILE_SIZE,                         // width 4 px
+        TILE_SIZE                          // height 4 px
+      );
+    }
 
-    ctx.drawImage(
-      spriteSheet,
-      tile.x, tile.y, 16, 16,            // source 16x16
-      offsetX + j * TILE_SIZE,           // dest X
-      offsetY + i * TILE_SIZE,           // dest Y
-      TILE_SIZE,                         // width 4 px
-      TILE_SIZE                          // height 4 px
-    );
   }
 }
 

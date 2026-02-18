@@ -1318,6 +1318,10 @@ function closeBank() {
   bankContainer.style.display = "none";
   selectedBankItemId = null;
   bankOpen = false;
+  if (tooltipEl){
+    tooltipEl.remove();
+    tooltipEl = null;
+  }
 }
 
 document.getElementById("bankClose").onclick = closeBank;
@@ -1376,6 +1380,8 @@ function renderBank() {
 
     slot.onclick = () => {
       selectedBankItemId = item.id;
+      tooltipEl.remove();
+      tooltipEl = null;
       renderBank();
     };
     if (tool_tips===true){
@@ -1384,10 +1390,8 @@ function renderBank() {
     bankGrid.appendChild(slot);
   }
 }
-
+let tooltipEl = null;
 function attachSlotHover(slot, prettyName) {
-  let tooltipEl = null;
-
   slot.onmouseenter = (e) => {
     // Create tooltip when hover starts
     tooltipEl = document.createElement('div');

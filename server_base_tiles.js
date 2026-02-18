@@ -833,7 +833,7 @@ module.exports = {
     kind: "interactable",
     cost: {coin: 5},
     amount: 0,
-    item: "coin"//lol
+    item: null//lol
   },
   "fishingspot":{
     container: "objects",

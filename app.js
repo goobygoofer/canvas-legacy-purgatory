@@ -1126,6 +1126,18 @@ io.on('connection', async (socket) => {
     tile.objects['sign'].text = data;
   });
 
+  socket.on('setOwner', (data) => {
+    if (!devMode && socket.user !== 'Admin') return;
+    let coords = players[socket.user].coords;
+    let tile = map.Map[coords[1]][coords[0]];
+    let objName = Object.keys(tile.objects)[0];
+    let objDef = tile.objects[objName];
+    if (objDef?.owner){
+      tile.objects[objName].owner = data;
+      console.log(`Set owner to ${data}`);
+    }
+  })
+
   socket.on('setToCoords', (data) => {
     if (!devMode && socket.user !== 'Admin') return;
     let coords = players[socket.user].coords;
@@ -2445,11 +2457,10 @@ let exits = [
   'upStairs'
 ]
 
-function checkInteract(name, mapObjects) {
+async function checkInteract(name, mapObjects) {
   let objKeys = Object.keys(mapObjects);
   let objName = objKeys[0];
   if (exits.includes(objName)){
-    console.log("got here");
     enterExit(name, mapObjects[objName]);//that particular object so coords can be stored
     return true;
   }
@@ -2480,19 +2491,25 @@ function checkInteract(name, mapObjects) {
     readLeaderboard(name);
     return true;
   }
-  if (baseTiles[objName]?.cost){
-    purchaseItem(name, objName);
-  }
   if (objName === 'bedShop'){
     restUnownedBed(name);
+    return true;
+  }
+  if (baseTiles[objName]?.cost){
+    await purchaseItem(name, objName);
+    return true;
   }
   return false;
 }
 
 async function restUnownedBed(name){
   let player = players[name];
+  let purchased = false;
+  purchased = await purchaseItem(name, 'bedShop');
+  if (purchased === false){
+    return;
+  }
   sendMessage('server message', 'You pay to get some rest...', player);
-  await purchaseItem(name, 'bedShop');
   startChannel({
     playerName: name,
     duration: 5000,
@@ -2512,18 +2529,19 @@ async function restUnownedBed(name){
 }
 
 async function purchaseItem(playerName, objName) {
-    if (!objName) return;
+    if (!objName) return false;
+
     const player = players[playerName];
-    if (!player) return;
+    if (!player) return false;
+
+    const itemDef = baseTiles[objName];
+    if (!itemDef?.cost) return false; // nothing to buy
 
     // prevent buying during trade
     if (Object.keys(player.tradeOffer).length > 0) {
         sendMessage('pk message', `You cannot buy while trading!`, player);
-        return;
+        return false;
     }
-
-    const itemDef = baseTiles[objName];
-    if (!itemDef?.cost || !itemDef?.item) return; // nothing to buy
 
     const costItemName = Object.keys(itemDef.cost)[0];
     const costAmount = itemDef.cost[costItemName];
@@ -2535,28 +2553,30 @@ async function purchaseItem(playerName, objName) {
     const playerCostAmount = await getItemAmount(playerName, costItemId);
     if (playerCostAmount < costAmount) {
         sendMessage('pk message', `You need ${costAmount} ${costItemName} to purchase this.`, player);
-        return;
+        return false;
     }
 
     // ---------- deduct cost ----------
     await removeItem(playerName, costItemId, costAmount);
 
     // ---------- add the purchased item safely ----------
-    const existingAmount = await getItemAmount(playerName, buyItemId);
     let added = 0;
+    if (buyItemId){
+      const existingAmount = await getItemAmount(playerName, buyItemId);
 
-    if (existingAmount > 0) {
+      if (existingAmount > 0) {
         // stack on existing slot
         added = await addItem(playerName, buyItemId, buyAmount);
-    } else {
+      } else {
         const slotsUsed = await getInventoryCount(playerName);
         if (slotsUsed < 32) { // assuming 32-slot inventory
-            added = await addItem(playerName, buyItemId, 1);
+          added = await addItem(playerName, buyItemId, buyAmount);
         } else {
-            // no space
-            sendMessage('pk message', `Your inventory is full!`, player);
-            return;
+          // no space
+          sendMessage('pk message', `Your inventory is full!`, player);
+          return false;
         }
+      }
     }
 
     if (added > 0) {
@@ -2564,6 +2584,7 @@ async function purchaseItem(playerName, objName) {
         syncInventory(playerName);
     }
     syncInventory(playerName);
+    return true;
 }
 
 async function enterExit(name, exitObject){
@@ -3135,6 +3156,9 @@ async function replenishResources() {
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
       const tile = map.Map[y][x];
+      if (tile.typing === true) {
+        delete tile.typing;
+      }
       if (tile['b-t'] === "water") {
         if (tile?.objects) {//gets rid of fishing spots AND lost arrows lol
           delete tile.objects;
@@ -3259,8 +3283,8 @@ async function replenishResources() {
     `Rocks: ${rocks}, 
      Irons: ${ironores}, 
      Coals: ${coals}, 
-     Silvers: ${silvers}, 
      Coppers: ${coppers},
+     Silvers: ${silvers}, 
      Golds: ${golds},
      Diamonds: ${diamonds}
      `);
