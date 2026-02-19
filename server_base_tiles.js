@@ -218,14 +218,20 @@ module.exports = {
     kind: "item",
     id: 25,
     container: "objects",
-    collision: false
+    collision: false,
+    equip: { slot: "quiver" },
+    attack: 10,
+    mana: 25
   },
   "bluedust": {
     prettyName: "blue dust",
     kind: "item",
     id: 26,
     container: "objects",
-    collision: false
+    collision: false,
+    equip: { slot: "quiver" },
+    attack: 50,
+    mana: 50
   },
   "yellowdust": {
     prettyName: "yellow dust",
@@ -783,7 +789,36 @@ module.exports = {
     attack: 35,
     craftLvl: 75
   },
-
+  "magebook":{
+    prettyName: "mage book",
+    kind: "item",
+    id: 80,
+    container: "objects",
+    collision: false,
+    craft: { hide: 1 },
+    equip: { slot: "hand" },
+    attack: 5,
+    craftLvl : 10
+  },
+  "manapotion":{
+    prettyName: "mana potion",
+    kind: "item",
+    id: 81,
+    container: "objects",
+    collision: false,
+    craft: { waterbucket: 1, bluedust: 10 },
+    mana: 25,
+    time: 1000,
+    consume: true,
+    craftLvl: 10
+  },
+  "waterbucket":{
+    prettyName: "water bucket",
+    kind: "item",
+    id: 82,
+    container: "objects",
+    collision: false
+  },
 /*------------------npc shop items-------------------*/
   "healthpotionShop":{
     container: "objects",
@@ -866,7 +901,7 @@ module.exports = {
     depletesTo: "tree1",
     requiresTool: "axe",
     regrowsTo: [
-      { name: "tree0", weight: 9950 },
+      { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
     ]
   },
@@ -881,7 +916,7 @@ module.exports = {
     depletesTo: "tree2",
     requiresTool: "axe",
     regrowsTo: [
-      { name: "tree0", weight: 9950 },
+      { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
     ]
   },
@@ -895,7 +930,7 @@ module.exports = {
     depletesTo: "tree3",
     requiresTool: "axe",
     regrowsTo: [
-      { name: "tree0", weight: 9950 },
+      { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
     ]
 
@@ -910,7 +945,7 @@ module.exports = {
     depletesTo: "tree4",
     requiresTool: "axe",
     regrowsTo: [
-      { name: "tree0", weight: 9950 },
+      { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
     ]
   },
@@ -920,7 +955,7 @@ module.exports = {
     container: "depletedResource",
     collision: false,
     regrowsTo: [
-      { name: "tree0", weight: 9950 },
+      { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
     ]
   },
@@ -961,6 +996,7 @@ module.exports = {
     requiresTool: "pickaxe"
   },
   "ironrock0": {
+    prettyName: "iron",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -968,17 +1004,20 @@ module.exports = {
     drops: { ironore: 1 },
     depletesTo: "ironrock1",
     requiresTool: "pickaxe",
+    reqLvl: 5,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "ironrock1": {
+    prettyName: "iron",
+    reqLvl: 5,
     kind: "resource",
     container: "objects",
     collision: true,
@@ -986,17 +1025,19 @@ module.exports = {
     drops: { ironore: 1 },
     depletesTo: "ironrock2",
     requiresTool: "pickaxe",
+    reqLvl: 5,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "ironrock2": {
+    prettyName: "iron",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1004,17 +1045,19 @@ module.exports = {
     drops: { ironore: 1 },
     depletesTo: "ironrock3",
     requiresTool: "pickaxe",
+    reqLvl: 5,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "ironrock3": {
+    prettyName: "iron",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1022,14 +1065,15 @@ module.exports = {
     drops: { ironore: 1 },
     depletesTo: "ironrock4",
     requiresTool: "pickaxe",
+    reqLvl: 5,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "ironrock4": {
@@ -1042,8 +1086,8 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "rock0": {
@@ -1060,8 +1104,8 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
 
@@ -1078,8 +1122,8 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "rock2": {
@@ -1095,8 +1139,8 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "rock3": {
@@ -1112,8 +1156,8 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "rock4": {
@@ -1126,11 +1170,12 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "coalrock0": {
+    prettyName: "coal",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1138,17 +1183,19 @@ module.exports = {
     drops: { coal: 1 },
     depletesTo: "coalrock1",
     requiresTool: "pickaxe",
+    reqLvl: 10,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "coalrock1": {
+    prettyName: "coal",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1156,17 +1203,19 @@ module.exports = {
     drops: { coal: 1 },
     depletesTo: "coalrock2",
     requiresTool: "pickaxe",
+    reqLvl: 10,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "coalrock2": {
+    prettyName: "coal",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1174,17 +1223,19 @@ module.exports = {
     drops: { coal: 1 },
     depletesTo: "coalrock3",
     requiresTool: "pickaxe",
+    reqLvl: 10,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "coalrock3": {
+    prettyName: "coal",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1192,14 +1243,15 @@ module.exports = {
     drops: { coal: 1 },
     depletesTo: "coalrock4",
     requiresTool: "pickaxe",
+    reqLvl: 10,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "coalrock4": {
@@ -1212,11 +1264,12 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "silverrock0": {
+    prettyName: "silver",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1224,17 +1277,19 @@ module.exports = {
     drops: { silver: 1 },
     depletesTo: "silverrock1",
     requiresTool: "pickaxe",
+    reqLvl: 30,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "silverrock1": {
+    prettyName: "silver",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1242,17 +1297,19 @@ module.exports = {
     drops: { silver: 1 },
     depletesTo: "silverrock2",
     requiresTool: "pickaxe",
+    reqLvl: 30,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "silverrock2": {
+    prettyName: "silver",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1260,17 +1317,19 @@ module.exports = {
     drops: { silver: 1 },
     depletesTo: "silverrock3",
     requiresTool: "pickaxe",
+    reqLvl: 30,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "silverrock3": {
+    prettyName: "silver",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1278,14 +1337,15 @@ module.exports = {
     drops: { silver: 1 },
     depletesTo: "silverrock4",
     requiresTool: "pickaxe",
+    reqLvl: 30,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "silverrock4": {
@@ -1298,11 +1358,12 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "copperrock0": {
+    prettyName: "copper",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1310,17 +1371,19 @@ module.exports = {
     drops: { copper: 1 },
     depletesTo: "copperrock1",
     requiresTool: "pickaxe",
+    reqLvl: 10,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "copperrock1": {
+    prettyName: "copper",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1328,17 +1391,19 @@ module.exports = {
     drops: { copper: 1 },
     depletesTo: "copperrock2",
     requiresTool: "pickaxe",
+    reqLvl: 10,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "copperrock2": {
+    prettyName: "copper",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1346,17 +1411,19 @@ module.exports = {
     drops: { copper: 1 },
     depletesTo: "copperrock3",
     requiresTool: "pickaxe",
+    reqLvl: 10,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "copperrock3": {
+    prettyName: "copper",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1364,14 +1431,15 @@ module.exports = {
     drops: { copper: 1 },
     depletesTo: "copperrock4",
     requiresTool: "pickaxe",
+    reqLvl: 10,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "copperrock4": {
@@ -1384,11 +1452,12 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "goldrock0": {
+    prettyName: "gold",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1396,17 +1465,19 @@ module.exports = {
     drops: { gold: 1 },
     depletesTo: "goldrock1",
     requiresTool: "pickaxe",
+    reqLvl: 50,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "goldrock1": {
+    prettyName: "gold",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1414,17 +1485,19 @@ module.exports = {
     drops: { gold: 1 },
     depletesTo: "goldrock2",
     requiresTool: "pickaxe",
+    reqLvl: 50,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "goldrock2": {
+    prettyName: "gold",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1432,17 +1505,19 @@ module.exports = {
     drops: { gold: 1 },
     depletesTo: "goldrock3",
     requiresTool: "pickaxe",
+    reqLvl: 50,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "goldrock3": {
+    prettyName: "gold",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1450,14 +1525,15 @@ module.exports = {
     drops: { gold: 1 },
     depletesTo: "goldrock4",
     requiresTool: "pickaxe",
+    reqLvl: 50,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "goldrock4": {
@@ -1470,11 +1546,12 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "diamondrock0": {
+    prettyName: "diamond",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1482,17 +1559,19 @@ module.exports = {
     drops: { diamond: 1 },
     depletesTo: "diamondrock1",
     requiresTool: "pickaxe",
+    reqLvl: 70,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "diamondrock1": {
+    prettyName: "diamond",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1500,17 +1579,19 @@ module.exports = {
     drops: { diamond: 1 },
     depletesTo: "diamondrock2",
     requiresTool: "pickaxe",
+    reqLvl: 70,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "diamondrock2": {
+    prettyName: "diamond",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1518,17 +1599,19 @@ module.exports = {
     drops: { diamond: 1 },
     depletesTo: "diamondrock3",
     requiresTool: "pickaxe",
+    reqLvl: 70,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "diamondrock3": {
+    prettyName: "diamond",
     kind: "resource",
     container: "objects",
     collision: true,
@@ -1536,14 +1619,15 @@ module.exports = {
     drops: { diamond: 1 },
     depletesTo: "diamondrock4",
     requiresTool: "pickaxe",
+    reqLvl: 70,
     regrowsTo: [
       { name: "rock0", weight: 1000 },
       { name: "ironrock0", weight: 200 },
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
   "diamondrock4": {
@@ -1556,8 +1640,8 @@ module.exports = {
       { name: "coalrock0", weight: 175 },
       { name: "silverrock0", weight: 50 },
       { name: "copperrock0", weight: 90 },
-      { name: "goldrock0", weight: 20},
-      { name: "diamondrock0",weight: 2 }
+      { name: "goldrock0", weight: 10},
+      { name: "diamondrock0",weight: 1 }
     ]
   },
 
@@ -1603,57 +1687,62 @@ module.exports = {
     collision: false,
     regrowsTo: [
       { name: "tree0", weight: 80 },
-      { name: "oak0", weight: 20 }
+      { name: "oak0", weight: 10 }
     ]
   },
   "oak0": {
+    prettyName: "oak",
     kind: "resource",
     container: "objects",
     collision: true,
     drops: { oaklog: 1 },
     depletesTo: "oak1",
     requiresTool: "axe",
+    reqLvl: 25,
     regrowsTo: [
-      { name: "tree0", weight: 9950 },
+      { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
     ]
   },
   "oak1": {
+    prettyName: "oak",
     kind: "resource",
     container: "objects",
     collision: true,
     drops: { oaklog: 1 },
     depletesTo: "oak2",
-    requiresTool: "axe"
-    ,
+    requiresTool: "axe",
+    reqLvl: 25,
     regrowsTo: [
-      { name: "tree0", weight: 9950 },
+      { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
     ]
   },
   "oak2": {
+    prettyName: "oak",
     kind: "resource",
     container: "objects",
     collision: true,
     drops: { oaklog: 1 },
     depletesTo: "oak3",
-    requiresTool: "axe"
-    ,
+    requiresTool: "axe",
+    reqLvl: 25,
     regrowsTo: [
-      { name: "tree0", weight: 9950 },
+      { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
     ]
   },
   "oak3": {
+    prettyName: "oak",
     kind: "resource",
     container: "objects",
     collision: true,
     drops: { oaklog: 1 },
     depletesTo: "tree4",
-    requiresTool: "axe"
-    ,
+    requiresTool: "axe",
+    reqLvl: 25,
     regrowsTo: [
-      { name: "tree0", weight: 9950 },
+      { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
     ]
   },

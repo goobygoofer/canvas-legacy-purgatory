@@ -252,6 +252,16 @@ async function getLeaderboard() {
 
     UNION ALL
 
+    SELECT 'Mage' AS skill, player_name, mageXp AS xp
+    FROM (
+      SELECT player_name, mageXp
+      FROM players
+      ORDER BY fishingXp DESC
+      LIMIT 1
+    ) AS t
+
+    UNION ALL
+
     SELECT 'Mining' AS skill, player_name, miningXp AS xp
     FROM (
       SELECT player_name, miningXp
@@ -271,6 +281,7 @@ async function initPlayer(name) {
     SELECT
       JSON_ARRAY(x, y) AS coords,
       hp,
+      mana,
       swordXp,
       archeryXp,
       hpXp,
@@ -278,6 +289,7 @@ async function initPlayer(name) {
       miningXp,
       craftXp,
       fishingXp,
+      mageXp,
       murderer,
       criminal,
       head,
@@ -297,8 +309,10 @@ async function initPlayer(name) {
     p_coords = JSON.parse(result[0].coords);
   }
   let currHp = result[0].hp;
+  let currMana = result[0].mana;
   let hpXp = result[0].hpXp;
   let swordXp = result[0].swordXp;
+  let mageXp = result[0].mageXp;
   let fishingXp = result[0].fishingXp;
   let archeryXp = result[0].archeryXp;
   let craftXp = result[0].craftXp;
@@ -308,6 +322,7 @@ async function initPlayer(name) {
   let criminalStatus = result[0].criminal;
   let hpLvl = await levelFromXp(hpXp);
   let swordLvl = await levelFromXp(swordXp);
+  let mageLvl = await levelFromXp(mageXp);
   let archeryLvl = await levelFromXp(archeryXp);
   let craftLvl = await levelFromXp(craftXp);
   let woodcuttingLvl = await levelFromXp(woodcuttingXp);
@@ -342,9 +357,13 @@ async function initPlayer(name) {
     lastGather: Date.now(),
     hp: currHp,//change to null, get hp from db
     maxHp: 100 + Math.floor(hpLvl * 2),//300hp at lvl 100
+    mana: currMana,
+    maxMana: 100 + Math.floor(mageLvl * 2),
     lastMelee: Date.now(),
     name: name,
     swordXpTotal: swordXp,
+    mageXpTotal: mageXp,
+    mageLvl: mageLvl,
     archeryXpTotal: archeryXp,
     fishingXpTotal: fishingXp,
     fishingLvl: fishingLvl,
@@ -409,7 +428,9 @@ async function dbPlayer(name) {
     body = ?,
     hand = ?,
     feet = ?,
-    quiver = ?
+    quiver = ?,
+    mageXp = ?,
+    mana = ?
     WHERE player_name = ?
   `;
   let player = players[name];
@@ -428,6 +449,8 @@ async function dbPlayer(name) {
     player.hand,
     player.feet,
     player.quiver,
+    player.mageXpTotal,
+    player.mana,
     name];
   await query(sql, params);
 }
@@ -573,16 +596,16 @@ async function addPlayerToDb(name, pass) {
     hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp,
     murderer, murderTimer, criminal, criminalTimer, 
     fishingXp, archeryXp,
-    hand, head, body, feet, quiver
+    hand, head, body, feet, quiver, mageXp, mana
     ) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `;
   const params = [
     name, pass, 49, 49,
     100, 0, 0, 0, 0, 0,
     false, 0, false, 0,
     0, 0,
-    1, null, null, null, null
+    1, null, null, null, null, 0, 100
   ];
   await query(sql, params);
 }
@@ -785,6 +808,9 @@ async function emitPlayerState(player) {
       hpXpTotal: player.hpXpTotal,
       swordLvl: player.swordLvl,
       swordXpTotal: player.swordXpTotal,
+      mageXpTotal: player.mageXpTotal,
+      mageLvl: player.mageLvl,
+      mana: player.mana,
       fishingXpTotal: player.fishingXpTotal,
       fishingLvl: player.fishingLvl,
       archeryLvl: player.archeryLvl,
@@ -794,7 +820,8 @@ async function emitPlayerState(player) {
       woodcuttingLvl: player.woodcuttingLvl,
       woodcuttingXpTotal: player.woodcuttingXpTotal,
       miningLvl: player.miningLvl,
-      miningXpTotal: player.miningXpTotal
+      miningXpTotal: player.miningXpTotal,
+      activeInvItem: player.activeInventory
     });
   }
 }
@@ -922,6 +949,7 @@ async function updatePlayerState(player) {
   player.woodcuttingLvl = await levelFromXp(player.woodcuttingXpTotal);
   player.miningLvl = await levelFromXp(player.miningXpTotal);
   player.fishingLvl = await levelFromXp(player.fishingXpTotal);
+  player.mageLvl = await levelFromXp(player.mageXpTotal);
 
   const currState = {
     x: player.coords[0],
@@ -933,11 +961,12 @@ async function updatePlayerState(player) {
     quiver: player.quiver,
     facing: player.facing,
     hp: player.hp,
-
+    mana: player.mana,
     hpLvl: player.hpLvl,
     hpXpTotal: player.hpXpTotal,
     swordLvl: player.swordLvl,
     swordXpTotal: player.swordXpTotal,
+    mageXpTotal: player.mageXpTotal,
     fishingXpTotal: player.fishingXpTotal,
     fishingLvl: player.fishingLvl,
     archeryLvl: player.archeryLvl,
@@ -1246,7 +1275,7 @@ async function bankDeposit(socket, data){
     if (toDeposit <= 0) return;
 
     // 2. Add to bank
-    await addBankItem(player.name, id, toDeposaddItemit);
+    await addBankItem(player.name, id, toDeposit);
 
     // 3. Remove from inventory
     await removeItem(player.name, id, toDeposit);
@@ -1806,6 +1835,9 @@ function checkCollision(name, coords) {
     return true;//don't think data.collision ever even gets used, take out of map?
   }
   if (baseTiles[map.Map[coords[1]][coords[0]]['b-t']].collision === true) {
+    //but if it's water, do other stuff, coulda put fishing here lmao
+    let checkTile = map.Map[coords[0]][coords[0]];
+    checkCollisionBaseTile(name, checkTile);
     return true;
   }
   //player melee here??
@@ -1851,10 +1883,63 @@ function checkCollision(name, coords) {
   return false;
 }
 
+async function checkCollisionBaseTile(name, tile) {
+  const player = players[name];
+  if (!player) return;
+
+  if (tile['b-t'] === 'water') {
+    const activeSlotIndex = player.activeInventory;
+    const activeSlot = player.inventory[activeSlotIndex];
+    if (!activeSlot) return;
+
+    const activeItem = itemById[activeSlot.id];
+    if (activeItem !== 'bucket') return;
+
+    const bucketId = idByItem('bucket');
+    const waterBucketId = baseTiles['waterbucket'].id;
+
+    // Check if player already has water bucket
+    const existing = await getItemAmount(name, waterBucketId);
+    if (existing > 0) {
+      // stacking allowed
+      // remove one bucket
+      await removeItem(name, bucketId, 1);
+      await addItem(name, waterBucketId, 1);
+      sendMessage('server message', `You fill the bucket with water.`, player);
+      await syncInventory(name);
+      return;
+    }
+
+    // Inventory full? Check if we can replace this slot
+    const slotsUsed = await getInventoryCount(name);
+    if (slotsUsed >= 32) {
+      // If the **current slot has the bucket**, we can replace it
+      player.inventory[activeSlotIndex].id = waterBucketId;
+      sendMessage('server message', `You fill the bucket with water.`, player);
+      await removeItem(name, bucketId, 1);
+      await addItem(name, waterBucketId, 1);
+      await syncInventory(name);
+      return;
+    }
+
+    // Otherwise, normal add
+    const added = await addItem(name, waterBucketId, 1);
+    if (added === 0) {
+      sendMessage('pk message', `Your inventory is full.`, player);
+      return;
+    }
+
+    // Remove bucket
+    await removeItem(name, bucketId, 1);
+    sendMessage('server message', `You fill the bucket with water.`, player);
+    await syncInventory(name);
+  }
+}
+
 let npcs = ['shopkeep'];
 
 function npcInteract(name, npcName){
-  let npcObject = baseTiles[npcName];
+  let npcObject = baseTiles[npdscName];
   if (npcObject?.does){
     sendMessage('server message', `${npcObject.prettyName}: ${npcObject.does.speech}`, players[name]);
   }
@@ -2136,6 +2221,24 @@ async function checkObjectCollision(playerName, coords, objName) {
     //objDef.requiresTool !== heldItemName
     !heldItemName.startsWith(objDef.requiresTool)
   ) return;
+  let lvlCheck;
+  let lvlType;
+  if (objDef?.reqLvl){
+    switch (objDef.requiresTool){
+      case "pickaxe":
+        lvlCheck = player.miningLvl;
+        lvlType = "mining";
+        break;
+      case "axe":
+        lvlCheck = player.woodcuttingLvl;
+        lvlType = "woodcutting";
+        break;
+    }
+    if (objDef.reqLvl>lvlCheck){
+      sendMessage('pk message', `You need level ${objDef.reqLvl} to gather ${objDef?.prettyName ?? "this"}.`, player);
+      return;
+    }
+  }
   //check if safe tile first!
   if (isSafeActive(map.Map[coords[1]][coords[0]])) {
     return;
@@ -2169,6 +2272,9 @@ async function playerHeldItemAction(playerName) {
   if (itemById[player.hand].startsWith("fishingpole")) {
     await playerTryFishing(player);
     return;
+  }
+  if (itemById[player.hand].startsWith("mage")){
+    await playerShootBow(player, true);
   }
 }
 
@@ -2263,9 +2369,25 @@ function checkOnNextTile(coords, lastDir, thing) {
   return false;
 }
 
-async function playerShootBow(player) {
+async function playerShootBow(player, mage = false) {
+  if (player.quiver===null){
+    let word;
+    if (mage ===true){
+      word="pouch";
+    } else {
+      word="quiver";
+    }
+    sendMessage('pk message', `You don't have anything in your ${word} to do that with!`, player);
+    return;
+  }
   let timeBonus=1000;
   if (player.hand!==null){
+    if (itemById[player.hand].startsWith('bow') && itemById[player.quiver].includes('dust')){
+      return;
+    }
+    if (itemById[player.hand].startsWith('mage') && itemById[player.quiver].includes('arrow')){
+      return;
+    }
     if (baseTiles[itemById[player.hand]]?.timeBonus){
       timeBonus -= baseTiles[itemById[player.hand]].timeBonus;
     }
@@ -2273,8 +2395,18 @@ async function playerShootBow(player) {
   if (Date.now() < player.lastMelee + timeBonus) {//change to -level?
     return;
   }
-  player.lastMelee = Date.now();
   if (player.quiver === null) return;
+  if (mage === true){
+    let dustAmmo = baseTiles[itemById[player.quiver]];
+    if (player.mana<=0 || player.mana<dustAmmo.mana){
+      sendMessage('pk message', "Not enough mana.", player);
+      return;
+    } else {
+      player.mana-=dustAmmo.mana;
+    }
+  }
+  player.lastMelee = Date.now();
+  
   let projName = itemById[player.quiver];
   //check amount, decrement if shoots
   let projAmount = await getItemAmount(player.name, player.quiver);
@@ -2284,7 +2416,13 @@ async function playerShootBow(player) {
   }
   await removeItem(player.name, player.quiver, 1);
   await syncInventory(player.name);
-  const arrow = createProjectile(projName, player.lastDir, player.coords[0], player.coords[1], player.name, 10);
+  let slow = false;
+  let slowTime = null;
+  if (projName==='bluedust'){
+    slow = true;
+    slowTime = 2000;//plus player mage level calculation
+  }
+  const arrow = createProjectile(projName, player.lastDir, player.coords[0], player.coords[1], player.name, 10, slow, slowTime);
   addProjectileToTile(arrow);
 }
 
@@ -2822,7 +2960,7 @@ async function consume(playerName, id) {
 
   const itemDef = baseTiles[itemName];
   if (!itemDef || !itemDef.consume) return;
-  if (itemDef.hp) {
+  if (itemDef.consume) {
     await eatDrinkTimed(playerName, itemDef);
     return;
   }
@@ -2841,10 +2979,19 @@ async function eatDrinkTimed(name, itemObj) {
 
     onComplete: async () => {
       const player = players[name];
-      player.hp += itemObj.hp;
-      if (player.hp > player.maxHp) {
-        player.hp = player.maxHp;
+      if (itemObj?.hp){
+        player.hp += itemObj.hp;
+        if (player.hp > player.maxHp) {
+          player.hp = player.maxHp;
+        }
       }
+      if (itemObj?.mana){
+        player.mana += itemObj.mana;
+        if (player.mana > player.maxMana) {
+          player.mana = player.maxMana;
+        }
+      }
+
       await removeItem(name, itemObj.id, 1);
       await syncInventory(name);
     },
@@ -3146,14 +3293,36 @@ async function playerBank(playerName) {
 
 const mobs = new Map();
 
+let rocks = 0;
+let ironores = 0;
+let coals = 0;
+let silvers = 0;
+let coppers = 0;
+let golds = 0;
+let diamonds = 0;
+
+let totalOres = 0;
+for (let y = 0; y < map.Map.length; y++) {
+  for (let x = 0; x < map.Map[y].length; x++) {
+    const tile = map.Map[y][x];
+    if (!tile?.objects) continue;
+    let objName = Object.keys(tile.objects)[0];
+    if (!objName) continue;
+    if (objName.endsWith('rock0')){
+      totalOres+=1;
+    }
+  }
+}
+
 async function replenishResources() {
-  let rocks = 0;
-  let ironores = 0;
-  let coals = 0;
-  let silvers = 0;
-  let coppers = 0;
-  let golds = 0;
-  let diamonds = 0;
+
+  rocks = 0;
+  ironores = 0;
+  coals = 0;
+  silvers = 0;
+  coppers = 0;
+  golds = 0;
+  diamonds = 0;
   await removeMobType("mushroom");
   await removeMobType("goat");
   for (let y = 0; y < map.Map.length; y++) {
@@ -3283,7 +3452,8 @@ async function replenishResources() {
   }
   console.log(`Mobs: ${mobs.size}`);
   console.log(
-    `Rocks: ${rocks}, 
+    `Total ores: ${totalOres},
+     Rocks: ${rocks}, 
      Irons: ${ironores}, 
      Coals: ${coals}, 
      Coppers: ${coppers},
@@ -3641,7 +3811,7 @@ async function initMurderers() {
   // Get all players who are murderers with a remaining timer
   const rows = await query(
     `SELECT player_name, x, y, hp, hpXp, swordXp, archeryXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, fishingXp,
-     head, hand, body, quiver, feet
+     head, hand, body, quiver, feet, mageXp, mana
      FROM players
      WHERE murderer = 1 AND murderTimer > 0`
   );
@@ -3667,6 +3837,7 @@ async function initMurderers() {
     const craftLvl = await levelFromXp(result.craftXp);
     const woodcuttingLvl = await levelFromXp(result.woodcuttingXp);
     const miningLvl = await levelFromXp(result.miningXp);
+    const mageLvl = await levelFromXp(result.mageXp);
     // Initialize player object in memory
     await initPlayer(name);
     let player = players[name];
@@ -3890,8 +4061,14 @@ function rangeAttackMob(proj, mob) {
     console.log("+damage from held item");
     damage += Math.floor(Math.random() * baseTiles[itemById[player.hand]].attack);
   }
-  damage += Math.floor(Math.random() * players[proj.ownerId].archeryLvl);
-  damageMob(proj.ownerId, mob.id, damage, "archery");
+  if (proj.type.includes('arrow')){
+    damage += Math.floor(Math.random() * players[proj.ownerId].archeryLvl);
+    damageMob(proj.ownerId, mob.id, damage, "archery");
+  }
+  if (proj.type.includes('dust')){
+    damage += Math.floor(Math.random() * players[proj.ownerId].mageLvl);//change to mageLvl
+    damageMob(proj.ownerId, mob.id, damage, "mage");
+  }
 }
 
 //must consolidate doing damage to players/mobs
@@ -3902,6 +4079,7 @@ function rangeAttackPlayer(proj, targetName) {
   if (proj?.slow === true) {
     targetPlayer.slow = true;
     targetPlayer.slowTime = proj.slowTime;
+    sendMessage('pk message', 'You have been immobilized!', targetPlayer);
   }
   if (mobs.get(proj.ownerId) !== undefined) {
     mobRangeDamagePlayer(proj, targetPlayer);
@@ -3914,9 +4092,15 @@ function rangeAttackPlayer(proj, targetName) {
       console.log("+damage from held item");
       damage += Math.floor(Math.random() * baseTiles[itemById[player.hand]].attack);
     }
-    damage += Math.floor(Math.random() * players[proj.ownerId].archeryLvl);
     console.log(`${proj.ownerId} hit ${targetName} with ${proj.type} for ${damage} damage!`);
-    damagePlayer(player, targetPlayer, damage, "archery");
+    if (proj.type.includes('arrow')){
+      damage += Math.floor(Math.random() * players[proj.ownerId].archeryLvl);
+      damagePlayer(player, targetPlayer, damage, "archery");
+    }
+    if (proj.type.includes('dust')){
+      damage += Math.floor(Math.random() * players[proj.ownerId].mageLvl);//change to .mageLvl
+      damagePlayer(player, targetPlayer, damage, "mage");
+    }
   }
 }
 
@@ -3953,7 +4137,7 @@ function updateProjectiles() {
     const added = addProjectileToTile(proj);
     if (added === 'end') { // destroyed due to collision
       if (proj.type.startsWith("arrow") && players[proj.ownerId]) {//still not perfect, fix
-        if (proj.type.startsWith('arrowfire')) {
+        if (proj.type.startsWith('arrowfire') || proj.type.includes('orangedust')) {
           io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
           console.log("end damage");
           areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 12);
@@ -3966,7 +4150,7 @@ function updateProjectiles() {
     }
     if (added === false) {
       proj.life = 0;
-      if (proj.type.startsWith('arrowfire')) {
+      if (proj.type.startsWith('arrowfire') || proj.type.includes('orangedust')) {
         io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
         console.log('added false damage');
         areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 12);
@@ -3982,7 +4166,7 @@ function updateProjectiles() {
     if (proj.life <= 0) {
       removeProjectileFromTile(proj);
       markTileChanged(proj.x, proj.y);
-      if (proj.type.startsWith('arrowfire')) {
+      if (proj.type.startsWith('arrowfire') || proj.type.includes('orangedust')) {
         io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
         console.log('end of life damage');
         areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 15);

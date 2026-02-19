@@ -469,6 +469,30 @@ base_tiles = {
     id: 79,
     craft: { log: 1, diamondbar: 1 },
   },
+  "magebook":{
+    "x":304,"y":256,
+    prettyName: "mage book",
+    id: 80,
+    craft: { hide: 1 },
+  },
+  "manapotion":{
+    "x":0,"y":384,
+    prettyName: "mana potion",
+    id: 81,
+    craft: { waterbucket: 1, bluedust: 1 },
+  },
+  "waterbucket":{
+    "x":304,"y":32,
+    prettyName: "water bucket",
+    id: 82,
+  },
+  "magebookL":{
+    "x":80,"y":272,
+  },
+  "magebookR":{
+    "x":64,"y":272,
+  },
+
 /*-----------shop items-----------------*/
   "healthpotionShop":{
     "x":256,"y":896,
@@ -718,6 +742,14 @@ base_tiles = {
   "arrowDown": { "x": 224, "y": 240 },
   "arrowLeft": { "x": 240, "y": 240 },
   "arrowRight": { "x": 256, "y": 240 },
+  "orangedustUp": {"x":96,"y":256},
+  "orangedustDown": {"x":112,"y":256},
+  "orangedustLeft": {"x":128,"y":256},
+  "orangedustRight": {"x":144,"y":256},
+  "bluedustUp": {"x":160,"y":256},
+  "bluedustDown": {"x":176,"y":256},
+  "bluedustLeft": {"x":192,"y":256},
+  "bluedustRight": {"x":208,"y":256},
   "speedbootsL": {
     "x":161,"y":448
   },

@@ -618,7 +618,9 @@ function handleInvClick(mx, my, leftRight) {
       col < 0 || col >= INV_COLS ||
       row < 0 || row >= INV_ROWS
     ) {
-      activeInvItem = null;
+      if (leftRight!==null){
+        activeInvItem = null;
+      }
       return;
     }
   if (leftRight!==null && activeTab==="inventory"){
@@ -977,6 +979,10 @@ socket.on('playerState', (data)=> {
   playerData.woodcuttingXpTotal=data.woodcuttingXpTotal;
   playerData.miningLvl=data.miningLvl;
   playerData.miningXpTotal=data.miningXpTotal;
+  playerData.mageXpTotal=data.mageXpTotal;
+  playerData.mageLvl=data.mageLvl;
+  playerData.mana=data.mana;
+  playerData.activeInvItem=data.activeInvItem;
 });
 
 socket.on('invData', (data) => {
@@ -1673,64 +1679,14 @@ function drawPaintPalette() {
 const statsConfig = [
   { key: "swordLvl", name: "Swordsmanship", sx: base_tiles['ironsword'].x, sy: base_tiles['ironsword'].y, xpTotalKey: "swordXpTotal" },
   { key: "hpLvl", name: "HP", sx: base_tiles['heart'].x, sy: base_tiles['heart'].y, xpTotalKey: "hpXpTotal" },
+  { key: "archeryLvl", name: "Archery", sx: base_tiles['arrow'].x, sy: base_tiles['arrow'].y, xpTotalKey: "archeryXpTotal" },
+  { key: "mageLvl", name: "Mage", sx: base_tiles['magebook'].x, sy: base_tiles['magebook'].y, xpTotalKey: "mageXpTotal" },
   { key: "craftLvl", name: "Crafting", sx: base_tiles['craftTools'].x, sy: base_tiles['craftTools'].y, xpTotalKey: "craftXpTotal" },
   { key: "woodcuttingLvl", name: "Woodcutting", sx: base_tiles['axe'].x, sy: base_tiles['axe'].y, xpTotalKey: "woodcuttingXpTotal" },
   { key: "miningLvl", name: "Mining", sx: base_tiles['pickaxe'].x, sy: base_tiles['pickaxe'].y, xpTotalKey: "miningXpTotal" },
-  { key: "archeryLvl", name: "Archery", sx: base_tiles['arrow'].x, sy: base_tiles['arrow'].y, xpTotalKey: "archeryXpTotal" },
   { key: "fishingLvl", name: "Fishing", sx: base_tiles['fishingpole'].x, sy: base_tiles['fishingpole'].y, xpTotalKey: "fishingXpTotal" }
 ];
 
-/*
-function drawStats(mx, my) {
-  if (!playerData) return;
-
-  const iconSize = 16;
-  const padding = 4;
-
-  const columns = 4;
-
-  // room for icon + padding + up to 3 digit level + a little breathing room
-  const columnWidth = iconSize + padding + 24;
-
-  const rowHeight = iconSize + 6;
-
-  const startY = 14;
-
-  let index = 0;
-
-  for (const stat of statsConfig) {
-    if (!stat || !stat.key) continue;
-    if (!(stat.key in playerData)) continue;
-
-    const level = playerData[stat.key];
-
-    const col = index % columns;
-    const row = Math.floor(index / columns);
-
-    const x = col * columnWidth;
-    const y = startY + row * rowHeight;
-
-    // icon
-    invCtx.drawImage(
-      spriteSheet,
-      stat.sx, stat.sy, iconSize, iconSize,
-      x, y, iconSize, iconSize
-    );
-
-    // level text
-    invCtx.fillStyle = "black";
-    invCtx.font = "12px Arial";
-    invCtx.textBaseline = "middle";
-    invCtx.fillText(
-      level,
-      x + iconSize + padding,
-      y + iconSize / 2
-    );
-
-    index++;
-  }
-}
-*/
 function drawStats(mx, my) {
   if (!playerData) return;
   invCtx.clearRect(0, TAB_HEIGHT, invCanvas.width, invCanvas.height);
@@ -1932,16 +1888,10 @@ function drawObjects(chunk){
     if (Object.keys(chunk.objects)[0].startsWith('flower')){
       drawBees(chunk, i, j);
     }
-    if (chunk?.projectile){
-      console.log(chunk.projectile);
-      if (Object.keys(chunk?.projectile)[0].startsWith('arrowfire')) {
-        animateFire(chunk, i, j);
-      }
-    }
   }
 }
 
-function animateFire(chunk, i, j) {
+function animateFire(chunk, i, j, color = "orange") {
   const tileSize = 32;
   const centerX = j * tileSize + tileSize / 2;
   const centerY = i * tileSize + tileSize / 2;
@@ -1951,8 +1901,9 @@ function animateFire(chunk, i, j) {
 
   // create radial gradient: strong center -> transparent edge
   const gradient = ctx.createRadialGradient(centerX, centerY, 4, centerX, centerY, 32);
-  gradient.addColorStop(0, `rgb(255, 174, 0,${0.6 * flicker})`); // bright center
-  gradient.addColorStop(1, `rgba(255, 187, 0, 0)`);                // fade outward
+
+  gradient.addColorStop(0, `rgba(${getRGB(color)}, ${0.6 * flicker})`);
+  gradient.addColorStop(1, `rgba(${getRGB(color)}, 0)`);
 
   ctx.save();
   ctx.fillStyle = gradient;
@@ -1960,6 +1911,18 @@ function animateFire(chunk, i, j) {
   ctx.arc(centerX, centerY, 32, 0, Math.PI * 2);
   ctx.fill();
   ctx.restore();
+}
+
+function getRGB(color) {
+  const temp = document.createElement("div");
+  temp.style.color = color;
+  document.body.appendChild(temp);
+
+  const computed = getComputedStyle(temp).color;
+  document.body.removeChild(temp);
+
+  // computed comes back like "rgb(r, g, b)"
+  return computed.match(/\d+/g).slice(0, 3).join(", ");
 }
 
 //all bees will move in unison but that's fine lol
@@ -2497,24 +2460,34 @@ function drawHUD(){
   //right now just hp in bottom left of screen
   const hpPosX = 5;
   const hpPosY = canvas.height-20;
+  const manaPosX = 5;
+  const manaPosY = canvas.height-30;
   ctx.strokeStyle = "black";
   ctx.strokeRect(hpPosX, hpPosY, 100, 10);
-  ctx.fillStyle = "red";
+
+  ctx.strokeStyle = "black";
+  ctx.strokeRect(manaPosX, manaPosY, 100, 10);
 // determine the visual width of the full bar
   const barWidth = 100; // keeps the same size on screen
 
   // calculate max HP based on level
   const maxHp = 100 + playerData.hpLvl * 2;
+  const maxMana = 100 + playerData.mageLvl * 2;
 
   // scale current HP relative to max
-  const fillWidth = (playerData.hp / maxHp) * barWidth;
+  const hpFillWidth = (playerData.hp / maxHp) * barWidth;
+  const manaFillWidth = (playerData.mana/ maxMana) * barWidth;
 
   // clamp to prevent negative or overflowing bars
-  const safeWidth = Math.max(0, Math.min(barWidth, fillWidth));
+  const hpSafeWidth = Math.max(0, Math.min(barWidth, hpFillWidth));
+  const manaSafeWidth = Math.max(0, Math.min(barWidth, manaFillWidth));
 
   // draw the HP bar
-  ctx.fillRect(hpPosX + 1, hpPosY + 1, safeWidth, 8);
+  ctx.fillStyle = "#ff00008c";
+  ctx.fillRect(hpPosX + 1, hpPosY + 1, hpSafeWidth, 8);
   
+  ctx.fillStyle = "#00ccff8c";
+  ctx.fillRect(manaPosX + 1, manaPosY +1, manaSafeWidth, 8);
   //draw combat icon
   ctx.drawImage(
     spriteSheet,
@@ -2575,9 +2548,11 @@ function updateView(data){
       }
       if (latestView[i-1]) {
         if (latestView[i-1][j-1]){
-          if (latestView[i - 1][j - 1]?.projectile?.name.startsWith('arrowfire')) {
-            console.log("fire arrow animate!");
+          if (latestView[i - 1][j - 1]?.projectile?.name.startsWith('orangedust') || latestView[i - 1][j - 1]?.projectile?.name.startsWith('arrowfire')) {
             animateFire(latestView[i - 1][j - 1], i-1, j-1);
+          }
+          if (latestView[i - 1][j - 1]?.projectile?.name.startsWith('bluedust')){
+            animateFire(latestView[i - 1][j - 1], i-1, j-1, 'blue');
           }
         }
       }
