@@ -1817,6 +1817,60 @@ function drawRain() {
   }
 }
 
+let fog = true;
+function drawOutsideFog() {
+  if (fog===false) return;
+  if (!latestView) return;
+  // player tile is fixed in the view
+  const playerTile = latestView[5]?.[10];
+  const playerRoof = playerTile?.roof;
+  const playerUnderRoof =
+    playerRoof && Object.keys(playerRoof).length > 0;
+  if (!playerUnderRoof) return;
+  for (let i = 0; i < latestView.length; i++) {
+    for (let j = 0; j < latestView[i].length; j++) {
+
+      const tile = latestView[i][j];
+      const roof = tile?.roof;
+      const hasRoof = roof && Object.keys(roof).length > 0;
+
+      // if player is indoors, don't draw rain on roofed tiles
+      if (playerUnderRoof && hasRoof) {
+        continue;
+      }
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(j*32, i*32, 32, 32);
+    }
+  }
+}
+
+let night = false;
+function drawNightTime(){
+  if (night===false) return;
+  if (!latestView) return;
+  // player tile is fixed in the view
+  const playerTile = latestView[5]?.[10];
+  const playerRoof = playerTile?.roof;
+  const playerUnderRoof =
+    playerRoof && Object.keys(playerRoof).length > 0;
+  //if (playerUnderRoof) return;
+  for (let i = 0; i < latestView.length; i++) {
+    for (let j = 0; j < latestView[i].length; j++) {
+
+      const tile = latestView[i][j];
+      const roof = tile?.roof;
+      const hasRoof = roof && Object.keys(roof).length > 0;
+
+      // if player is indoors, don't draw rain on roofed tiles
+      if (playerUnderRoof && hasRoof) {
+        continue;
+      }
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(j*32, i*32, 32, 32);
+    }
+  }
+}
+
 function drawBaseTile(chunk){
   ctx.drawImage(
     spriteSheet,
@@ -2566,6 +2620,8 @@ function updateView(data){
   }
   drawExplosions();
   drawRain();
+  drawOutsideFog();
+  drawNightTime();
   drawVignette(ctx, canvas.width, canvas.height);
   drawHUD();
 }

@@ -1746,6 +1746,24 @@ module.exports = {
       { name: "oak0", weight: 50 }
     ]
   },
+  "deadtree0": {
+    prettyName: "dead tree",
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { coal: 1 },
+    depletesTo: "deadtree1",
+    requiresTool: "axe",
+    reqLvl: 1
+  },
+  "deadtree1": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "stump1", weight: 1000 }
+    ]
+  },
   "grass": {
     kind: "b-t",
     container: "b-t",
@@ -1946,7 +1964,6 @@ module.exports = {
   "empty-heart": {},
   "ghostR": {},
   "ghostL": {},
-  "deadtree": {},
   "snowtree": {},
   "mushroom": {},
   "rupee": {},

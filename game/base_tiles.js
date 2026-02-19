@@ -900,6 +900,13 @@ base_tiles = {
   "oak3": {
     "x": 176, "y": 1104
   },
+  "deadtree0": {
+    "x":48,"y":464
+  },
+  "deadtree1": {
+    "x": 80,
+    "y": 0
+  },
   //"stoneSword":{"x": 272, "y": 16, 'roof':false, 'type':'objects', 'collision':false},
   "stoneSwordL": { "x": 192, "y": 192 },
   "stoneSwordR": { "x": 80, "y": 192 },
@@ -1120,7 +1127,6 @@ base_tiles = {
     "x": 208, "y": 400
   },
   "oak": { "x": 128, "y": 1104, "collision": true },//
-  "deadtree": { "x": 48, "y": 464 },//
   "snowtree": { "x": 176, "y": 544 },//
   "rock0": { "x": 176, "y": 0, "collision": true, 'roof': true, 'type': 'objects' },//
   "rock1": { "x": 192, "y": 0, "collision": true, 'roof': false, 'type': 'objects' },//

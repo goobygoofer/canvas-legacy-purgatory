@@ -1711,10 +1711,19 @@ async function finalizeTrade(a, b) {
 
 function handlePlayerInput(name, keystate) {
   if (!players[name]) return;
-
+  let player = players[name];
   if (keystate.up || keystate.down || keystate.left || keystate.right) {
     movePlayer(name, keystate);
   }
+}
+
+function setDir(data){
+  const directions = ['up', 'down', 'left', 'right'];
+  directions.forEach(dir => {
+    if (data[dir]) {
+      return dir;
+    }
+  })
 }
 
 function movePlayer(name, data) {
@@ -1764,13 +1773,13 @@ function movePlayer(name, data) {
       };
       const [dx, dy] = dirOffsets[dir];
       modCoords = [pCoords[0] + dx, pCoords[1] + dy];
-
-      if (checkCollision(name, modCoords)) return; // tile/obj/player interaction here?
+      //players[name].lastDir = dir;
+      //if (checkCollision(name, modCoords)) return; // tile/obj/player interaction here?
 
       //if (players[name].murderer )
 
       // update facing
-      players[name].lastDir = dir;
+      //players[name].lastDir = dir;
 
       // normal sprite
       if (spriteMap[dir]) {
@@ -1800,6 +1809,10 @@ function movePlayer(name, data) {
           players[name].criminalSprite = crimSpriteMap[dir];
         }
       }
+      players[name].lastDir = dir;
+      addPlayerToTile(name, players[name].coords[0], players[name].coords[1]);
+      markTileChanged(players[name].coords[0], players[name].coords[1]);
+      if (checkCollision(name, modCoords)) return; // tile/obj/player interaction here?
       delete map.Map[players[name].coords[1]][players[name].coords[0]].players[name];
       markTileChanged(players[name].coords[0], players[name].coords[1]);
       sendSound(players[name], [players[name].step]);
@@ -2125,6 +2138,7 @@ async function damageMob(playerName, mobId, damage, type) {
     xp = 1;
   }
   await giveXp(playerName, xp, type);
+  console.log(`damageType: ${type}`);
   if (damage < 0) {
     damage = 0;
   }
@@ -2135,6 +2149,8 @@ async function damageMob(playerName, mobId, damage, type) {
 
 async function giveXp(playerName, xp, type) {
   let player = players[playerName];
+  if (type===undefined) return;
+  sendMessage('server message', `+${xp} ${type} xp`, player);
   switch (type) {
     case "melee":
       player.swordXpTotal += xp;
@@ -2148,6 +2164,9 @@ async function giveXp(playerName, xp, type) {
       break;
     case "fishing":
       player.fishingXpTotal += xp;
+      break;
+    case "craft":
+      player.craftXpTotal += xp;
   }
 }
 
@@ -2830,11 +2849,13 @@ async function resourceInteract(playerName, coords, objName) {
   if (!objDef || objDef.kind !== "resource") return;
   if (itemById[player.hand].startsWith('axe')) {
     sendSound(player, ['chop']);
-    player.woodcuttingXpTotal += 1;
+    //player.woodcuttingXpTotal += 1;
+    await giveXp(player.name, 1, "woodcutting");
   }
   if (itemById[player.hand].startsWith('pickaxe')) {
     sendSound(player, ['pickaxe']);
-    player.miningXpTotal += 1;
+    //player.miningXpTotal += 1;
+    await giveXp(player.name, 1, "mining");
   }
   /* ---------- drops ---------- */
   if (objDef.drops) {
@@ -3193,7 +3214,8 @@ async function craftItem(playerName, itemName, smelt = false) {
     for (const [materialName, requiredAmount] of Object.entries(itemDef[materialSlot])) {
       const materialId = idByItem(materialName);
       await removeItem(playerName, materialId, requiredAmount);
-      players[playerName].craftXpTotal += requiredAmount;
+      //players[playerName].craftXpTotal += requiredAmount;
+      await giveXp(playerName, requiredAmount, "craft");
     }
   }
   // ---------- add crafted item (WITH SAFETY) ----------
@@ -3775,11 +3797,11 @@ function spawnResourceMob(playerName, coords, chance) {
   //see what player is holding, hatchet/pickaxe, spawn treeEnt or stoneGolem
   let mobName = null;
   let mobDrop = null;
-  if (itemById[players[playerName].hand] === 'pickaxe') {
+  if (itemById[players[playerName].hand].startsWith('pickaxe')) {
     mobName = "rockGolem";
     mobDrop = "rock";
   }
-  if (itemById[players[playerName].hand] === 'axe') {
+  if (itemById[players[playerName].hand].startsWith('axe')) {
     mobName = "treeEnt";
     mobDrop = "log";
   }
@@ -4066,6 +4088,7 @@ function rangeAttackMob(proj, mob) {
     damageMob(proj.ownerId, mob.id, damage, "archery");
   }
   if (proj.type.includes('dust')){
+    console.log("damage mob dust");
     damage += Math.floor(Math.random() * players[proj.ownerId].mageLvl);//change to mageLvl
     damageMob(proj.ownerId, mob.id, damage, "mage");
   }
