@@ -1246,7 +1246,7 @@ async function bankDeposit(socket, data){
     if (toDeposit <= 0) return;
 
     // 2. Add to bank
-    await addBankItem(player.name, id, toDeposit);
+    await addBankItem(player.name, id, toDeposaddItemit);
 
     // 3. Remove from inventory
     await removeItem(player.name, id, toDeposit);
@@ -2289,6 +2289,7 @@ async function playerShootBow(player) {
 }
 
 async function interactTile(playerName) {
+  console.log('interactTile running');
   const player = players[playerName];
   const tile = map.Map[player.coords[1]][player.coords[0]];
   const mapObjects = tile.objects ?? {};
@@ -2302,7 +2303,8 @@ async function interactTile(playerName) {
   const objDef = baseTiles[objName];
   if (!objDef) return;
   // ---------- auto-drop items ----------
-  if (checkInteract(playerName, mapObjects)) return;//was a thing in checkInteract...
+  let interacted = await checkInteract(playerName, mapObjects);
+  if (interacted) return;//was a thing in checkInteract...
   if (objDef.kind === "item" && objDef.container === "objects") {
     const itemId = objDef.id;
     if (!itemId) return;
@@ -2313,6 +2315,7 @@ async function interactTile(playerName) {
       }
     }
     // 1. REMOVE OBJECT FIRST (atomic, synchronous)
+    console.log("removing obj from map");
     const removed = removeObjFromMapSync(player.coords);
     if (!removed) return; // someone else already took it
 
