@@ -282,7 +282,8 @@ const mobTypes = {
             { name: "string", min:1, max: 10, weight: 10000 },
             { name: "speedboots", min:1, max:10, weight: 1},
             { name: "manapotion", min:1, max: 5, weight: 500 },
-            { name: "diamondbar", min:1, max: 5, weight, 100}
+            { name: "diamondbar", min:1, max: 5, weight: 100},
+            { name: "goldbar", min:1, max: 10, weight: 500}
         ]
     }),
     spiderweb: (x, y) => ({
