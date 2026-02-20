@@ -865,7 +865,7 @@ async function startCriminalTimer(name) {
     setCriminal(name, true, 60 * 15 * 1000);
   }
 }
-
+/*
 function getTilesInRadius(x, y, radius) {
   const tiles = [];
   for (let dy = -radius; dy <= radius; dy++) {
@@ -877,6 +877,25 @@ function getTilesInRadius(x, y, radius) {
     }
   }
   // Sort by distance so closest tiles come first
+  tiles.sort((a, b) => a.dist - b.dist);
+  return tiles;
+}
+*/
+function getTilesInRadius(x, y, radius) {
+  const tiles = [];
+
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const distSq = dx * dx + dy * dy;
+
+      if (distSq <= radius * radius) { // <-- circle filter
+        const nx = x + dx;
+        const ny = y + dy;
+        tiles.push({ nx, ny, dist: Math.sqrt(distSq) });
+      }
+    }
+  }
+
   tiles.sort((a, b) => a.dist - b.dist);
   return tiles;
 }
@@ -2023,11 +2042,40 @@ async function randomBeeSting(playerName) {
   return false;
 }
 
-function areaDamage(projId, x, y, radius, type, damage) {
+async function areaDamage(projId, x, y, radius, type, damage) {
   let affectedTiles = getTilesInRadius(x, y, radius);
   //check for players and mobs on those tiles
   for (tile in affectedTiles) {
-    let mapTile = map.Map[affectedTiles[tile].ny][affectedTiles[tile].nx];
+    
+    const { nx, ny } = affectedTiles[tile];
+
+    // Check Y exists first
+    if (!map.Map[ny]) continue;
+
+    // Check X exists inside that row
+    if (!map.Map[ny][nx]) continue;
+
+    let mapTile = map.Map[ny][nx];
+    if (!mapTile) continue;
+    if (mapTile.floor === undefined) {
+      mapTile.floor = {};
+      console.log("created empty floor tile");
+      if (Object.keys(mapTile.floor).length === 0) {
+        areaStrike(mapTile, type);
+      }
+    }
+    if (type==='fire' || type ==='lightning' && mapTile?.objects){
+      if (!mapTile?.objects) continue;
+      if (Object.keys(mapTile.objects).length!==0){
+        if (Object.keys(mapTile.objects)[0].startsWith('tree') || Object.keys(mapTile.objects)[0].startsWith('oak')){
+          if (!mapTile?.depletedResources){
+            delete mapTile.objects;
+            mapTile.objects = {};
+            mapTile.objects['deattree0'] = {name: 'deadtree0'}
+          }
+        }
+      }
+    }
     if (mapTile?.mob && players[projId]) {
       console.log(`tile damage: ${affectedTiles[tile].x},${affectedTiles[tile].y}`);
       damageMob(projId, mapTile.mob.id, damage);
@@ -2041,31 +2089,55 @@ function areaDamage(projId, x, y, radius, type, damage) {
           let fromPlayer = players[projId];
           if (!fromPlayer) {
             fromPlayer = null;
+          } else {
+            if (fromPlayer.name===projId && type==="lightning"){
+              continue;
+            }
           }
-          damagePlayer(fromPlayer, targetPlayer, damage, 'fire');
+          damagePlayer(fromPlayer, targetPlayer, damage, type);
         }
       }
     }
   }
 }
 
+async function areaStrike(mapTile, type){
+  mapTile.floor[type] = { name: type };//redundant but meh
+  markTileChanged(mapTile.x, mapTile.y);
+  setTimeout(async () => {
+    delete mapTile.floor;
+    markTileChanged(mapTile.x, mapTile.y);
+    setTimeout(async () => {
+      mapTile.floor = {};
+      mapTile.floor[type] = { name: type };
+      markTileChanged(mapTile.x, mapTile.y);
+      setTimeout(async() => {
+        delete mapTile.floor;
+        markTileChanged(mapTile.x, mapTile.y);
+      }, 250);
+    }, 250);
+  }, 250);
+}
+
 function damagePlayer(player, targetPlayer, damage, type) {
   if (player !== null) {
-    if (targetPlayer.head !== null) {
-      let headName = itemById[targetPlayer.head];
-      damage -= Math.floor(Math.random() * baseTiles[headName].defense);
-    }
-    if (targetPlayer.body !== null) {
-      let bodyName = itemById[targetPlayer.body];
-      damage -= Math.floor(Math.random() * baseTiles[bodyName].defense);
-    }
-    if (targetPlayer.feet !== null) {
-      let feetName = itemById[targetPlayer.feet];
-      damage -= Math.floor(Math.random() * baseTiles[feetName].defense);
-    }
+    if (type!=="lightning"){
+      if (targetPlayer.head !== null) {
+        let headName = itemById[targetPlayer.head];
+        damage -= Math.floor(Math.random() * baseTiles[headName].defense);
+      }
+      if (targetPlayer.body !== null) {
+        let bodyName = itemById[targetPlayer.body];
+        damage -= Math.floor(Math.random() * baseTiles[bodyName].defense);
+      }
+      if (targetPlayer.feet !== null) {
+        let feetName = itemById[targetPlayer.feet];
+        damage -= Math.floor(Math.random() * baseTiles[feetName].defense);
+      }
 
-    if (damage < 0) {
-      damage = 0;
+      if (damage < 0) {
+        damage = 0;
+      }
     }
   }
 
@@ -2167,6 +2239,13 @@ async function giveXp(playerName, xp, type) {
       break;
     case "craft":
       player.craftXpTotal += xp;
+      break;
+    case "woodcutting":
+      player.woodcuttingXpTotal += xp;
+      break;
+    case "mining":
+      player.miningXpTotal += xp;
+      break;
   }
 }
 
@@ -2422,6 +2501,7 @@ async function playerShootBow(player, mage = false) {
       return;
     } else {
       player.mana-=dustAmmo.mana;
+      await giveXp(player.name, 1, "mage");
     }
   }
   player.lastMelee = Date.now();
@@ -2441,7 +2521,11 @@ async function playerShootBow(player, mage = false) {
     slow = true;
     slowTime = 2000;//plus player mage level calculation
   }
-  const arrow = createProjectile(projName, player.lastDir, player.coords[0], player.coords[1], player.name, 10, slow, slowTime);
+  let distance = 10;
+  if (projName==='yellowdust'){
+    distance = -1;
+  }
+  const arrow = createProjectile(projName, player.lastDir, player.coords[0], player.coords[1], player.name, distance, slow, slowTime);
   addProjectileToTile(arrow);
 }
 
@@ -2947,6 +3031,12 @@ async function equip(playerName, id) {
 
   const itemDef = baseTiles[itemName];
   if (!itemDef || !itemDef.equip) return;
+
+  if (itemDef?.reqLvl){
+    if (itemDef.reqLvl.lvl > player[itemDef.reqLvl.type]){
+      sendMessage('pk message', `You need level ${itemDef.reqLvl.lvl} ${itemDef.reqLvl.pretty} to equip this.`, player);
+    }
+  }
 
   const slot = itemDef.equip.slot;
 
@@ -3595,12 +3685,11 @@ function updateMob(mob, now) {
       attackPlayer(mob, player);
       return;
     }
-
     moveToward(mob, player);
     return;
   }
-
   wander(mob);
+  
 }
 
 function spawnMinion(mob) {
@@ -3762,6 +3851,9 @@ function inAttackRange(mob, player) {
   const py = player.coords[1];
 
   const dist = Math.abs(mob.x - px) + Math.abs(mob.y - py);
+  if (player && mob?.rangeAttack && mob.type==='spiderQueen') {
+    mobRangeAttack(mob, player);
+  }
   return dist === 1; // adjacent tile
 }
 
@@ -4169,6 +4261,9 @@ function updateProjectiles() {
         }
 
       }
+      if (proj.type.includes('yellowdust')){
+          areaDamage(proj.ownerId, proj.x, proj.y, 4, "lightning", 25);
+      }
       proj.life = 0;
     }
     if (added === false) {
@@ -4180,6 +4275,9 @@ function updateProjectiles() {
         removeProjectileFromTile(proj);
         projectiles.delete(id);
         return;
+      }
+      if (proj.type.includes('yellowdust')) {
+        areaDamage(proj.ownerId, proj.x, proj.y, 4, "lightning", 25);
       }
     }
 
@@ -4193,6 +4291,9 @@ function updateProjectiles() {
         io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
         console.log('end of life damage');
         areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 15);
+      }
+      if (proj.type.includes('yellowdust')) {
+        areaDamage(proj.ownerId, proj.x, proj.y, 4, "lightning", 25);
       }
       if (proj.type.startsWith("arrow") && players[proj.ownerId] && added !== 'end' && added !== false) {//still not perfect, fix
         if (!proj.type.startsWith('arrowfire')) {

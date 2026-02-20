@@ -1086,7 +1086,7 @@ socket.on("tradeCanceled", () => {
 });
 
 socket.on('explosion', (data) => {
-  spawnExplosion(data.x, data.y, data.color);
+  spawnExplosion(data.x, data.y, data.color, data?.dist || 32);
 })
 
 function closeTradeWindow(){
@@ -2113,7 +2113,7 @@ function worldTileToScreen(worldI, worldJ) {
 
 let explosions = [];
 
-function spawnExplosion(worldJ, worldI, mainColor = "orange") {
+function spawnExplosion(worldJ, worldI, mainColor = "orange", dist = 32) {
   const { x: screenX, y: screenY } = worldTileToScreen(worldI, worldJ);
 
   const numParticles = 80;
@@ -2135,9 +2135,10 @@ function spawnExplosion(worldJ, worldI, mainColor = "orange") {
   for (let p = 0; p < numParticles; p++) {
     const angle = Math.random() * 2 * Math.PI;
     const speed = 1 + Math.random() * 10;
-    const maxDist = 32 + Math.random() * 32;
+    const maxDist = dist + Math.random() * 32;
+    //maxDist = maxDist + Math.random() * 32;
     const size = 2 + Math.floor(Math.random() * 2);
-
+    //size = size + Math.floor(Math.random() * 2);
     const roll = Math.random();
     let color = palette[0]; // main color
     if (roll > 0.7) color = palette[1]; // secondary
@@ -2516,10 +2517,8 @@ function drawHUD(){
   const hpPosY = canvas.height-20;
   const manaPosX = 5;
   const manaPosY = canvas.height-30;
-  ctx.strokeStyle = "black";
+  ctx.strokeStyle = "#3030308c";
   ctx.strokeRect(hpPosX, hpPosY, 100, 10);
-
-  ctx.strokeStyle = "black";
   ctx.strokeRect(manaPosX, manaPosY, 100, 10);
 // determine the visual width of the full bar
   const barWidth = 100; // keeps the same size on screen
@@ -2539,9 +2538,18 @@ function drawHUD(){
   // draw the HP bar
   ctx.fillStyle = "#ff00008c";
   ctx.fillRect(hpPosX + 1, hpPosY + 1, hpSafeWidth, 8);
+  ctx.fillStyle = "white";
+  ctx.font = "10px Arial";
+  let hpText = `${playerData.hp}/${maxHp}`;
+  ctx.fillText(hpText, hpPosX + 30 + hpText.length, hpPosY + 8);
+  
   
   ctx.fillStyle = "#00ccff8c";
   ctx.fillRect(manaPosX + 1, manaPosY +1, manaSafeWidth, 8);
+  ctx.fillStyle = "white";
+  ctx.font = "10px Arial";
+  let manaText = `${playerData.mana}/${maxMana}`;
+  ctx.fillText(manaText, manaPosX + 30 + manaText.length, manaPosY + 8);
   //draw combat icon
   ctx.drawImage(
     spriteSheet,

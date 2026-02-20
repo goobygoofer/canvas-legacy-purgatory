@@ -238,10 +238,14 @@ module.exports = {
     kind: "item",
     id: 27,
     container: "objects",
-    collision: false
+    collision: false,
+    equip: { slot: "quiver" },
+    attack: 60,
+    mana: 100,
+    reqLvl: { type: "mageLvl", lvl: 50, pretty: "mage" }
   },
   "healthpotion":{
-    prettyName: "health potion",
+    prettyName: "health potion", 
     kind: "item",
     id: 28,
     container: "objects",
@@ -889,6 +893,9 @@ module.exports = {
   "campfire1": {
     container: "objects",
     collision: true
+  },
+  "lightning": {
+    attack : 20
   },
   // -----------------------------------resources----------------------------------------
   "tree0": {

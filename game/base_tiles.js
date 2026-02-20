@@ -750,6 +750,11 @@ base_tiles = {
   "bluedustDown": {"x":176,"y":256},
   "bluedustLeft": {"x":192,"y":256},
   "bluedustRight": {"x":208,"y":256},
+
+  "yellowdustUp": {"x":80,"y":432},
+  "yellowdustDown": {"x":96,"y":432},
+  "yellowdustLeft": {"x":112,"y":432},
+  "yellowdustRight": {"x":128,"y":432},
   "speedbootsL": {
     "x":161,"y":448
   },
@@ -800,6 +805,12 @@ base_tiles = {
   },
   "spiderR":{
     "x":96,"y":240
+  },
+  "spiderQueenL":{
+    "x":176,"y":400
+  },
+  "spiderQueenR":{
+    "x":176,"y":400
   },
   "ironarmorL":{
     "x":145,"y":272
@@ -907,6 +918,12 @@ base_tiles = {
     "x": 80,
     "y": 0
   },
+  "lightning" :{
+    "x":0,"y":464
+  },
+  "fire": {
+    "x":16,"y":480
+  },
   //"stoneSword":{"x": 272, "y": 16, 'roof':false, 'type':'objects', 'collision':false},
   "stoneSwordL": { "x": 192, "y": 192 },
   "stoneSwordR": { "x": 80, "y": 192 },
@@ -929,7 +946,6 @@ base_tiles = {
   "murderR":{
     "x":63, "y":176
   },
-  "spiderL": { "x": 112, "y": 240 },
   "heartContainer": { "x": 128, "y": 528 },
   "staminaPot": { "x": 64, "y": 1072 },
   "bridge": { "x": 0, "y": 80 },
@@ -1292,8 +1308,6 @@ base_tiles = {
   "ghostL": { "x": 64, "y": 96 },//ghost facing left coords
   "ratR": { "x": 112, "y": 144 },
   "ratL": { "x": 192, "y": 128 },
-  "spiderR": { "x": 96, "y": 240 },
-  "spiderL": { "x": 112, "y": 240 },
   "shopkeep": { "x": 16, "y": 128 },//no shopkeepL "y"et
   "gnollR": { "x": 224, "y": 576 },
   "gnollL": { "x": 240, "y": 576 },

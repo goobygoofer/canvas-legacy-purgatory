@@ -246,6 +246,42 @@ const mobTypes = {
             { name: "string", min:1, max: 1, weight: 1000 }
         ]
     }),
+    spiderQueen: (x, y) => ({
+        id: getNextMobId(),
+        type: "spiderQueen",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        spawnMinion: "spider",
+        spawnMax: 8,
+        spawnCount: 0,
+
+        hp: 1000,
+        maxHp: 1000,
+        attack: 25,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        rangeAttack: {
+            type: "yellowdust",
+            slow: true,
+            slowTime: 4000
+        },
+
+        aggroRadius: 10,
+        leashRadius: 0,
+
+        nextThink: 0,
+        thinkSpeed: 500+Math.floor(Math.random()*100),
+        facing: "left",
+
+        drop: [
+            { name: "coin", min: 5, max: 50, weight: 1000 },
+            { name: "string", min:1, max: 1, weight: 1000 }
+        ]
+    }),
     spiderweb: (x, y) => ({
         id: getNextMobId(),
         type: "spiderweb",
@@ -400,6 +436,12 @@ const mobSpawns = [
   {
     type: "spiderweb",
     x: 144, y: 101,
+    count: 1,
+    respawnTime: 30000
+  },
+  {
+    type: "spiderQueen",
+    x: 518, y: 312,
     count: 1,
     respawnTime: 30000
   }
