@@ -2278,19 +2278,41 @@ function drawMobs(chunk){
   if (!chunk.mob) return;//server end, create or delete .mob as needed, only has name (ratL, etc)
   let drawSize = 32;
   let spriteSize = 16;
+  /*
   if (base_tiles[chunk.mob.sprite]?.drawSize) {
     drawSize = base_tiles[chunk.mob.sprite].drawSize;
   }
-
+  */
+  /*
   if (base_tiles[chunk.mob.sprite]?.spriteSize) {
     spriteSize = base_tiles[chunk.mob.sprite].spriteSize;
   }
+  */
   ctx.drawImage(
     spriteSheet,
     base_tiles[chunk.mob.sprite].x, base_tiles[chunk.mob.sprite].y,
     spriteSize, spriteSize,
     j*32, i*32, drawSize, drawSize
   )
+}
+
+function draw32Mobs(data){
+  const chunk = data.chunk;
+  if (!chunk.mob) return;
+
+  const mob = chunk.mob;
+
+ctx.drawImage(
+  spriteSheet,
+  base_tiles[mob.sprite].x,
+  base_tiles[mob.sprite].y,
+  base_tiles[mob.sprite].spriteSize,
+  base_tiles[mob.sprite].spriteSize,
+  data.x * 32,
+  data.y * 32,
+  base_tiles[mob.sprite].drawSize,
+  base_tiles[mob.sprite].drawSize
+);
 }
 
 function drawProjectiles(chunk){
@@ -2582,6 +2604,7 @@ function drawRedX(ctx, x, y, size = 16) {//wow this useful lmao
 //draw everything here
 function updateView(data){
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+  let bigMobs = [];
   for (i in data){
     for (j in data[i]){
       if (data[i][j]===null || data[i][j]===undefined){
@@ -2616,6 +2639,15 @@ function updateView(data){
           if (latestView[i - 1][j - 1]?.projectile?.name.startsWith('bluedust')){
             animateFire(latestView[i - 1][j - 1], i-1, j-1, 'blue');
           }
+          if (latestView[i-1][j-1]?.mob){
+            let mob32Chunk = latestView[i-1][j-1];
+            if (base_tiles[mob32Chunk.mob.sprite].spriteSize===32){
+              //draw32Mobs(mob32Chunk, i-1, j-1);
+              console.log('big mob');
+              bigMobs.push({chunk: mob32Chunk, y: i-1, x: j-1});
+            }
+          }
+          
         }
       }
       drawMobs(chunk);
@@ -2625,6 +2657,9 @@ function updateView(data){
       drawSafeTiles(chunk);
       drawChatBubbles(chunk);
     }
+  }
+  for (const mob of bigMobs) {
+    draw32Mobs(mob);
   }
   drawExplosions();
   drawRain();

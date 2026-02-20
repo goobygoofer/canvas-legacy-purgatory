@@ -3701,6 +3701,7 @@ function spawnMinion(mob) {
       sprite: mob.spawnMinion + "L"
     }
     mob.spawnCount += 1;
+    console.log(mobs.get(testMinion.id));
   }
 }
 

@@ -807,10 +807,14 @@ base_tiles = {
     "x":96,"y":240
   },
   "spiderQueenL":{
-    "x":176,"y":400
+    "x":176,"y":400,
+    spriteSize: 32,
+    drawSize: 64
   },
   "spiderQueenR":{
-    "x":176,"y":400
+    "x":176,"y":400,
+    spriteSize: 32,
+    drawSize: 64
   },
   "ironarmorL":{
     "x":145,"y":272

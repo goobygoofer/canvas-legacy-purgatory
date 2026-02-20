@@ -278,8 +278,11 @@ const mobTypes = {
         facing: "left",
 
         drop: [
-            { name: "coin", min: 5, max: 50, weight: 1000 },
-            { name: "string", min:1, max: 1, weight: 1000 }
+            { name: "coin", min: 200, max: 1000, weight: 10000 },
+            { name: "string", min:1, max: 10, weight: 10000 },
+            { name: "speedboots", min:1, max:10, weight: 1},
+            { name: "manapotion", min:1, max: 5, weight: 500 },
+            { name: "diamondbar", min:1, max: 5, weight, 100}
         ]
     }),
     spiderweb: (x, y) => ({
