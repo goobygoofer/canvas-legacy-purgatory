@@ -3068,13 +3068,14 @@ async function consume(playerName, id) {
 
   const itemName = itemById[id];
   if (!itemName) return;
+  const itemDef = baseTiles[itemName];
+  if (!itemDef || !itemDef.consume) return;
   if (itemDef.teleport) {
     await removeItem(playerName, itemDef.id, 1);
     await syncInventory(playerName);
     await teleportPlayer(playerName);
   }
-  const itemDef = baseTiles[itemName];
-  if (!itemDef || !itemDef.consume) return;
+
   if (itemDef.consume) {
     await eatDrinkTimed(playerName, itemDef);
     return;
