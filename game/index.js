@@ -2820,8 +2820,8 @@ function updateView(data) {
   drawShadows();
   drawExplosions();
   drawRain();
-  drawOutsideFog();
-  drawNightTime();
+  //drawOutsideFog();
+  //drawNightTime();
   drawVignette(ctx, canvas.width, canvas.height);
   drawHUD();
 }
