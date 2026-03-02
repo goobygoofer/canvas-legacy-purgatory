@@ -8,9 +8,11 @@ function persist_map(map){
   var rawMap=[];
   for (y in map){
     for (x in map[y]){
+      /*
       if (Object.keys(map[y][x].players).length!==0){
         map[y][x].players={};
       }
+      */
     }
     rawMap.push(map[y]);
   }
@@ -24,11 +26,11 @@ function persist_map(map){
   }
 }
 
-function generate_Chunk(coords){//coords is [x,y], pulled from player x and player y in database
+function generate_Chunk(px, py){//coords is [x,y], pulled from player x and player y in database
   const chunk = [];
-  for (let y = coords[1] - 5; y <= coords[1] + 5; y++) {
+  for (let y = py - 5; y <= py + 5; y++) {
     const row = [];
-    for (let x = coords[0] - 10; x <= coords[0] + 10; x++) {
+    for (let x = px - 10; x <= px + 10; x++) {
       row.push([x, y]);
     }
     chunk.push(row);

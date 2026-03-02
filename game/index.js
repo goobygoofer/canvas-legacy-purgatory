@@ -56,6 +56,7 @@ const preview = document.getElementById("colorPreview");
 let playerData = {
   x: null,
   y: null,
+  z: null,
   facing: null,
   name: null,//get from login? don't use this  yet
   inventory: {},//[{id:1, amt:1}, {id:5, amt:16}
@@ -958,6 +959,7 @@ socket.on('server message', (data) => {
 socket.on('playerState', (data)=> {
   playerData.x=data.x;
   playerData.y=data.y;
+  playerData.z=data.z;
   playerData.hand=data.hand;
   playerData.head=data.head;
   playerData.body=data.body;
@@ -983,6 +985,7 @@ socket.on('playerState', (data)=> {
   playerData.mageLvl=data.mageLvl;
   playerData.mana=data.mana;
   playerData.activeInvItem=data.activeInvItem;
+  playerData.obscured=data.obscured;
 });
 
 socket.on('invData', (data) => {
@@ -1872,6 +1875,7 @@ function drawNightTime(){
 }
 
 function drawBaseTile(chunk){
+  if (!chunk?.['b-t']) return;
   ctx.drawImage(
     spriteSheet,
     //sx, sy, sw, sh,
@@ -2219,6 +2223,7 @@ function drawDepletedResources(chunk) {
 }
 
 function drawPlayers(chunk){
+  if (!chunk?.players) return;
   if (Object.keys(chunk.players).length > 0) {
     let players = chunk.players;
     for (p in chunk.players) {
@@ -2339,17 +2344,15 @@ function drawChatBubbles(chunk){
   }
 }
 
-function drawRoofs(chunk){
+function drawRoofs(chunk, i, j, z){
   const roofs = chunk?.roof;
   if (!roofs) return;
 
   if (roofs===undefined || roofs===null) return;
-  const roof = latestView[5][10]?.roof;
-
-  if (roof && Object.keys(roof).length > 0) {
+  const roof = latestView[5][10][z]?.roof;
+  if (roof && Object.keys(roof).length > 0 && z >= playerData.z) {
     return;
   }
-  
   for (const obj in roofs) {
     const res = roofs[obj];
     const tile = base_tiles[res?.name];
@@ -2363,6 +2366,7 @@ function drawRoofs(chunk){
     );
   }
 }
+
 
 function getEquipSprite(item, facing){
   return itemById[item] + facing[0].toUpperCase();
@@ -2601,7 +2605,24 @@ function drawRedX(ctx, x, y, size = 16) {//wow this useful lmao
   ctx.stroke();
 }
 
+function playerHasRoofOnOrAbove() {
+
+  const column = latestView?.[5]?.[10];
+  if (!column) return false;
+
+  for (let z = playerData.z; z < column.length; z++) {
+
+    const tile = column[z];
+    if (tile?.roof && Object.keys(tile.roof).length > 0) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 //draw everything here
+/*
 function updateView(data){
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   let bigMobs = [];
@@ -2617,49 +2638,32 @@ function updateView(data){
         )
         continue;
       }
-      let chunk = data[i][j];
-      drawBaseTile(chunk);
-      drawFloor(chunk);
-      drawDepletedResources(chunk);
-      drawPixels(chunk);
-      drawObjects(chunk);
-      const above = latestView[i - 1]?.[j];
-      if (above?.objects?.forge) {
-        drawForgeGlow(i, j);
-      }
-      const upLeft = latestView[i-1]?.[j-1];
-      if (upLeft?.objects?.campfire1){
-        animateFire(chunk, i-1, j-1);
-      }
-      if (latestView[i-1]) {
-        if (latestView[i-1][j-1]){
-          if (latestView[i - 1][j - 1]?.projectile?.name.startsWith('orangedust') || latestView[i - 1][j - 1]?.projectile?.name.startsWith('arrowfire')) {
-            animateFire(latestView[i - 1][j - 1], i-1, j-1);
-          }
-          if (latestView[i - 1][j - 1]?.projectile?.name.startsWith('bluedust')){
-            animateFire(latestView[i - 1][j - 1], i-1, j-1, 'blue');
-          }
-          if (latestView[i-1][j-1]?.mob){
-            let mob32Chunk = latestView[i-1][j-1];
-            if (base_tiles[mob32Chunk.mob.sprite].spriteSize===32){
-              //draw32Mobs(mob32Chunk, i-1, j-1);
-              console.log('big mob');
-              bigMobs.push({chunk: mob32Chunk, y: i-1, x: j-1});
-            }
-          }
-          
+      let columnChunk = data[i][j];
+      let levels = Object.keys(columnChunk)
+        .map(Number)
+        .sort((a, b) => a - b);
+      for (let z of levels) {
+        if (playerData.obscured && z > playerData.z) {
+          continue;
         }
+
+        let chunk = columnChunk[z];
+        if (!chunk) continue;
+
+
+        drawBaseTile(chunk);
+        drawFloor(chunk);
+        drawDepletedResources(chunk);
+        drawPixels(chunk);
+        drawObjects(chunk);
+        drawMobs(chunk);
+        drawPlayers(chunk);
+        drawProjectiles(chunk);
+        drawRoofs(chunk, i, j, z);
+        drawSafeTiles(chunk);
+        drawChatBubbles(chunk);
       }
-      drawMobs(chunk);
-      drawPlayers(chunk);
-      drawProjectiles(chunk);
-      drawRoofs(chunk);
-      drawSafeTiles(chunk);
-      drawChatBubbles(chunk);
     }
-  }
-  for (const mob of bigMobs) {
-    draw32Mobs(mob);
   }
   drawExplosions();
   drawRain();
@@ -2668,7 +2672,348 @@ function updateView(data){
   drawVignette(ctx, canvas.width, canvas.height);
   drawHUD();
 }
+*/
 
+const shadowCasters = [
+  "rockroof", "woodroof", "stoneroof",
+  "woodblock0","woodblock1","woodblock2","woodblock3",
+  "rock0","rock1","rock2","rock3", "rock4",
+  "ironrock0","ironrock1","ironrock2","ironrock3","ironrock4",
+  "coalrock0","coalrock1","coalrock2","coalrock3", "coalrock4",
+  "silverrock0","silverrock1","silverrock2","silverrock3", "silverrock4",
+  "goldrock0","goldrock1","goldrock2","goldrock3", "goldrock4",
+  "copperrock0","copperrock1","copperrock2","copperrock3", "copperrock4",
+  "diamondrock0","diamondrock1","diamondrock2","diamondrock3", "diamondrock4"
+];
+function updateView(data) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  let bigMobs = [];
+
+  for (i in data) {
+    for (j in data[i]) {
+
+      if (data[i][j] === null || data[i][j] === undefined) {
+        ctx.drawImage(
+          spriteSheet,
+          base_tiles['water'].x, base_tiles['water'].y,
+          16, 16,
+          j * 32, i * 32,
+          32, 32
+        );
+        continue;
+      }
+
+      let columnChunk = data[i][j];
+
+      let levels = Object.keys(columnChunk)
+        .map(Number)
+        .sort((a, b) => a - b);
+
+      for (let z of levels) {
+
+        if (playerData.obscured && z > playerData.z) {
+          continue;
+        }
+
+        let chunk = columnChunk[z];
+        if (!chunk) continue;
+        if (latestView[5][10][playerData.z]) {
+          let roofCheck = latestView[5][10][playerData.z];
+          if (roofCheck?.roof) {
+            if (Object.keys(roofCheck.roof).length > 0 && z> playerData.z) {
+              continue;
+            }
+          }
+        }
+        drawBaseTile(chunk);
+        drawFloor(chunk);
+        drawDepletedResources(chunk);
+        drawPixels(chunk);
+        drawObjects(chunk);
+        drawMobs(chunk);
+        drawPlayers(chunk);
+        drawProjectiles(chunk);
+        drawRoofs(chunk, i, j, z);
+
+
+
+        drawSafeTiles(chunk);
+        drawChatBubbles(chunk);
+      }
+    }
+  }
+  drawShadows();
+  drawExplosions();
+  drawRain();
+  drawOutsideFog();
+  drawNightTime();
+  drawVignette(ctx, canvas.width, canvas.height);
+  drawHUD();
+}
+
+let surround = [
+  { x: -1, y: 0, sprite: base_tiles['shadLeft']},
+  { x: 0, y: -1 , sprite: base_tiles['shadUp']},
+  { x: 1, y: 0 , sprite: base_tiles['shadRight']},
+  { x: 0, y: 1 , sprite: base_tiles['shadDown']}
+]
+/*
+function drawShadows() {
+  if (!latestView) return;
+
+  for (let y = 0; y < latestView.length; y++) {
+    for (let x = 0; x < latestView[y].length; x++) {
+
+      const cell = latestView[y][x];
+      if (!cell) continue;
+
+      // ---- DETERMINE IF TILE IS CASTER ----
+      let isCaster = false;
+
+      for (let z in cell) {
+        const tile = cell[z];
+        if (!tile?.objects) continue;
+
+        for (let key in tile.objects) {
+          if (shadowCasters.includes(key)) {
+            isCaster = true;
+            break;
+          }
+        }
+
+        if (isCaster) break;
+      }
+
+      if (!isCaster) continue;
+
+      // ---- CAST TO SURROUNDINGS ----
+      for (let dir of surround) {
+
+        const nx = x + dir.x;
+        const ny = y + dir.y;
+
+        if (!latestView[ny]?.[nx]) continue;
+
+        const neighborCell = latestView[ny][nx];
+
+        // ---- CHECK NEIGHBOR COLLISION (ALL Z) ----
+        let neighborBlocks = false;
+for (let nz in neighborCell) {
+  const neighborTile = neighborCell[nz];
+
+  // If tile exists, check blockers
+  if (neighborTile) {
+
+    if (neighborTile.objects) {
+      for (let key in neighborTile.objects) {
+        if (base_tiles[key]?.collision === true) {
+          neighborBlocks = true;
+          break;
+        }
+      }
+    }
+
+    if (neighborTile.roof && Object.keys(neighborTile.roof).length > 0) {
+      neighborBlocks = true;
+    }
+
+    if (neighborBlocks) break;
+  }
+
+  // If neighborTile does NOT exist,
+  // we do nothing — shadow remains allowed.
+}
+
+        // ---- DRAW ONLY IF NOT BLOCKED ----
+        if (!neighborBlocks) {
+          ctx.drawImage(
+            spriteSheet,
+            dir.sprite.x,
+            dir.sprite.y,
+            16,
+            16,
+            nx * 32,
+            ny * 32,
+            32,
+            32
+          );
+        }
+      }
+    }
+  }
+}
+*/
+/*
+function drawShadows() {
+  if (!latestView) return;
+
+  for (let y = 0; y < latestView.length; y++) {
+    for (let x = 0; x < latestView[y].length; x++) {
+
+      const cell = latestView[y][x];
+      if (!cell) continue;
+
+      const zLevels = Object.keys(cell)
+        .filter(z => z !== "version")
+        .sort((a, b) => Number(a) - Number(b));
+
+      for (let z of zLevels) {
+
+        const tile = cell[z];
+        if (!tile?.objects) continue;
+
+        // ---- CHECK IF THIS Z IS A CASTER ----
+        let isCaster = false;
+
+        for (let key in tile.objects) {
+          if (shadowCasters.includes(key)) {
+            isCaster = true;
+            break;
+          }
+        }
+
+        if (!isCaster) continue;
+
+        // ---- CAST AT SAME Z LEVEL ----
+        for (let dir of surround) {
+
+          const nx = x + dir.x;
+          const ny = y + dir.y;
+
+          if (!latestView[ny]?.[nx]?.[z]) continue;
+
+          const neighborTile = latestView[ny][nx][z];
+
+          let neighborBlocks = false;
+
+          if (neighborTile.objects) {
+            for (let key in neighborTile.objects) {
+              if (base_tiles[key]?.collision === true) {
+                neighborBlocks = true;
+                break;
+              }
+            }
+          }
+
+          if (neighborTile.roof &&
+              Object.keys(neighborTile.roof).length > 0) {
+            neighborBlocks = true;
+          }
+
+          if (!neighborBlocks) {
+            ctx.drawImage(
+              spriteSheet,
+              dir.sprite.x,
+              dir.sprite.y,
+              16,
+              16,
+              nx * 32,
+              ny * 32,
+              32,
+              32
+            );
+          }
+        }
+      }
+    }
+  }
+}
+*/
+function drawShadows() {
+  if (!latestView) return;
+
+  for (let y = 0; y < latestView.length; y++) {
+    for (let x = 0; x < latestView[y].length; x++) {
+
+      const cell = latestView[y][x];
+      if (!cell) continue;
+
+      const zLevels = Object.keys(cell)
+        .filter(z => z !== "version")
+        .sort((a, b) => Number(a) - Number(b));
+
+      for (let z of zLevels) {
+
+        const tile = cell[z];
+        if (!tile?.objects || !tile?.roof) continue;
+
+        // ---- CHECK IF THIS Z IS A CASTER ----
+        let isCaster = false;
+        if (tile?.objects){
+          for (let key in tile.objects) {
+            if (shadowCasters.includes(key)) {
+              isCaster = true;
+              break;
+            }
+          }
+        }
+        if (tile?.roof){
+          for (let key in tile.roof) {
+            if (shadowCasters.includes(key)) {
+              isCaster = true;
+              break;
+            }
+          }
+        }
+
+        if (!isCaster) continue;
+
+        // ---- CAST AT SAME Z LEVEL ----
+        for (let dir of surround) {
+
+          const nx = x + dir.x;
+          const ny = y + dir.y;
+
+          if (!latestView[ny]?.[nx]) continue;
+
+          const neighborCell = latestView[ny][nx];
+
+          let neighborBlocks = false;
+
+          // IMPORTANT:
+          // We check the neighbor z if it exists,
+          // but if it does NOT exist, we DO NOTHING (shadow allowed)
+
+          const neighborTile = neighborCell[z];
+
+          if (neighborTile) {
+
+            if (neighborTile.objects) {
+              for (let key in neighborTile.objects) {
+                if (base_tiles[key]?.collision === true) {
+                  neighborBlocks = true;
+                  break;
+                }
+              }
+            }
+
+            if (neighborTile.roof &&
+                Object.keys(neighborTile.roof).length > 0) {
+              neighborBlocks = true;
+            }
+          }
+
+          // If neighborTile does NOT exist:
+          // neighborBlocks remains false → shadow draws
+
+          if (!neighborBlocks) {
+            ctx.drawImage(
+              spriteSheet,
+              dir.sprite.x,
+              dir.sprite.y,
+              16,
+              16,
+              nx * 32,
+              ny * 32,
+              32,
+              32
+            );
+          }
+        }
+      }
+    }
+  }
+}
 function updateDraw(now) {
   if (now - lastRender > interval) {
     chunkNeedsRender = false;

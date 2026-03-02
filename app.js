@@ -18,80 +18,50 @@ function exportMapForViewer(mapData) {
   console.log("Map exported to viewer/view_map.js");
 }
 
-function flattenTileData() {
-  for (let y = 0; y < map.Map.length; y++) {
-    for (let x = 0; x < map.Map[y].length; x++) {
-      const tile = map.Map[y][x];
-      if (!tile || !tile.data) continue;
-
-      // Move every property from data onto the tile
-      Object.assign(tile, tile.data);
-
-      // Remove the old container
-      delete tile.data;
-    }
-  }
-}
-
-//cleanup empty pixel tiles
 for (let y = 0; y < map.Map.length; y++) {
   for (let x = 0; x < map.Map[y].length; x++) {
-    const tile = map.Map[y][x];
-    if (!tile.pixels) continue;
 
-    let allMinusOne = true;
+    const column = map.Map[y][x];
+    if (!column) continue;
 
-    for (const p in tile.pixels) {
-      for (const q in tile.pixels[p]) {
-        if (tile.pixels[p][q] !== -1) {
-          allMinusOne = false;
-          break;
-        }
+    // loop through all z levels
+    for (const z in column) {
+
+      const tile = column[z];
+      if (!tile) continue;
+
+      // delete unwanted runtime data
+      delete tile.mob;
+      delete tile.players;
+
+      if (tile.objects && Object.keys(tile.objects).length === 0) {
+        delete tile.objects;
       }
-      if (!allMinusOne) break;
-    }
 
-    if (allMinusOne) {
-      delete tile.pixels;
-    }
-  }
-}
-//cleanup empty player containers
-for (let y = 0; y < map.Map.length; y++) {
-  for (let x = 0; x < map.Map[y].length; x++) {
-    if (map.Map?.players) {
-      if (Object.keys(map.Map?.players).length === 0) {
-        delete map.Map.players;
+      if (tile?.typing) {
+        delete tile.typing;
       }
     }
   }
 }
 
-//remove mob sprites if server reset
-for (i in map.Map) {
-  for (j in map.Map[i]) {
-    let tile = map.Map[i][j];
-    delete map.Map[i][j].mob;
-  }
+
+function getTile(x, y, z = 0) {//get a single tile in a column of z levels
+  if (!map.Map[y]) return null;
+  if (!map.Map[y][x]) return null;
+
+  return map.Map[y][x][z] ?? null;
 }
-//remove empty object containers on tiles
-for (const row of map.Map) {
-  for (const tile of row) {
-    const objects = tile.objects;
-    if (objects && Object.keys(objects).length === 0) {
-      delete tile.objects;
-    }
-    const roof = tile.roof;
-    if (roof && Object.keys(roof).length === 0) {
-      delete tile.roof;
-    }
-  }
+
+function getColumn(x, y) {//get entire column of z levels
+  return map.Map?.[y]?.[x] ?? null;
 }
 
 //trade testing
 let pendingTradeRequests = {};
 
 //reset tile versions so they don't build up to ridiculous numbers
+
 setInterval(async () => {
   for (i in map.Map) {
     for (j in map.Map[i]) {
@@ -99,6 +69,7 @@ setInterval(async () => {
     }
   }
 }, 60 * 60 * 1000);
+
 
 const { createMob, mobTypes, mobSpawns } = require("./mobs");
 
@@ -279,7 +250,7 @@ async function getLeaderboard() {
 async function initPlayer(name) {
   const sql = `
     SELECT
-      JSON_ARRAY(x, y) AS coords,
+      x, y, z,
       hp,
       mana,
       swordXp,
@@ -302,12 +273,6 @@ async function initPlayer(name) {
   `;
   const params = [name];
   const result = await query(sql, params);
-  let p_coords;
-  if (!result.length || !result[0].coords) {
-    p_coords = [49, 49];//or default start point of game
-  } else {
-    p_coords = JSON.parse(result[0].coords);
-  }
   let currHp = result[0].hp;
   let currMana = result[0].mana;
   let hpXp = result[0].hpXp;
@@ -329,8 +294,9 @@ async function initPlayer(name) {
   let miningLvl = await levelFromXp(miningXp);
   let fishingLvl = await levelFromXp(fishingXp);
   players[name] = {// Initialize player object
-    coords: p_coords,
-    lastCoords: p_coords,//gets set in compartChunks
+    x: result[0].x,
+    y: result[0].y,
+    z: result[0].z,
     sock_id: null, //to be set in io.connection
     sprite: "ghostR",
     murderSprite: null,//not murderer
@@ -391,19 +357,21 @@ async function initPlayer(name) {
     tradeOffer: {}, // itemId -> amount
     tradeAccepted: false,
     slow: false,//like when hit by web
-    slowTime: 0//set with proj.slowTime
+    slowTime: 0,//set with proj.slowTime
+    obscured: false
   };
   let player = players[name];
-  addPlayerToTile(name, p_coords[0], p_coords[1]);
-  markTileChanged(p_coords[0], p_coords[1]);
+  addPlayerToTile(name, player.x, player.y, player.z);
+  markTileChanged(player.x, player.y);
   syncInventory(name);
 }
 
 async function cleanupPlayer(name) {
   console.log("cleaning up disc'd player");
   let player = players[name];
-  delete map.Map[player.coords[1]][player.coords[0]].players[name];
-  markTileChanged(player.coords[0], player.coords[1]);
+  let tile = getTile(player.x, player.y, player.z);
+  delete tile.players[name];
+  markTileChanged(player.x, player.y);
   await dbPlayer(name);
   delete players[name];
 }
@@ -415,7 +383,7 @@ async function levelFromXp(xp) {
 async function dbPlayer(name) {
   const sql = `
     UPDATE players SET 
-    x = ?, y = ?, 
+    x = ?, y = ?, z = ?,
     hp = ?,
     swordXp = ?,
     hpXp = ?,
@@ -435,7 +403,7 @@ async function dbPlayer(name) {
   `;
   let player = players[name];
   const params = [
-    player.coords[0], players[name].coords[1],
+    player.x, player.y, player.z,
     player.hp,
     player.swordXpTotal,
     player.hpXpTotal,
@@ -702,23 +670,32 @@ function checkPassword(input, actual) {//replace with hashing
 function mapPersist() {
   map.Fxn.persist(map.Map);
   for (p in players) {
+    if (!players[p]) continue;
     addPlayerToTile(p)//cause they got took off lol
     dbPlayer(p);
   }
 }
 
-function addPlayerToTile(name, x = null, y = null) {//x and y for mod coords etc
+function addPlayerToTile(name, x = null, y = null, z = null) {
   let player = players[name];
   if (x === null) {
-    x = players[name].coords[0];
+    x = player.x;
   }
   if (y === null) {
-    y = players[name].coords[1];
+    y = player.y;
   }
-  if (!map.Map[y][x]?.players) {
-    map.Map[y][x].players = {};
+  if (z === null){
+    z = player.z;
   }
-  map.Map[y][x].players[name] = {
+  let tile = getTile(x, y, z);
+  if (!tile){
+    map.Map[y][x][z]={};
+    tile = map.Map[y][x][z];
+  }
+  if (!tile?.players) {
+    tile.players = {};
+  }
+  tile.players[name] = {
     sprite: player.sprite,
     facing: player.facing,
     hand: player.hand,//then everything else
@@ -733,25 +710,32 @@ function addPlayerToTile(name, x = null, y = null) {//x and y for mod coords etc
 }
 
 async function markTileChanged(x, y) {
-  map.Map[y][x].version++;
+  let column = getColumn(x, y);
+  column.version++;
   viewerUpdate(x, y);
 }
 
-function addToMap(name, x, y) {
-  const tile = map.Map[y]?.[x];
+function addToMap(name, x, y, z=0, admin=false) {//z safety since no create z tile yet
+  let tile = getTile(x, y, z);
+  if (admin===true){
+    console.log("admin lay tile");
+    if (!tile){
+      console.log("admin attempting to create new tile");
+      map.Map[y][x][z]={};
+      tile = getTile(x, y, z);
+    }
+  }
   if (!tile) {
     console.error(`Tile at (${x},${y}) does not exist`);
     return;
   }
-
-  tile ??= {};
 
   const tileData = baseTiles[name];
   if (!tileData || !tileData.container) {
     console.error(`Tile ${name} does not have a container`);
     return;
   }
-
+  console.log(`addToMap(${name})`);
   if (tileData.container === "b-t") {
     tile["b-t"] = name;
   }
@@ -769,19 +753,19 @@ function addToMap(name, x, y) {
   markTileChanged(x, y);
 }
 
-async function removeObjFromMap(coords) {
-  delete map.Map[coords[1]][coords[0]].objects;// = {}
-}
+function clearTile(x, y, z) {
+  let tile = getTile(x, y, z);
+  if (!tile) return;
+  if (z === 0){
+    tile['b-t'] = "grass";
 
-function clearTile(x, y) {
-  let tile = map.Map[y][x];
-  tile['b-t'] = "grass";
+  }
   delete tile.objects;
   delete tile.floor;
   delete tile.roof;
-  const data = map.Map[y][x];
-  if (data && data.safeTile !== undefined) {
-    delete data.safeTile;
+  delete tile.depletedResources;
+  if (tile && tile.safeTile !== undefined) {
+    delete tile.safeTile;
   }
   markTileChanged(x, y);
 }
@@ -795,8 +779,9 @@ async function emitPlayerState(player) {
   }
   if (player.sock_id !== null) {
     io.to(player.sock_id).emit('playerState', {
-      x: player.coords[0],
-      y: player.coords[1],
+      x: player.x,
+      y: player.y,
+      z: player.z,
       hand: player.hand,
       head: player.head,
       body: player.body,
@@ -821,7 +806,8 @@ async function emitPlayerState(player) {
       woodcuttingXpTotal: player.woodcuttingXpTotal,
       miningLvl: player.miningLvl,
       miningXpTotal: player.miningXpTotal,
-      activeInvItem: player.activeInventory
+      activeInvItem: player.activeInventory,
+      obscured: player.obscured
     });
   }
 }
@@ -835,7 +821,7 @@ async function playerDeath(player) {
     }
   }
   player.hp = player.maxHp;//change to player level max hp
-  await dropPlayerLootbag(player.name, player.coords[0], player.coords[1]);
+  await dropPlayerLootbag(player.name, player.x, player.y, player.z);
   respawnPlayer(player.name);
 }
 
@@ -928,10 +914,10 @@ async function dropPlayerLootbag(playerName) {
   }
 
   // drop lootbag on first empty tile within 3 tiles
-  const tilesToCheck = getTilesInRadius(player.coords[0], player.coords[1], 3);
+  const tilesToCheck = getTilesInRadius(player.x, player.y, 3);
 
   for (const { nx, ny } of tilesToCheck) {
-    const nTile = map.Map[ny]?.[nx];
+    const nTile = getTile(nx, ny, player.z);
     if (!nTile) continue;
     if (!nTile.objects || Object.keys(nTile.objects).length === 0) {
       nTile.objects = { lootbag };
@@ -942,19 +928,19 @@ async function dropPlayerLootbag(playerName) {
 }
 
 async function respawnPlayer(name) {
-  const playerX = players[name].coords[0];
-  const playerY = players[name].coords[1];
-  const tile = map.Map[playerY][playerX];
+  let player = players[name];
+  const tile = getTile(player.x, player.y, player.z);
   delete tile.players[name];
-  markTileChanged(playerX, playerY);
-  players[name].hand = null;
-  players[name].head = null;
-  players[name].body = null;
-  players[name].feet = null;
-  players[name].quiver = null;
-  players[name].coords[0] = 26;
-  players[name].coords[1] = 54;
-  addPlayerToTile(name, 26, 54);
+  markTileChanged(player.x, player.y);
+  player.hand = null;
+  player.head = null;
+  player.body = null;
+  player.feet = null;
+  players.quiver = null;
+  player.x = 26;
+  player.y = 54;
+  player.z = 0;
+  addPlayerToTile(name, 26, 54, 0);
   markTileChanged(26, 54);
   await addItem(name, 1, 1);
   await syncInventory(name);
@@ -971,8 +957,9 @@ async function updatePlayerState(player) {
   player.mageLvl = await levelFromXp(player.mageXpTotal);
 
   const currState = {
-    x: player.coords[0],
-    y: player.coords[1],
+    x: player.x,
+    y: player.y,
+    z: player.z,
     hand: player.hand,
     head: player.head,
     body: player.body,
@@ -1015,8 +1002,9 @@ function mapUpdate() {
 
   for (const p in players) {
     const player = players[p];
+    if (!player) continue;
     updatePlayerState(player);
-    const chunk = map.Fxn.chunk(player.coords);//generates a chunk of coords only
+    const chunk = map.Fxn.chunk(player.x, player.y);//coordinates only
     let newSum = 0;
     for (const row of chunk) {
       for (const [x, y] of row) {
@@ -1025,13 +1013,14 @@ function mapUpdate() {
         }
       }
     }
-    const chunkKey = `${player.coords[0]},${player.coords[1]}`;
+    const chunkKey = `${player.x},${player.y}`;
     if (player.lastChunkSum === newSum && player.lastChunkKey === chunkKey
     ) {
       continue;
     }
     player.lastChunkSum = newSum;
     player.lastChunkKey = chunkKey;
+    console.log('sending chunk');
     io.to(player.sock_id).emit('updateChunk', generateLiveChunk(p, chunk));
   }
 }
@@ -1148,7 +1137,14 @@ io.on('connection', async (socket) => {
 
   socket.on("clearTile", data => {
     if (!devMode && socket.user !== "Admin") return;
-    clearTile(data.x, data.y);
+    let admin = players[socket.user];
+    clearTile(data.x, data.y, admin.z);
+  });
+
+  socket.on('createTile', data => {
+    if (socket.user !== "Admin") return;
+    console.log('socket create tile called');
+    createTileIfMissing(data.x, data.y, data.z);
   });
 
   socket.on('saveMap', () => {
@@ -1163,21 +1159,28 @@ io.on('connection', async (socket) => {
 
   socket.on('adminMove', (data) => {
     if (!devMode && socket.user !== 'Admin') return;
-    players[socket.user].coords[0] = data[0];
-    players[socket.user].coords[1] = data[1];
+    let player = players[socket.user];
+    let oldTile = getTile(player.x, player.y, player.z);
+    delete oldTile.players['Admin'];
+    markTileChanged(player.x, player.y);
+    player.x = data[0];
+    player.y = data[1];
+    player.z = data[2];//change data to object frontend
+    addPlayerToTile('Admin', player.x, player.y, player.z);
+    markTileChanged(player.x, player.y);
   });
 
   socket.on('setSign', (data) => {
     if (!devMode && socket.user !== 'Admin') return;
-    let coords = players[socket.user].coords;
-    let tile = map.Map[coords[1]][coords[0]];
+    let player = players[socket.user];
+    let tile = getTile(player.x, player.y, player.z);
     tile.objects['sign'].text = data;
   });
 
   socket.on('setOwner', (data) => {
     if (!devMode && socket.user !== 'Admin') return;
-    let coords = players[socket.user].coords;
-    let tile = map.Map[coords[1]][coords[0]];
+    let player = players[socket.user];
+    let tile = getTile(player.x, player.y, player.z);
     let objName = Object.keys(tile.objects)[0];
     let objDef = tile.objects[objName];
     if (objDef?.owner){
@@ -1188,8 +1191,8 @@ io.on('connection', async (socket) => {
 
   socket.on('setToCoords', (data) => {
     if (!devMode && socket.user !== 'Admin') return;
-    let coords = players[socket.user].coords;
-    let tile = map.Map[coords[1]][coords[0]];
+    let player = players[socket.user];
+    let tile = getTile(player.x, player.y, player.z);
     let toObj = tile.objects[Object.keys(tile.objects)[0]];
     toObj.toX = data.x;
     toObj.toY = data.y;
@@ -1274,7 +1277,7 @@ async function bankDeposit(socket, data){
     sendMessage('pk message', `DON'T`, player);
     return;
   }
-  let tile = map.Map[player.coords[1]][player.coords[0]];
+  let tile = getTile(player.x, player.y, player.z);
   if (!tile.objects['bankchest']) return;
   try {
     const { id, amt } = data;
@@ -1309,7 +1312,7 @@ async function bankDeposit(socket, data){
 
 async function bankWithdraw(socket, data){
   let player = players[socket.user];
-  let tile = map.Map[player.coords[1]][player.coords[0]];
+  let tile = getTile(player.x, player.y, player.z);
   if (!tile.objects?.bankchest) return;
   try {
     const { id, amt } = data;
@@ -1346,7 +1349,6 @@ async function bankWithdraw(socket, data){
 }
 
 function layTile(socket, data){
-  console.log(socket.user);
   if (!devMode && socket.user !== "Admin") {
     console.log("not Admin or devmode");
     return;
@@ -1354,17 +1356,20 @@ function layTile(socket, data){
   console.log(data);
   let x;
   let y;
+  let z;
   if (data.x === null || data.y === null) {
-    players[socket.user].coords[0];
-    players[socket.user].coords[1];
+    x = players[socket.user].x;
+    y = players[socket.user].y;
   } else {
     x = data.x;
     y = data.y;
   }
-  addToMap(data.tile, x, y);
+  z = players[socket.user].z;
+  console.log(`layTile z: ${z}`);
+  addToMap(data.tile, x, y, z, true);
 }
 
-function playerPaint(data){
+function playerPaint(data){//change this later
   if (data.y < 0 || data.y > 499 || data.x < 0 || data.x > 499) return;
   if (data.btn === "right") {
     if (map.Map[data.y][data.x]?.pixels) {
@@ -1391,19 +1396,24 @@ function playerPaint(data){
 function stopPlayerTyping(socket){
   players[socket.user].typing.state = false;
   console.log(`${socket.user} stopped typing.`);
-  map.Map[players[socket.user].typing.lastSpot.y][players[socket.user].typing.lastSpot.x].typing = false;
-  markTileChanged(players[socket.user].coords[0], players[socket.user].coords[1]);
+  let player = players[socket.user];
+  let tile = getTile(player.typing.lastSpot.x, player.typing.lastSpot.y);
+  tile.typing = false;
+  markTileChanged(player.x, player.y);
 }
 
 function setPlayerTyping(socket){
-  if (players[socket.user].typing === false) {
+  let player = players[socket.user];
+  if (player.typing === false) {
     console.log(`${socket.user} is typing...`);//wut?
   }
-  players[socket.user].typing.state = true;
-  players[socket.user].typing.lastSpot.y = players[socket.user].coords[1];
-  players[socket.user].typing.lastSpot.x = players[socket.user].coords[0];
-  map.Map[players[socket.user].coords[1]][players[socket.user].coords[0]].typing = true;
-  markTileChanged(players[socket.user].coords[0], players[socket.user].coords[1]);
+  player.typing.state = true;
+  player.typing.lastSpot.y = player.x;
+  player.typing.lastSpot.x = player.y;
+  player.typing.lastSpot.z = player.z;
+  let tile = getTile(player.x, player.y, player.z);
+  tile.typing = true;
+  markTileChanged(player.x, player.y, player.z);
 }
 
 function setPlayerKeystate(player, data){
@@ -1489,7 +1499,7 @@ async function connectPlayer(socket){
     console.log(`${socket.user} is reconnecting to existing player object.`);
     players[socket.user].sock_id = socket.id; // reconnect socket
     let p = players[socket.user];
-    markTileChanged(p.coords[0], p.coords[1]);
+    markTileChanged(p.x, p.y);
     syncInventory(socket.user);
     emitPlayerState(p);
   } else {
@@ -1745,7 +1755,278 @@ function setDir(data){
   })
 }
 
+const dirOffsets = {
+  up: [0, -1],
+  down: [0, 1],
+  left: [-1, 0],
+  right: [1, 0]
+};
+
+const spriteMap = {
+  left: "ghostL",
+  right: "ghostR"
+};
+
+const murderSpriteMap = {
+  left: "murderL",
+  right: "murderR"
+};
+
+const crimSpriteMap = {
+  left: "criminalL",
+  right: "criminalR"
+}
+
+const directions = ['up', 'down', 'left', 'right'];
+
+/*
 function movePlayer(name, data) {
+  cancelPendingChannels(name);
+  let player = players[name];
+  if (Date.now() < player.lastMove + player.movementSpeed) {
+    return;//since this calls checkCollision, might have to add a lastHit
+    //as well, that number might be different? idk
+  }
+  slowPlayer(player);
+  player.lastMove = Date.now();
+  let modCoords;
+  let _dir;
+  directions.forEach(dir => {
+    _dir = dir;
+    if (data[dir]) {
+      const [dx, dy] = dirOffsets[dir];
+      modCoords = { x: player.x + dx, y: player.y + dy};
+    }
+  });
+  setSprite(player, _dir);
+  player.lastDir = _dir;
+  addPlayerToTile(name, player.x, player.y, player.z);
+  markTileChanged(player.x, player.y);
+  if (checkCollision(name, modCoords.x, modCoords.y, player.z)) return;
+
+  let tile = getTile(player.x, player.y, player.z);
+  delete tile.players[name];
+  markTileChanged(player.x, player.y);
+  sendSound(player, [player.step]);
+  if (player.step === "stepR") {
+    player.step = "stepL";
+  } else {
+    player.step = "stepR";
+  }
+  let checkTile = getTile(modCoords.x, modCoords.y, player.z);//next tile
+  let checkCol = getColumn(modCoords.x, modCoords.y);
+  
+  if (!checkTile){
+    for (let z = player.z-1; z>=0; z--){
+      if (!checkCol[z]){
+        player.z=z;
+        continue;
+      };
+      if (checkCol[z]?.roof){
+        if (Object.keys(checkCol[z].roof).length>0){
+          break;//z stays same
+        }
+      }
+      if (checkCol[z]?.objects){
+        let keys = Object.keys(checkCol[z].objects);
+        if (baseTiles[checkCol[z].objects[keys[0]]].collision===true){
+          break;//z stays same
+        }
+      }
+      if (z===0){
+        player.z=0;
+      }
+    }
+  } else {
+    //checkTile exists, make sure it's valid
+  }
+  
+  player.x = modCoords.x;
+  player.y = modCoords.y;
+  addPlayerToTile(name, modCoords.x, modCoords.y, player.z);
+  markTileChanged(player.x, player.y);
+}
+*/
+
+function movePlayer(name, data) {
+  cancelPendingChannels(name);
+
+  let player = players[name];
+
+  if (Date.now() < player.lastMove + player.movementSpeed) {
+    return;
+  }
+
+  if (slowPlayer(player)) return;
+  player.lastMove = Date.now();
+
+  let modCoords;
+  let _dir;
+
+  directions.forEach(dir => {
+    if (data[dir]) {
+      const [dx, dy] = dirOffsets[dir];
+      modCoords = { x: player.x + dx, y: player.y + dy };
+      _dir = dir;
+    }
+  });
+
+  if (!modCoords) return;
+
+  setSprite(player, _dir);
+  player.lastDir = _dir;
+
+  addPlayerToTile(name, player.x, player.y, player.z);
+  markTileChanged(player.x, player.y);
+
+  if (checkCollision(name, modCoords.x, modCoords.y, player.z)) return;
+
+  let tile = getTile(player.x, player.y, player.z);
+  delete tile.players[name];
+  markTileChanged(player.x, player.y);
+
+  sendSound(player, [player.step]);
+
+  player.step = (player.step === "stepR") ? "stepL" : "stepR";
+
+  let checkTile = getTile(modCoords.x, modCoords.y, player.z);
+  let checkCol = getColumn(modCoords.x, modCoords.y);
+
+  // ===== Z LOGIC =====
+
+  let targetZ = player.z;
+
+  for (let z = player.z; z >= 0; z--) {
+    if (checkTile?.['b-t']){
+      break;
+    }
+    if (checkTile?.floor){
+      if (Object.keys(checkTile.floor).length>0){
+        break;
+      }
+    }
+    let colTile = checkCol[z];
+    if (!colTile) continue;
+    // b-t / collision object → land here
+    if (colTile.objects) {
+      let keys = Object.keys(colTile.objects);
+      if (keys.length > 0) {
+        console.log(`obj: ${keys[0]}`);
+        let obj = baseTiles[keys[0]];
+        if (obj && obj.collision === true) {
+          targetZ = z+1;
+          break;
+        }
+      }
+    }
+    // ROOF → stay at current z
+    if (colTile.roof && Object.keys(colTile.roof).length > 0) {
+      targetZ = player.z;
+      break;
+    }
+
+    // FLOOR → stand on this z
+    if (colTile.floor) {
+      targetZ = z;
+      break;
+    }
+
+    if (z === 0) {
+      targetZ = 0;
+      break;
+    }
+  }
+
+  player.z = targetZ;
+
+  // ===== END Z LOGIC =====
+
+  player.x = modCoords.x;
+  player.y = modCoords.y;
+
+  addPlayerToTile(name, modCoords.x, modCoords.y, player.z);
+  checkObscured(player);
+  markTileChanged(player.x, player.y);
+}
+
+/*
+function checkObscured(player){
+  let col = getColumn(player.x, player.y);
+  for (z=5; z>=0; z--){
+    if (!col?.[z]) continue;
+    let tile = col[z];
+    console.log("got here");
+    if (tile?.floor) {
+      if (Object.keys(tile.floor).length > 0) {
+        console.log("floor obscured");
+        player.obscured = z+1;
+        return;
+      }
+    }
+
+    if (col[z]?.objects){
+      let obj = baseTiles[Object.keys(col[z].objects)[0]];
+      if (obj?.collision===true){
+        console.log("obj obscured");
+        player.obscured = z+1;
+        return;
+      }
+    }
+    
+    if (col[z]?.roof){
+      if (Object.keys(col[z].roof).length>0){
+        console.log("roof obscured");
+        player.obscured = z;
+        return;
+      }
+    }
+    
+    console.log("no obscured");
+    player.obscured = false;
+  }
+}
+*/
+function checkObscured(player) {
+
+  let col = getColumn(player.x, player.y);
+  player.obscured = false;
+
+  if (!col) return;
+
+  for (let z in col) {
+
+    z = Number(z);
+    if (z <= player.z) continue;
+
+    let tile = col[z];
+    if (!tile) continue;
+
+    if (
+      (tile.floor && Object.keys(tile.floor).length > 0) ||
+      (tile.roof && Object.keys(tile.roof).length > 0) ||
+      (tile.objects &&
+        baseTiles[Object.keys(tile.objects)[0]]?.collision === true)
+    ) {
+      player.obscured = true;
+      return;
+    }
+  }
+}
+
+function slowPlayer(player){
+  if (player.slow === true) {
+    player.slowTime -= player.movementSpeed;
+    if (player.slowTime <= 0) {
+      player.slow = false;
+      player.slowTime = 0;
+      return false;
+    }
+    return true;//can move next time lol
+  }
+  return false;
+}
+
+function cancelPendingChannels(name){
   if (pendingTeleports[name]) {
     clearTimeout(pendingTeleports[name]);
     delete pendingTeleports[name];
@@ -1760,91 +2041,36 @@ function movePlayer(name, data) {
     channel.onCancel?.();
     io.to(players[name].sock_id).emit('channelCancel');
   }
-  if (Date.now() < players[name].lastMove + players[name].movementSpeed) {
-    return;//since this calls checkCollision, might have to add a lastHit
-    //as well, that number might be different? idk
+}
+
+function setSprite(player, dir){
+  if (!spriteMap[dir]) return;
+  console.log(`setSprite ${dir}`);
+  player.sprite = spriteMap[dir];
+  player.facing = dir;
+
+  // murderer sprite override if player is a murderer
+  if (player.murderer) {
+    player.murderSprite = murderSpriteMap[dir];
+  } else {
+    player.murderSprite = null;
   }
-  if (players[name].slow === true) {
-    players[name].slowTime -= players[name].movementSpeed;
-    if (players[name].slowTime <= 0) {
-      players[name].slow = false;
-      players[name].slowTime = 0;
-    }
-    return;//can move next time lol
+  if (player.murderer) {
+    player.criminal = false;
+    clearCriminal(player.name);
   }
-  players[name].lastMove = Date.now();
-  const directions = ['up', 'down', 'left', 'right'];
-  directions.forEach(dir => {
-    if (data[dir]) {
-      let coordCheck;
-      let pCoords = [players[name].coords[0], players[name].coords[1]];
-      let modCoords;
-      const dirOffsets = {
-        up: [0, -1],
-        down: [0, 1],
-        left: [-1, 0],
-        right: [1, 0]
-      };
+  if (player.criminal) {
+    player.criminalSprite = crimSpriteMap[dir];
+  }
+}
 
-      const spriteMap = {
-        left: "ghostL",
-        right: "ghostR"
-      };
-      const [dx, dy] = dirOffsets[dir];
-      modCoords = [pCoords[0] + dx, pCoords[1] + dy];
-      //players[name].lastDir = dir;
-      //if (checkCollision(name, modCoords)) return; // tile/obj/player interaction here?
-
-      //if (players[name].murderer )
-
-      // update facing
-      //players[name].lastDir = dir;
-
-      // normal sprite
-      if (spriteMap[dir]) {
-        players[name].sprite = spriteMap[dir];
-        players[name].facing = dir;
-
-        // murderer sprite override if player is a murderer
-        if (players[name].murderer) {
-          const murderSpriteMap = {
-            left: "murderL",
-            right: "murderR"
-          };
-          players[name].murderSprite = murderSpriteMap[dir];
-        } else {
-          players[name].murderSprite = null;
-        }
-        if (players[name].murderer) {
-          players[name].criminal = false;
-          clearCriminal(name);
-        }
-        if (players[name].criminal) {
-          console.log("setting criminal sprite");
-          const crimSpriteMap = {
-            left: "criminalL",
-            right: "criminalR"
-          }
-          players[name].criminalSprite = crimSpriteMap[dir];
-        }
-      }
-      players[name].lastDir = dir;
-      addPlayerToTile(name, players[name].coords[0], players[name].coords[1]);
-      markTileChanged(players[name].coords[0], players[name].coords[1]);
-      if (checkCollision(name, modCoords)) return; // tile/obj/player interaction here?
-      delete map.Map[players[name].coords[1]][players[name].coords[0]].players[name];
-      markTileChanged(players[name].coords[0], players[name].coords[1]);
-      sendSound(players[name], [players[name].step]);
-      if (players[name].step === "stepR") {
-        players[name].step = "stepL";
-      } else {
-        players[name].step = "stepR";
-      }
-      players[name].coords = modCoords;
-      addPlayerToTile(name, modCoords[0], modCoords[1]);
-      markTileChanged(players[name].coords[0], players[name].coords[1]);
-    }
-  });
+function createTileIfMissing(x, y, z) {
+  if (!map.Map[y] || !map.Map[y][x]) return; // do NOT create new columns
+  if (!map.Map[y][x][z]) {
+    console.log("creating new z tile");
+    map.Map[y][x][z] = {
+    };
+  }
 }
 
 const tileMaxX = map.Map[0].length;
@@ -1852,37 +2078,39 @@ const tileMaxY = map.Map.length;
 
 console.log(`tileMaxX: ${tileMaxX}, tileMaxY: ${tileMaxY}`);
 
-function checkCollision(name, coords) {
-  if (coords[0] < 0 || coords[0] > tileMaxX - 1) {  //need next map on collision with edge
+function checkCollision(name, x, y, z) {
+  if (x < 0 || x > tileMaxX - 1) {  //need next map on collision with edge
     return true;
   }
-  if (coords[1] < 0 || coords[1] > tileMaxY - 1) {
+  if (y < 0 || y > tileMaxY - 1) {
     return true;
   }
+  /*
   if (noCollision || name === 'Admin') {
-    markTileChanged(coords[0], coords[1]);
+    markTileChanged(x, y);
     return false;
   }
-  if (map.Map[coords[1]][coords[0]].collision) {//is this necessary?
-    return true;//don't think data.collision ever even gets used, take out of map?
+  */
+  let tile = getTile(x, y, z);
+  if (tile===null || tile===undefined) return;
+  if (tile?.['b-t']){
+    if (baseTiles[tile['b-t']].collision === true) {
+      //but if it's water, do other stuff, coulda put fishing here lmao
+      checkCollisionBaseTile(name, tile);
+      return true;
+    }
   }
-  if (baseTiles[map.Map[coords[1]][coords[0]]['b-t']].collision === true) {
-    //but if it's water, do other stuff, coulda put fishing here lmao
-    let checkTile = map.Map[coords[0]][coords[0]];
-    checkCollisionBaseTile(name, checkTile);
-    return true;
-  }
+
   //player melee here??
-  if (checkMelee(name, coords)) {//stay in place if hitting somebody
+  if (checkMelee(name, x, y, z)) {//stay in place if hitting somebody
     return true;
   }
-  let tile = map.Map[coords[1]][coords[0]];
   if (tile?.mob) {
     if (tile.mob?.collision === true) {
       return true;
     }
   }
-  const objects = map.Map[coords[1]][coords[0]].objects ?? {};
+  const objects = tile.objects ?? {};
   for (const objKey in objects) {
     const obj = objects[objKey];
     const def = baseTiles[obj.name];
@@ -1905,10 +2133,10 @@ function checkCollision(name, coords) {
     }
 
     // Normal collision otherwise
-    checkObjectCollision(name, coords, obj.name);
+    checkObjectCollision(name, x, y, z, obj.name);
     return true;
   }
-  if (players[name].murderer && map.Map[coords[1]][coords[0]].safeTile) {
+  if (players[name].murderer && tile.safeTile) {
     sendMessage('pk message', `As a murderer, you cannot enter safe places...`, players[name]);
     return true;//lol they can't go to safe area!
   }
@@ -1971,17 +2199,17 @@ async function checkCollisionBaseTile(name, tile) {
 let npcs = ['shopkeep'];
 
 function npcInteract(name, npcName){
-  let npcObject = baseTiles[npdscName];
+  let npcObject = baseTiles[npcName];
   if (npcObject?.does){
     sendMessage('server message', `${npcObject.prettyName}: ${npcObject.does.speech}`, players[name]);
   }
 }
 
-function checkMelee(name, coords) {
+function checkMelee(name, x, y, z) {
   let player = players[name];
   if (player.hand === null) return false;
   if (player.slow === true) return false;//can't attack if slowed!
-  const tile = map.Map[coords[1]][coords[0]];
+  const tile = getTile(x, y, z);
   const isSafe = isSafeActive(tile);
 
   // 1️⃣ Players first
@@ -2042,20 +2270,14 @@ async function randomBeeSting(playerName) {
   return false;
 }
 
-async function areaDamage(projId, x, y, radius, type, damage) {
+async function areaDamage(projId, x, y, z, radius, type, damage) {
   let affectedTiles = getTilesInRadius(x, y, radius);
   //check for players and mobs on those tiles
   for (tile in affectedTiles) {
     
     const { nx, ny } = affectedTiles[tile];
 
-    // Check Y exists first
-    if (!map.Map[ny]) continue;
-
-    // Check X exists inside that row
-    if (!map.Map[ny][nx]) continue;
-
-    let mapTile = map.Map[ny][nx];
+    let mapTile = getTile(nx, ny);
     if (!mapTile) continue;
     if (mapTile.floor === undefined) {
       mapTile.floor = {};
@@ -2250,7 +2472,7 @@ async function giveXp(playerName, xp, type) {
 }
 
 async function killMob(mob) {
-  const tile = map.Map[mob.y][mob.x];
+  const tile = getTile(mob.x, mob.y);
   delete tile.mob;
   await dropMobLoot(mob.drop, mob.x, mob.y);
   mobs.delete(mob.id);
@@ -2288,7 +2510,7 @@ async function dropMobLoot(drops, x, y) {
   }
   const tilesToCheck = getTilesInRadius(x, y, 3);
   for (const { nx, ny } of tilesToCheck) {
-    const nTile = map.Map[ny]?.[nx];
+    const nTile = getTile(nx, ny);
     if (!nTile) continue;
     if (!nTile.objects || Object.keys(nTile.objects).length === 0) {
       nTile.objects = { lootbag };
@@ -2298,7 +2520,7 @@ async function dropMobLoot(drops, x, y) {
   }
 }
 
-async function checkObjectCollision(playerName, coords, objName) {
+async function checkObjectCollision(playerName, x, y, z, objName) {
   const player = players[playerName];
 
   // what item is the player holding?
@@ -2338,10 +2560,11 @@ async function checkObjectCollision(playerName, coords, objName) {
     }
   }
   //check if safe tile first!
-  if (isSafeActive(map.Map[coords[1]][coords[0]])) {
+  let tile = getTile(x, y, z);
+  if (isSafeActive(tile)) {
     return;
   }
-  await resourceInteract(playerName, coords, objName);
+  await resourceInteract(playerName, x, y, z, objName);
 }
 
 async function playerAction(playerName) {
@@ -2384,13 +2607,14 @@ async function playerTryFishing(player) {
   //bobber on fishing spot
   //check quiver for bait, higher chance for fish/different fish
   //chance to catch fish, catch nothing, or break pole (fishing lvl)
-  let fishTileCoords = checkOnNextTile(player.coords, player.lastDir, "fishingspot");
+  let fishTileCoords = checkOnNextTile(player.x, player.y, player.z, player.lastDir, "fishingspot");
   if (fishTileCoords === false) return;
   //else it's coords!
   sendMessage('server message', 'You cast out your line.', player);
   //add bobber to tile, only on front end?
   //add fishing=true/false so others can see too
-  map.Map[fishTileCoords.y][fishTileCoords.x].objects['fishingspot'].fishing = true;
+  let tile = getTile(fishTileCoords.x, fishTileCoords.y, fishTileCoords.z);
+  tile.objects['fishingspot'].fishing = true;
   markTileChanged(fishTileCoords.x, fishTileCoords.y);
   startChannel({
     playerName: player.name,
@@ -2399,7 +2623,7 @@ async function playerTryFishing(player) {
 
     onComplete: async () => {
       console.log("you reel in your line");
-      map.Map[fishTileCoords.y][fishTileCoords.x].objects['fishingspot'].fishing = false;
+      tile.objects['fishingspot'].fishing = false;
       markTileChanged(fishTileCoords.x, fishTileCoords.y);
       sendMessage('server message', "You reel in your line.", player);
       //random chance for fish
@@ -2411,7 +2635,7 @@ async function playerTryFishing(player) {
 
     onCancel: () => {
       console.log("Fishing canceled");
-      map.Map[fishTileCoords.y][fishTileCoords.x].objects['fishingspot'].fishing = false;
+      tile.objects['fishingspot'].fishing = false;
       markTileChanged(fishTileCoords.x, fishTileCoords.y);
       sendMessage('server message', "You stop fishing.", player);
     }
@@ -2435,7 +2659,7 @@ async function randomChanceForFish(player, spot) {
     await syncInventory(player.name);
     let xp = baseTiles[caughtFish].xp;
     giveXp(player.name, xp, 'fishing');
-    let tile = map.Map[spot.y][spot.x];
+    let tile = getTile(spot.x, spot.y, spot.z);
     tile.objects['fishingspot'].amount -= 1;
     if (tile.objects['fishingspot'].amount <= 0) {
       delete tile.objects;
@@ -2449,7 +2673,7 @@ function roll(level) {
   const chance = base + (1 - base) * (1 - Math.pow(0.97, level));
   return Math.random() < chance;
 }
-function checkOnNextTile(coords, lastDir, thing) {
+function checkOnNextTile(x, y, z, lastDir, thing) {
   let check = { x: 0, y: 0 };
   switch (lastDir) {
     case "up": check.y -= 1; break;
@@ -2457,8 +2681,8 @@ function checkOnNextTile(coords, lastDir, thing) {
     case "left": check.x -= 1; break;
     case "right": check.x += 1; break;
   }
-  let newCoords = { x: coords[0] + check.x, y: coords[1] + check.y }
-  let tile = map.Map[newCoords.y][newCoords.x];
+  let newCoords = { x: x + check.x, y: y + check.y, z: z }
+  let tile = getTile (newCoords.x, newCoords.y, z);
   if (tile?.objects) {
     if (tile.objects[thing]) {
       return newCoords;
@@ -2525,14 +2749,14 @@ async function playerShootBow(player, mage = false) {
   if (projName==='yellowdust'){
     distance = -1;
   }
-  const arrow = createProjectile(projName, player.lastDir, player.coords[0], player.coords[1], player.name, distance, slow, slowTime);
+  const arrow = createProjectile(projName, player.lastDir, player.x, player.y, player.z, player.name, distance, slow, slowTime);
   addProjectileToTile(arrow);
 }
 
 async function interactTile(playerName) {
   console.log('interactTile running');
   const player = players[playerName];
-  const tile = map.Map[player.coords[1]][player.coords[0]];
+  const tile = getTile(player.x, player.y, player.z);
   const mapObjects = tile.objects ?? {};
 
   const objNames = Object.keys(mapObjects);
@@ -2557,18 +2781,18 @@ async function interactTile(playerName) {
     }
     // 1. REMOVE OBJECT FIRST (atomic, synchronous)
     console.log("removing obj from map");
-    const removed = removeObjFromMapSync(player.coords);
+    const removed = removeObjFromMapSync(player.x, player.y, player.z);
     if (!removed) return; // someone else already took it
 
-    markTileChanged(player.coords[0], player.coords[1]);
+    markTileChanged(player.x, player.y);
 
     // 2. TRY TO ADD TO INVENTORY
     const added = await addItem(playerName, itemId, 1);
 
     // 3. INVENTORY FULL → PUT IT BACK
     if (added === 0) {
-      restoreObjToMap(player.coords, removed);
-      markTileChanged(player.coords[0], player.coords[1]);
+      restoreObjToMap(player.x, player.y, player.z, removed);
+      markTileChanged(player.x, player.y);
       return;
     }
 
@@ -2577,13 +2801,13 @@ async function interactTile(playerName) {
     return;
   }
   if (objDef.kind === 'lootbag' && objDef.container === "objects") {
-    await openLootbag(playerName, tile.objects['lootbag'], player.coords[0], player.coords[1]);//lootbag should have .items
+    await openLootbag(playerName, tile.objects['lootbag'], player.x, player.y, player.z);//lootbag should have .items
     await syncInventory(playerName);
   }
 }
 
-function removeObjFromMapSync(coords) {
-  const tile = map.Map[coords[1]][coords[0]];
+function removeObjFromMapSync(x, y, z) {
+  const tile = getTile(x, y, z);
   const objects = tile.objects;
   if (!objects) return null;
 
@@ -2598,44 +2822,14 @@ function removeObjFromMapSync(coords) {
   return { key, obj };
 }
 
-function restoreObjToMap(coords, removed) {
+function restoreObjToMap(x, y, z, removed) {
   if (!removed) return;
-  const tile = map.Map[coords[1]][coords[0]];
+  const tile = getTile(x, y, z);
   tile.objects ??= {};
   tile.objects[removed.key] = removed.obj;
 }
 
-/*
-async function openLootbag(playerName, lootbagObject, x, y) {
-  if (!lootbagObject || !lootbagObject.items) return;
-
-  if (lootbagObject.locked) return;
-  lootbagObject.locked = true;
-  let lootChat = {};
-  try {
-    for (const name of Object.keys(lootbagObject.items)) {
-      const item = lootbagObject.items[name];
-      const itemId = baseTiles[name]?.id;
-      if (!itemId) continue;
-
-      const added = await addItem(playerName, itemId, item.amt);
-      item.amt -= added;
-
-      if (item.amt <= 0) delete lootbagObject.items[name];
-    }
-
-    // remove lootbag only if empty
-    if (Object.keys(lootbagObject.items).length === 0) {
-      const tile = map.Map[y][x];
-      delete tile.objects.lootbag;
-      markTileChanged(x, y);
-    }
-  } finally {
-    lootbagObject.locked = false;
-  }
-}
-*/
-async function openLootbag(playerName, lootbagObject, x, y) {
+async function openLootbag(playerName, lootbagObject, x, y, z) {
   if (!lootbagObject || !lootbagObject.items) return;
 
   if (lootbagObject.locked) return;
@@ -2667,7 +2861,7 @@ async function openLootbag(playerName, lootbagObject, x, y) {
 
     // remove lootbag only if empty
     if (Object.keys(lootbagObject.items).length === 0) {
-      const tile = map.Map[y][x];
+      const tile = getTile(x, y, z);
       delete tile.objects.lootbag;
       markTileChanged(x, y);
     }
@@ -2834,7 +3028,7 @@ async function purchaseItem(playerName, objName) {
 async function enterExit(name, exitObject){
   //start a timer
   //move player to new coords
-  let toCoords = {x: exitObject.toX, y: exitObject.toY}
+  let toCoords = {x: exitObject.toX, y: exitObject.toY, z: exitObject.toZ}
   startChannel({
     playerName: name,
     duration: 1000,
@@ -2844,16 +3038,22 @@ async function enterExit(name, exitObject){
       const player = players[name];
       if (!player) return;
 
-      const x = player.coords[0];
-      const y = player.coords[1];
-
-      delete map.Map[y][x].players[name];
+      const x = player.x;
+      const y = player.y;
+      const z = player.z;
+      let tile = getTile(x, y, z);
+      delete tile.players[name];
       markTileChanged(x, y);
 
-      player.coords[0] = toCoords.x;
-      player.coords[1] = toCoords.y;
-
-      addPlayerToTile(name, toCoords.x, toCoords.y);
+      player.x = toCoords.x;
+      player.y = toCoords.y;
+      if (toCoords?.z){
+        player.z=toCoords.z;
+      } else {
+        player.z = 0;//legacy stairs
+      }
+      
+      addPlayerToTile(name, toCoords.x, toCoords.y, toCoords.z);
       markTileChanged(toCoords.x, toCoords.y);
     },
 
@@ -2870,8 +3070,7 @@ async function readLeaderboard(name) {
 
 function readSign(name) {
   let player = players[name];
-  let coords = players[name].coords;
-  let tile = map.Map[coords[1]][coords[0]];
+  let tile = getTile(player.x, player.y, player.z);
   let text = String(tile.objects['sign'].text);
   console.log(tile.objects['sign']);
   sendMessage('readSign', text, player);
@@ -2879,9 +3078,7 @@ function readSign(name) {
 
 async function useDoor(name) {
   const player = players[name];
-  const x = player.coords[0];
-  const y = player.coords[1];
-  const tile = map.Map[y]?.[x];
+  const tile = getTile(player.x, player.y, player.z);
   if (!tile) return;
 
   const objects = tile?.objects;
@@ -2919,7 +3116,7 @@ async function useDoor(name) {
   markTileChanged(x, y);
 }
 
-async function resourceInteract(playerName, coords, objName) {
+async function resourceInteract(playerName, x, y, z, objName) {
   const player = players[playerName];
   let timeBonus = 1000;
   if (player.hand){
@@ -2962,7 +3159,7 @@ async function resourceInteract(playerName, coords, objName) {
 
   /* ---------- depletion ---------- */
   let chance = null;//for potential resource mob
-  const tileData = map.Map[coords[1]][coords[0]];
+  const tileData = getTile(x, y, z);
 
   // remove current object
   delete tileData.objects?.[objName];
@@ -2987,9 +3184,9 @@ async function resourceInteract(playerName, coords, objName) {
     }
   }
   if (chance !== null) {//change to scaled to player lvl
-    spawnResourceMob(playerName, coords, chance);
+    spawnResourceMob(playerName, x, y, z, chance);
   }
-  await markTileChanged(coords[0], coords[1]);
+  await markTileChanged(x, y);
 }
 
 function useItem(playerName) {
@@ -3041,25 +3238,23 @@ async function equip(playerName, id) {
   const slot = itemDef.equip.slot;
 
   const isEquipped = player[slot] === id;
-
+  let tile = getTile(player.x, player.y, player.z);
   if (isEquipped) {
     player[slot] = null;
-    map.Map[player.coords[1]][player.coords[0]]
-      .players[playerName][slot] = null;
+    tile.players[playerName][slot] = null;
     if (slot === "feet") {
       player.movementSpeed = player.baseMovementSpeed;
     }
   } else {
     player[slot] = id;
-    map.Map[player.coords[1]][player.coords[0]]
-      .players[playerName][slot] = id;
+    tile.players[playerName][slot] = id;
     if (slot === "feet") {
       player.movementSpeed = baseTiles[itemById[player[slot]]].speed;
     }
   }
 
   emitPlayerState(player);
-  markTileChanged(player.coords[0], player.coords[1]);
+  markTileChanged(player.x, player.y);
   await syncInventory(playerName);
 }
 
@@ -3125,17 +3320,19 @@ async function teleportPlayer(name) {
       const player = players[name];
       if (!player) return;
 
-      const x = player.coords[0];
-      const y = player.coords[1];
-
-      delete map.Map[y][x].players[name];
+      const x = player.x;
+      const y = player.y;
+      const z = player.z;
+      let tile = getTile(x, y, z);
+      delete tile.players[name];
       io.emit('explosion', { x: x, y: y, color: "blue" });
       markTileChanged(x, y);
 
-      player.coords[0] = 49;
-      player.coords[1] = 49;
+      player.x = 49;
+      player.y= 49;
+      player.z = 0;
 
-      addPlayerToTile(name, 49, 49);
+      addPlayerToTile(name, 49, 49, 0);
       markTileChanged(49, 49);
     },
 
@@ -3158,8 +3355,9 @@ function startChannel({
   // already channeling
   if (activeChannels[playerName]) return;
 
-  const startX = player.coords[0];
-  const startY = player.coords[1];
+  const startX = player.x;
+  const startY = player.y;
+  const startZ = player.z;
   const startTime = Date.now();
 
   // tell client to show progress bar
@@ -3179,10 +3377,16 @@ function startChannel({
     timer,
     startX,
     startY,
+    startZ,
     cancelOnMove,
     onCancel
   };
 }
+
+let zRaise = [
+  'woodblock0',
+  'stoneblock0'
+]
 
 async function dropItem(name, item) {
   let player = players[name];
@@ -3190,9 +3394,9 @@ async function dropItem(name, item) {
     sendMessage('pk message', `As a murderer, you cannot drop items...`, player);
     return;
   }
-  
-  if (map.Map[player.coords[1]][player.coords[0]].objects) {
-    if (Object.keys(map.Map[player.coords[1]][player.coords[0]].objects).length !== 0) {
+  let tile = getTile(player.x, player.y, player.z);
+  if (tile.objects) {
+    if (Object.keys(tile.objects).length !== 0) {
       return;
     }
   }
@@ -3202,8 +3406,6 @@ async function dropItem(name, item) {
   const invItem = player.inventory[item]; // current inventory slot
   const baseName = itemById[invItem.id];  // normal name from ID
   const dropName = baseTiles[baseName]?.dropChange ?? baseName;
-
-  const tile = map.Map[player.coords[1]][player.coords[0]];
   const container = baseTiles[dropName]?.container ?? "objects";
 
   if (isSafeActive(tile) && player.name!=='Admin'){
@@ -3220,7 +3422,6 @@ async function dropItem(name, item) {
     }
   }
 
-  tile ??= {};
   tile[container] ??= {};
 
   //tile[container][dropName] = { name: dropName };
@@ -3231,9 +3432,18 @@ async function dropItem(name, item) {
     await dropOwnedItem(player, baseName, tileItem);
   }
   tile[container][dropName] = tileItem;
+  if (zRaise.includes(dropName) && player.z<4){
+    console.log("going up");
+    let oldTile = getTile(player.x, player.y, player.z);
+    delete oldTile.players[player.name];
+    markTileChanged(player.x, player.y);
+    player.z+=1;
+    addPlayerToTile(player.name, player.x, player.y, player.z);
+    markTileChanged(player.x, player.y);
+  }
   await removeItem(name, players[name].inventory[item].id, 1);
   await ifEquippedRemove(name, players[name].inventory[item].id);
-  markTileChanged(player.coords[0], player.coords[1]);
+  markTileChanged(player.x, player.y);
   await syncInventory(name);
 }
 
@@ -3270,8 +3480,8 @@ async function craftItem(playerName, itemName, smelt = false) {
     sendMessage('pk message', `DON'T`, player);
     return;
   }
-  const coords = player.coords;
-  const tileObjects = map.Map[coords[1]][coords[0]].objects;
+  let tile = getTile(player.x, player.y, player.z);
+  const tileObjects = tile.objects;
 
   // normal crafting requires craft table; smelting bypasses table check
   if (!smelt && !tileObjects?.craftTable) return;
@@ -3349,8 +3559,8 @@ async function smeltOre(playerName) {
     sendMessage('pk message', `DON'T`, player);
     return;
   }
-  const coords = player.coords;
-  const tileObjects = map.Map[coords[1]][coords[0]].objects;
+  let tile = getTile(player.x, player.y, player.z);
+  const tileObjects = tile.objects;
 
   // must be on a forge to smelt
   if (!tileObjects?.forge) return;
@@ -3405,189 +3615,134 @@ async function playerBank(playerName) {
 
 const mobs = new Map();
 
-let rocks = 0;
-let ironores = 0;
-let coals = 0;
-let silvers = 0;
-let coppers = 0;
-let golds = 0;
-let diamonds = 0;
-
-let totalOres = 0;
-for (let y = 0; y < map.Map.length; y++) {
-  for (let x = 0; x < map.Map[y].length; x++) {
-    const tile = map.Map[y][x];
-    if (!tile?.objects) continue;
-    let objName = Object.keys(tile.objects)[0];
-    if (!objName) continue;
-    if (objName.endsWith('rock0')){
-      totalOres+=1;
-    }
-  }
-}
-
 async function replenishResources() {
-
-  rocks = 0;
-  ironores = 0;
-  coals = 0;
-  silvers = 0;
-  coppers = 0;
-  golds = 0;
-  diamonds = 0;
   await removeMobType("mushroom");
   await removeMobType("goat");
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
-      const tile = map.Map[y][x];
-      if (tile.typing === true) {
-        delete tile.typing;
-      }
-      if (tile['b-t'] === "water") {
-        if (tile?.objects) {//gets rid of fishing spots AND lost arrows lol
-          delete tile.objects;
+      for (let z = 0; z<5; z++){//full send 6 z levels :o
+        const tile = getTile(x, y, z);
+        if (!tile || tile === undefined || tile === null) continue;
+        if (tile?.typing === true) {
+          delete tile.typing;
         }
-        if (Math.floor(Math.random() * 500) < 10) {
-          randomFishingSpot(tile);
-        }
-      }
-      const isEmpty = obj => !obj || Object.keys(obj).length === 0;
-      //delete all flowers first
-      //plant regens like this need separate fxns
-      Object.keys(tile?.objects ?? {}).forEach(k => k.startsWith("flower") && delete tile.objects[k]);
-      if (
-        //will need to change this not to go on player plots and shit lol
-        isEmpty(tile?.objects) &&
-        isEmpty(tile?.floor) &&
-        //isEmpty(tile?.roof) &&
-        isEmpty(tile?.depletedResources) &&
-        tile['b-t'] === 'grass'
-      ) {
-        //random chance to grow a flower!
-        const flowers = ['flowerred', 'floweryellow', 'flowerwhite'];
-        let randFlower = Math.floor(Math.random() * 1000);
-        if (randFlower < flowers.length) {
-          addToMap(flowers[randFlower], x, y);
-        }
-      }
-      if (
-        isEmpty(tile?.objects) &&
-        isEmpty(tile?.floor) &&
-        //isEmpty(tile?.roof) &&
-        isEmpty(tile?.depletedResources) &&
-        tile['b-t'] === 'grass'
-      ) {
-        //random chance place a mushroom mob!
-        let randMushroom = Math.floor(Math.random() * 2000);
-        if (randMushroom < 3) {
-          //add mushroom
-          let mushroom1 = createMob('mushroom', x, y);
-          mobs.set(mushroom1.id, mushroom1);
-          map.Map[y][x].mob = {
-            id: mushroom1.id,
-            sprite: "mushroomL"
+        if (tile['b-t'] === "water") {
+          if (tile?.objects) {//gets rid of fishing spots AND lost arrows lol
+            delete tile.objects;
+          }
+          if (Math.floor(Math.random() * 500) < 10 && z===0) {
+            randomFishingSpot(tile);
           }
         }
-      }
-
-      //random chance for roaming goat!
-      let randGoat = Math.floor(Math.random() * 3000);
-      if (randGoat < 3) {//1/1000
+        const isEmpty = obj => !obj || Object.keys(obj).length === 0;
+        //delete all flowers first
+        //plant regens like this need separate fxns
+        Object.keys(tile?.objects ?? {}).forEach(k => k.startsWith("flower") && delete tile.objects[k]);
         if (
+          //will need to change this not to go on player plots and shit lol
           isEmpty(tile?.objects) &&
           isEmpty(tile?.floor) &&
-          isEmpty(tile?.roof) &&
+          //isEmpty(tile?.roof) &&
           isEmpty(tile?.depletedResources) &&
           tile['b-t'] === 'grass'
         ) {
-          let testGoat = createMob('goat', x, y);
-          mobs.set(testGoat.id, testGoat);
-          map.Map[y][x].mob = {
-            id: testGoat.id,
-            sprite: "goatL"
+          //random chance to grow a flower!
+          const flowers = ['flowerred', 'floweryellow', 'flowerwhite'];
+          let randFlower = Math.floor(Math.random() * 1000);
+          if (randFlower < flowers.length) {
+            addToMap(flowers[randFlower], x, y);
           }
         }
-      }
-
-      // Loop over both containers so all stages are eligible
-      for (const containerName of ["objects", "depletedResources"]) {
-        const container = tile[containerName];
-        if (!container) continue;
-
-        for (const objName in { ...container }) { // spread to avoid mutation issues
-          const def = baseTiles[objName];
-          if (!def?.regrowsTo) continue;
-
-          // Optional throttle
-          if (def.regrowChance && Math.random() > def.regrowChance) continue;
-
-          // Pick weighted
-          const nextName = Array.isArray(def.regrowsTo)
-            ? pickWeighted(def.regrowsTo)
-            : def.regrowsTo;
-          if (!nextName) continue;
-
-          // Remove old stage
-          delete container[objName];
-
-          // Add new stage into objects container
-          tile.objects ??= {};
-          tile.objects[nextName] = { name: nextName };
-          switch (nextName){
-            case "rock0":
-              rocks+=1;
-              break;
-            case "ironrock0":
-              ironores+=1;
-              break;
-            case "coalrock0":
-              coals+=1;
-              break;
-            case "silverrock0":
-              silvers+=1;
-              break;
-            case "copperrock0":
-              coppers+=1;
-              break;
-            case "goldrock0":
-              golds+=1;
-              break;
-            case "diamondrock0":
-              diamonds+=1;
-              break;
+        if (
+          isEmpty(tile?.objects) &&
+          isEmpty(tile?.floor) &&
+          //isEmpty(tile?.roof) &&
+          isEmpty(tile?.depletedResources) &&
+          tile['b-t'] === 'grass'
+        ) {
+          //random chance place a mushroom mob!
+          let randMushroom = Math.floor(Math.random() * 2000);
+          if (randMushroom < 3 && z===0) {
+            //add mushroom
+            let mushroom1 = createMob('mushroom', x, y);
+            mobs.set(mushroom1.id, mushroom1);
+            tile.mob = {
+              id: mushroom1.id,
+              sprite: "mushroomL"
+            }
           }
+        }
 
-          markTileChanged(x, y);
+        //random chance for roaming goat!
+        let randGoat = Math.floor(Math.random() * 3000);
+        if (randGoat < 3 && z===0) {//1/1000
+          if (
+            isEmpty(tile?.objects) &&
+            isEmpty(tile?.floor) &&
+            isEmpty(tile?.roof) &&
+            isEmpty(tile?.depletedResources) &&
+            tile['b-t'] === 'grass'
+          ) {
+            let testGoat = createMob('goat', x, y);
+            mobs.set(testGoat.id, testGoat);
+            tile.mob = {
+              id: testGoat.id,
+              sprite: "goatL"
+            }
+          }
+        }
+
+        // Loop over both containers so all stages are eligible
+        for (const containerName of ["objects", "depletedResources"]) {
+          const container = tile[containerName];
+          if (!container) continue;
+
+          for (const objName in { ...container }) { // spread to avoid mutation issues
+            const def = baseTiles[objName];
+            if (!def?.regrowsTo) continue;
+
+            // Optional throttle
+            if (def.regrowChance && Math.random() > def.regrowChance) continue;
+
+            // Pick weighted
+            const nextName = Array.isArray(def.regrowsTo)
+              ? pickWeighted(def.regrowsTo)
+              : def.regrowsTo;
+            if (!nextName) continue;
+
+            // Remove old stage
+            delete container[objName];
+
+            // Add new stage into objects container
+            tile.objects ??= {};
+            tile.objects[nextName] = { name: nextName };
+            markTileChanged(x, y);
+          }
         }
       }
     }
   }
   console.log(`Mobs: ${mobs.size}`);
-  console.log(
-    `Total ores: ${totalOres},
-     Rocks: ${rocks}, 
-     Irons: ${ironores}, 
-     Coals: ${coals}, 
-     Coppers: ${coppers},
-     Silvers: ${silvers}, 
-     Golds: ${golds},
-     Diamonds: ${diamonds}
-     `);
 }
 
 async function randomFishingSpot(tile) {
   //check surrounding tiles for b-t with no collision, e.g. grass
   //must be up/down/left/right tile, not corners
   const spots = [
-    { x: tile.x, y: tile.y - 1 }, // up
-    { x: tile.x, y: tile.y + 1 }, // down
-    { x: tile.x - 1, y: tile.y },     // left
-    { x: tile.x + 1, y: tile.y }      // right
+    { x: tile.x, y: tile.y - 1, z:0 }, // up
+    { x: tile.x, y: tile.y + 1, z:0 }, // down
+    { x: tile.x - 1, y: tile.y, z:0 },     // left
+    { x: tile.x + 1, y: tile.y, z:0 }      // right
   ];
   let valid = false;
   for (const s of spots) {
-    if (!map.Map[s.y] || !map.Map[s.y][s.x]) continue;
-    if (baseTiles[map.Map[s.y][s.x]['b-t']].collision === false) {
+    let spotTile = getTile(s.x, s.y, s.z);
+    if (!spotTile) continue;
+    if (spotTile===null) {
+      console.log("spotTile null!");
+      continue;
+    }
+    if (baseTiles[spotTile['b-t']].collision === false) {
       valid = true;
       continue;
     }
@@ -3595,9 +3750,11 @@ async function randomFishingSpot(tile) {
   if (valid === true) {
     //add a fishing spot!
     console.log("added fishing spot!");
+    console.log(`fishingspot x:${tile.x}, y:${tile.y}`);
     addToMap('fishingspot', tile.x, tile.y);
-    map.Map[tile.y][tile.x].objects['fishingspot'].fishing = false;
-    map.Map[tile.y][tile.x].objects['fishingspot'].amount = Math.floor(Math.random() * 24);
+    console.log(`tile.objects: ${tile.objects}`);
+    tile.objects['fishingspot'].fishing = false;
+    tile.objects['fishingspot'].amount = Math.floor(Math.random() * 24);
   }
 }
 
@@ -3615,7 +3772,8 @@ async function removeMobType(type) {
     if (mob.type === type) {
       let oldSprite = { x: mob.x, y: mob.y };
       mobs.delete(id);
-      delete map.Map[oldSprite.y][oldSprite.x].mob;
+      let tile = getTile(oldSprite.x, oldSprite.y);
+      delete tile.mob;
     }
   }
 }
@@ -3631,12 +3789,13 @@ function countMobsByType(type) {
 function spawnMob(spawn) {
   const mob = createMob(spawn.type, spawn.x, spawn.y);
   mobs.set(mob.id, mob);
-  map.Map[mob.y][mob.x].mob = {
+  let tile = getTile(mob.x, mob.y);
+  tile.mob = {
     id: mob.id,
     sprite: mob.type + "L"
   };
   if (mob?.collision === true) {
-    map.Map[mob.y][mob.x].mob.collision = true;
+    tile.mob.collision = true;//is this necessary?
   }
   mob.spawnRef = spawn; // 🔑 link back to spawn
   //for minion spawners so they don't spam
@@ -3696,7 +3855,8 @@ function spawnMinion(mob) {
   if (mob.hp < mob.maxHp && mob.spawnCount < mob.spawnMax) {
     let testMinion = createMob(mob.spawnMinion, mob.x, mob.y);
     mobs.set(testMinion.id, testMinion);
-    map.Map[mob.x][mob.y].mob = {
+    let tile = getTile(mob.x, mob.y);
+    tile.mob = {
       id: testMinion.id,
       sprite: mob.spawnMinion + "L"
     }
@@ -3709,8 +3869,9 @@ function findPlayerInRange(mob) {
   if (mob?.passive) return null;
   for (const name in players) {
     const player = players[name];
-    const px = player.coords[0];
-    const py = player.coords[1];
+    if (!player) continue;
+    const px = player.x;
+    const py = player.y;
     const dist = Math.abs(mob.x - px) + Math.abs(mob.y - py);
     if (dist <= mob.aggroRadius) {
       return player;
@@ -3721,8 +3882,8 @@ function findPlayerInRange(mob) {
 
 
 function tryMove(mob, newX, newY) {
-  const oldTile = map.Map[mob.y]?.[mob.x];
-  const newTile = map.Map[newY]?.[newX];
+  const oldTile = getTile(mob.x, mob.y);
+  const newTile = getTile(newX, newY);
 
   if (!newTile) return false;
   if (newTile.mob) return false;
@@ -3753,15 +3914,18 @@ function mobCollision(tile) {
     if (baseTiles[tile.objects[obj].name].collision) return true;
   }
   if (baseTiles[tile['b-t']].collision) return true;
+  if (tile?.mob){
+    if (Object.keys(tile.mob).length>0) return true;
+  }
   return false;
 }
 
 function distance(a, b) {
-  const ax = a.x ?? a.coords[0];
-  const ay = a.y ?? a.coords[1];
+  const ax = a.x;
+  const ay = a.y;
 
-  const bx = b.x ?? b.coords[0];
-  const by = b.y ?? b.coords[1];
+  const bx = b.x;
+  const by = b.y;
 
   return Math.abs(ax - bx) + Math.abs(ay - by);
 }
@@ -3778,7 +3942,7 @@ function wander(mob) {
 
   // 🚫 too far → go home instead
   if (distFromSpawn(mob) >= mob.leashRadius) {
-    moveToward(mob, { coords: [mob.spawnX, mob.spawnY] });
+    moveToward(mob, {x: mob.spawnX, y: mob.spawnY });
     return;
   }
 
@@ -3794,8 +3958,8 @@ function wander(mob) {
 }
 
 function moveToward(mob, target) {
-  const px = target.coords[0];
-  const py = target.coords[1];
+  const px = target.x;
+  const py = target.y;
   if (target?.name && mob?.rangeAttack) {
     mobRangeAttack(mob, target);
   }
@@ -3820,13 +3984,17 @@ function mobRangeAttack(mob, target) {
   if (Date.now() < mob.lastAttack + 1000) return;
   mob.lastAttack = Date.now();
   let projType = mob.rangeAttack.type;
-  const dir = getDirectionToward(mob.x, mob.y, target.coords[0], target.coords[1]);
+  const dir = getDirectionToward(mob.x, mob.y, target.x, target.y);
+  let decay = 10;
+  if (mob.type==='spiderQueen'){
+    decay = 2;
+  }
   if (mob.rangeAttack?.slow === true) {
     let slowTime = mob.rangeAttack.slowTime;
-    const mobProj = createProjectile(projType, dir, mob.x, mob.y, mob.id, 10, true, slowTime);
+    const mobProj = createProjectile(projType, dir, mob.x, mob.y, 0, mob.id, decay, true, slowTime);
     addProjectileToTile(mobProj);
   } else {
-    const mobProj = createProjectile(projType, dir, mob.x, mob.y, mob.id);
+    const mobProj = createProjectile(projType, dir, mob.x, mob.y, 0, mob.id, decay);
     addProjectileToTile(mobProj);
   }
 }
@@ -3844,12 +4012,12 @@ function getDirectionToward(fromX, fromY, toX, toY) {
 }
 
 function returnToSpawn(mob) {
-  moveToward(mob, { coords: [mob.spawnX, mob.spawnY] });
+  moveToward(mob, {x:mob.spawnX, y:mob.spawnY});
 }
 
 function inAttackRange(mob, player) {
-  const px = player.coords[0];
-  const py = player.coords[1];
+  const px = player.x;
+  const py = player.y;
 
   const dist = Math.abs(mob.x - px) + Math.abs(mob.y - py);
   if (player && mob?.rangeAttack && mob.type==='spiderQueen') {
@@ -3885,7 +4053,9 @@ function attackPlayer(mob, player) {
   }
 }
 
-function spawnResourceMob(playerName, coords, chance) {
+function spawnResourceMob(playerName, x, y, z, chance) {
+  let player = players[playerName];
+  if (player.z>0) return;
   if (Math.floor(Math.random() * 100) < 90) return;
   //see what player is holding, hatchet/pickaxe, spawn treeEnt or stoneGolem
   let mobName = null;
@@ -3899,7 +4069,7 @@ function spawnResourceMob(playerName, coords, chance) {
     mobDrop = "log";
   }
   if (mobName === null) return;//aww
-  let testResMob = createMob("resourceMob", coords[0], coords[1]);
+  let testResMob = createMob("resourceMob", x, y, z);
   testResMob.type = mobName;//hopefully works?
   testResMob.hp = 10;//just for now, scale by lvl
   testResMob.attack = 1;//just for now, scale
@@ -3907,7 +4077,8 @@ function spawnResourceMob(playerName, coords, chance) {
     { name: mobDrop, min: 100, max: 500, weight: 100 }
   )
   mobs.set(testResMob.id, testResMob);
-  map.Map[coords[1]][coords[0]].mob = {
+  let tile = getTile(x, y, z);
+  tile.mob = {
     id: testResMob.id,
     sprite: testResMob.type + "L"
   }
@@ -3925,7 +4096,7 @@ setInterval(updateMobs, 250);
 async function initMurderers() {
   // Get all players who are murderers with a remaining timer
   const rows = await query(
-    `SELECT player_name, x, y, hp, hpXp, swordXp, archeryXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, fishingXp,
+    `SELECT player_name, x, y, z, hp, hpXp, swordXp, archeryXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, fishingXp,
      head, hand, body, quiver, feet, mageXp, mana
      FROM players
      WHERE murderer = 1 AND murderTimer > 0`
@@ -3938,13 +4109,10 @@ async function initMurderers() {
 
   for (const result of rows) {
     const name = result.player_name;
-    let p_coords;
-    if (result.x == null || result.y == null) {
-      p_coords = [49, 49]; // default start point
-    } else {
-      p_coords = [result.x, result.y];
-    }
     // Calculate levels
+    let x = result.x;
+    let y = result.y;
+    let z = result.z;
     const hpLvl = await levelFromXp(result.hpXp);
     const swordLvl = await levelFromXp(result.swordXp);
     const fishingLvl = await levelFromXp(result.fishingXp);
@@ -3959,8 +4127,8 @@ async function initMurderers() {
     player.murderSprite = "murderR";
     player.murderer = true;
     player.murderTimer = result.murderTimer;
-    addPlayerToTile(name, p_coords[0], p_coords[1]);
-    markTileChanged(p_coords[0], p_coords[1]);
+    addPlayerToTile(name, x, y, z);
+    markTileChanged(x, y);
     syncInventory(name);
     console.log(`Reinitialized murderer: ${name} with ${result.murderTimer}ms remaining`);
   }
@@ -4072,6 +4240,7 @@ setInterval(async () => {
 setInterval(async () => {
   for (const name in players) {
     const player = players[name];
+    if (!player) continue;
     handlePlayerInput(name, player.keystate);
   }
 }, 20);
@@ -4080,7 +4249,7 @@ setInterval(async () => {
 const projectiles = new Map();
 let nextProjectileId = 1;
 
-function createProjectile(type, direction, x, y, ownerId, decay = 10, slow = false, slowTime = null) {
+function createProjectile(type, direction, x, y, z, ownerId, decay = 10, slow = false, slowTime = null) {
   const id = nextProjectileId++;
   const damage = baseTiles[type].attack;
   const projectile = {
@@ -4090,6 +4259,7 @@ function createProjectile(type, direction, x, y, ownerId, decay = 10, slow = fal
     direction,  // "up", "down", "left", "right"
     x,          // tile coordinates
     y,
+    z,
     ownerId,
     life: decay,    // max ticks
     prevTile: null,  // track where it is on the map
@@ -4106,10 +4276,15 @@ function createProjectile(type, direction, x, y, ownerId, decay = 10, slow = fal
 }
 
 function addProjectileToTile(proj) {
-  const tile = map.Map[proj.y][proj.x];
+  let tile = getTile(proj.x, proj.y, proj.z);
+  if (tile===null || tile===undefined){
+    map.Map[proj.y][proj.x][proj.z]={};
+    tile = getTile(proj.x, proj.y, proj.z);
+  }
+
   markTileChanged(proj.x, proj.y);
   // if tile already has a projectile, destroy both
-  if (tile.projectile) {
+  if (tile?.projectile) {
     projectiles.delete(proj.id);
     // optionally delete the existing one? depends on rules
     delete tile.projectile;
@@ -4124,8 +4299,9 @@ function addProjectileToTile(proj) {
     return false;
   }
   if (projCollision === false) {
+    tile['projectile'] = {};
     tile.projectile = { name: proj.tileName };
-    proj.prevTile = { x: proj.x, y: proj.y };
+    proj.prevTile = { x: proj.x, y: proj.y, z:proj.z };
     markTileChanged(proj.x, proj.y);
     return true;
   }
@@ -4135,7 +4311,7 @@ function addProjectileToTile(proj) {
 }
 
 function checkProjectileCollision(proj) {
-  const tile = map.Map[proj.y][proj.x];
+  const tile = getTile(proj.x, proj.y, proj.z);
   if (tile?.objects) {
     for (obj in tile.objects) {
       if (baseTiles[tile.objects[obj].name].collision) {
@@ -4168,7 +4344,7 @@ function checkProjectileCollision(proj) {
 
 //add all functionality, sounds, rand hits/crits, etc
 function rangeAttackMob(proj, mob) {
-  if (mobs.get(proj.ownerId) !== undefined) return;
+  if (mobs.get(proj.ownerId) !== undefined || mobs.get(proj.ownerId) !==null) return;
   let mobObj = mobs.get(mob.id);
   let player = players[proj.ownerId];
   let damage = Math.floor(Math.random() * baseTiles[proj.type].attack);
@@ -4231,7 +4407,7 @@ function mobRangeDamagePlayer(proj, targetPlayer) {
 
 function removeProjectileFromTile(proj) {
   if (!proj.prevTile) return;
-  const tile = map.Map[proj.prevTile.y][proj.prevTile.x];
+  const tile = getTile(proj.prevTile.x, proj.prevTile.y, proj.prevTile.z);
   if (tile.projectile) delete tile.projectile;
   markTileChanged(proj.x, proj.y);
 }
@@ -4256,14 +4432,14 @@ function updateProjectiles() {
         if (proj.type.startsWith('arrowfire') || proj.type.includes('orangedust')) {
           io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
           console.log("end damage");
-          areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 12);
+          areaDamage(proj.ownerId, proj.x, proj.y, proj.z, 1, "fire", 12);
         } else {
-          spreadDropItem(proj.x, proj.y, proj.type);
+          spreadDropItem(proj.x, proj.y, proj.z, proj.type);
         }
 
       }
       if (proj.type.includes('yellowdust')){
-          areaDamage(proj.ownerId, proj.x, proj.y, 4, "lightning", 25);
+          areaDamage(proj.ownerId, proj.x, proj.y, proj.z, 4, "lightning", 25);
       }
       proj.life = 0;
     }
@@ -4272,13 +4448,13 @@ function updateProjectiles() {
       if (proj.type.startsWith('arrowfire') || proj.type.includes('orangedust')) {
         io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
         console.log('added false damage');
-        areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 12);
+        areaDamage(proj.ownerId, proj.x, proj.y, proj.z, 1, "fire", 12);
         removeProjectileFromTile(proj);
         projectiles.delete(id);
         return;
       }
       if (proj.type.includes('yellowdust')) {
-        areaDamage(proj.ownerId, proj.x, proj.y, 4, "lightning", 25);
+        areaDamage(proj.ownerId, proj.x, proj.y, proj.z, 4, "lightning", 25);
       }
     }
 
@@ -4291,14 +4467,14 @@ function updateProjectiles() {
       if (proj.type.startsWith('arrowfire') || proj.type.includes('orangedust')) {
         io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
         console.log('end of life damage');
-        areaDamage(proj.ownerId, proj.x, proj.y, 1, "fire", 15);
+        areaDamage(proj.ownerId, proj.x, proj.y, 1, proj.z, "fire", 15);
       }
       if (proj.type.includes('yellowdust')) {
-        areaDamage(proj.ownerId, proj.x, proj.y, 4, "lightning", 25);
+        areaDamage(proj.ownerId, proj.x, proj.y, 4, proj.z, "lightning", 25);
       }
       if (proj.type.startsWith("arrow") && players[proj.ownerId] && added !== 'end' && added !== false) {//still not perfect, fix
         if (!proj.type.startsWith('arrowfire')) {
-          spreadDropItem(proj.x, proj.y, proj.type);
+          spreadDropItem(proj.x, proj.y, proj.z, proj.type);
         }
       }
       //change to drop proper item (or not for spells etc)
@@ -4307,10 +4483,10 @@ function updateProjectiles() {
   }
 }
 
-function spreadDropItem(x, y, item, player = null) {
+function spreadDropItem(x, y, z, item) {
   const tilesToCheck = getTilesInRadius(x, y, 3);
   for (const { nx, ny } of tilesToCheck) {
-    const nTile = map.Map[ny]?.[nx];
+    const nTile = getTile(nx, ny);
     if (!nTile) continue;
     if (!nTile.objects || Object.keys(nTile.objects).length === 0) {
       addToMap(item, nx, ny);

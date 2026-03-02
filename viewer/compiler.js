@@ -38,7 +38,7 @@ const COLOR_PALETTE = {
 
 function drawBaseTile(chunk, i, j) {
   const tile = base_tiles[chunk['b-t']];
-
+  if (!tile) return;
   ctx.drawImage(
     spriteSheet,
     tile.x, tile.y, 16, 16,                 // source: 16x16 in spriteSheet
@@ -72,7 +72,8 @@ function drawPixels(chunk, i, j) {
   }
 }
 
-function drawObjects(chunk, i, j) {
+function drawObjects(chunk, i, j, z) {
+  if (!chunk?.objects) return;
   for (let objKey in chunk.objects) {
     const obj = chunk.objects[objKey];
     const tile = base_tiles[obj.name];
@@ -123,7 +124,23 @@ function drawObjects(chunk, i, j) {
         TILE_SIZE                          // height 4 px
       );
     }
+    if (Object.keys(chunk.objects)[0] === 'rock0' && Number(z) > 0) {
 
+      let baseGray = 112; // 0x70
+      let gray = Math.min(255, baseGray + z * 40);
+
+      let hex = gray.toString(16).padStart(2, "0");
+      let newColor = "#" + hex + hex + hex;
+
+      ctx.fillStyle = newColor;
+
+      ctx.fillRect(
+        j * TILE_SIZE,
+        i * TILE_SIZE,
+        4,
+        4
+      );
+    }
   }
 }
 
@@ -154,18 +171,24 @@ function renderMap(){
   for (let i = 0; i < map.length; i++) {
     for (let j = 0; j < map[i].length; j++) {
       const chunk = map[i][j];
-      drawBaseTile(chunk, i, j);
-      drawPixels(chunk, i, j);
-      drawObjects(chunk, i, j);
+      for (let z in chunk){
+        let col = chunk[z];
+        drawBaseTile(col, i, j);
+        drawPixels(col, i, j);
+        drawObjects(col, i, j, z);
+      }
+      
     }
   }
 }
 
 function renderTile(x, y){
+  /*
   const chunk = map[y][x];
   drawBaseTile(chunk, y, x);
   drawPixels(chunk, y, x);
   drawObjects(chunk, y, x);
+  */
 }
 
 window.map = null;  // or {} if you prefer

@@ -864,6 +864,7 @@ base_tiles = {
     collision: false
   },
   "stoneblock0": {
+    collision:true,
     "x": 288, "y": 0,
     kind: "resource",
     container: "objects",
@@ -874,6 +875,7 @@ base_tiles = {
     requiresTool: "pickaxe"
   },
   "stoneblock1": {
+    collision:true,
     "x": 112, "y": 64,
     kind: "resource",
     container: "objects",
@@ -884,6 +886,7 @@ base_tiles = {
     requiresTool: "pickaxe"
   },
   "stoneblock2": {
+    collision:true,
     "x": 128, "y": 64,
     kind: "resource",
     container: "objects",
@@ -894,6 +897,7 @@ base_tiles = {
     requiresTool: "pickaxe"
   },
   "stoneblock3": {
+    collision:true,
     "x": 144, "y": 64,
     kind: "resource",
     container: "objects",
@@ -1061,75 +1065,96 @@ base_tiles = {
     regrowsTo: "rock0"
   },
   "coalrock0": {
+    collision:true,
     "x": 176, "y": 0,
   },
   "coalrock1": {
+    collision:true,
     "x": 192, "y": 32,
   },
   "coalrock2": {
+    collision:true,
     "x": 208, "y": 32,
   },
   "coalrock3": {
+    collision:true,
     "x": 224, "y": 32,
   },
   "coalrock4": {
     "x": 240, "y": 32,
   },
   "silverrock0": {
+    collision:true,
     "x":176,"y":0
   },
   "silverrock1": {
+    collision:true,
     "x":192,"y":160
   },
   "silverrock2": {
+    collision:true,
     "x":208,"y":160
   },
   "silverrock3": {
+    collision:true,
     "x":224,"y":160
   },
   "silverrock4": {
+    
     "x":240,"y":160
   },
   "copperrock0": {
+    collision:true,
     "x":176,"y":0
   },
   "copperrock1": {
+    collision:true,
     "x":192,"y":176
   },
   "copperrock2": {
+    collision:true,
     "x":208,"y":176
   },
   "copperrock3": {
+    collision:true,
     "x":224,"y":176
   },
   "copperrock4": {
     "x":240,"y":176
   },
   "goldrock0": {
+    collision:true,
     "x":176,"y":0
   },
   "goldrock1": {
+    collision:true,
     "x":192,"y":144
   },
   "goldrock2": {
+    collision:true,
     "x":208,"y":144
   },
   "goldrock3": {
+    collision:true,
     "x":224,"y":144
   },
   "goldrock4": {
     "x":240,"y":144
   },
   "diamondrock0": {
+    collision:true,
     "x":176,"y":0
   },
   "diamondrock1": {
+    collision:true,
     "x":48,"y":720
   },
   "diamondrock2": {
+    collision:true,
     "x":64,"y":720
   },
   "diamondrock3": {
+    collision:true,
     "x":80,"y":720
   },
   "diamondrock4": {
@@ -1180,18 +1205,22 @@ base_tiles = {
   },
   */
   "woodblock0": {
+    collision:true,
     "x": 112,
     "y": 0
   },
   "woodblock1": {
+    collision:true,
     "x": 128,
     "y": 0
   },
   "woodblock2": {
+    collision:true,
     "x": 144,
     "y": 0
   },
   "woodblock3": {
+    collision:true,
     "x": 160,
     "y": 0
   },
@@ -1285,10 +1314,10 @@ base_tiles = {
   "spikeout": { "x": 0, "y": 848 },
   "hitsplat": { "x": 256, "y": 1264 },
   //shadows
-  "leftShad": { "x": 288, "y": 320 },
-  "upShad": { "x": 304, "y": 320 },
-  "rightShad": { "x": 288, "y": 336 },
-  "downShad": { "x": 304, "y": 336 },
+  "shadLeft": { "x": 288, "y": 320 },
+  "shadUp": { "x": 304, "y": 320 },
+  "shadRight": { "x": 288, "y": 336 },
+  "shadDown": { "x": 304, "y": 336 },
   "ulShad": { "x": 288, "y": 352 },
   "urShad": { "x": 304, "y": 352 },
   "llShad": { "x": 288, "y": 369 },
