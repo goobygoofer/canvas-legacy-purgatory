@@ -33,13 +33,19 @@ for (let y = 0; y < map.Map.length; y++) {
       // delete unwanted runtime data
       delete tile.mob;
       delete tile.players;
-
       if (tile.objects && Object.keys(tile.objects).length === 0) {
         delete tile.objects;
       }
 
       if (tile?.typing) {
         delete tile.typing;
+      }
+    }
+    for (z=4; z>0; z--){
+      if (!column[z]) continue;
+      if (Object.keys(column[z]).length===0){
+        console.log('deleted empty upper z tile');
+        delete column[z];
       }
     }
   }
@@ -309,7 +315,7 @@ async function initPlayer(name) {
     lastMove: Date.now(),
     lastDir: "right",//not using yet
     step: 'stepR',
-    typing: { state: false, lastSpot: { x: 0, y: 0 } },
+    typing: { state: false, lastSpot: { x: 0, y: 0, z:0 } },
     lastChunk: null,
     lastChunkSum: null,
     lastChunkKey: null,
@@ -936,12 +942,23 @@ async function respawnPlayer(name) {
   player.head = null;
   player.body = null;
   player.feet = null;
-  players.quiver = null;
-  player.x = 26;
-  player.y = 54;
-  player.z = 0;
-  addPlayerToTile(name, 26, 54, 0);
-  markTileChanged(26, 54);
+  player.quiver = null;
+  if (player.murderer === true){
+    player.x = 102;
+    player.y = 74;
+    player.z = 1;
+    addPlayerToTile(name, 102, 74, 1);
+    markTileChanged(102, 74);
+    await addItem(name, idByItem("healthpotion"), 1);
+    await addItem(name, idByItem("stoneSword"), 1);
+    await syncInventory(name);
+  } else {
+    player.x = 26;
+    player.y = 54;
+    player.z = 0;
+    addPlayerToTile(name, 26, 54, 0);
+    markTileChanged(26, 54);
+  }
   await addItem(name, 1, 1);
   await syncInventory(name);
 }
@@ -1397,9 +1414,11 @@ function stopPlayerTyping(socket){
   players[socket.user].typing.state = false;
   console.log(`${socket.user} stopped typing.`);
   let player = players[socket.user];
-  let tile = getTile(player.typing.lastSpot.x, player.typing.lastSpot.y);
+  let tile = getTile(player.typing.lastSpot.x, player.typing.lastSpot.y, player.typing.lastSpot.z);
+  console.log(`tile typing: ${tile.typing}`);
   tile.typing = false;
-  markTileChanged(player.x, player.y);
+  console.log(`tile typing: ${tile.typing}`);
+  markTileChanged(player.typing.lastSpot.x, player.typing.lastSpot.y);
 }
 
 function setPlayerTyping(socket){
@@ -1408,12 +1427,12 @@ function setPlayerTyping(socket){
     console.log(`${socket.user} is typing...`);//wut?
   }
   player.typing.state = true;
-  player.typing.lastSpot.y = player.x;
-  player.typing.lastSpot.x = player.y;
+  player.typing.lastSpot.x = player.x;
+  player.typing.lastSpot.y = player.y;
   player.typing.lastSpot.z = player.z;
   let tile = getTile(player.x, player.y, player.z);
   tile.typing = true;
-  markTileChanged(player.x, player.y, player.z);
+  markTileChanged(player.x, player.y);
 }
 
 function setPlayerKeystate(player, data){
@@ -1913,7 +1932,7 @@ function movePlayer(name, data) {
       if (keys.length > 0) {
         console.log(`obj: ${keys[0]}`);
         let obj = baseTiles[keys[0]];
-        if (obj && obj.collision === true) {
+        if (obj && obj.collision === true && !keys[0].startsWith('tree')) {
           targetZ = z+1;
           break;
         }
@@ -1936,10 +1955,23 @@ function movePlayer(name, data) {
       break;
     }
   }
-
+  
+  if (checkTile?.objects) {
+    if (Object.keys(checkTile.objects).length > 0) {
+      let key = Object.keys(checkTile.objects)[0];
+      if (key === "stairsL" || key === "stairsR") {
+        if (player.z < 4) {
+          console.log("going up stairs");
+          targetZ = player.z + 1;
+        }
+      }
+    }
+  }
+  
   player.z = targetZ;
-
+  
   // ===== END Z LOGIC =====
+
 
   player.x = modCoords.x;
   player.y = modCoords.y;
@@ -2572,7 +2604,8 @@ async function playerAction(playerName) {
   //check what player is holding and do something with it
   let player = players[playerName];
   if (player.hand !== null) {
-    playerHeldItemAction(playerName);
+    let action = await playerHeldItemAction(playerName);
+    if (action === true) return true;
   }
   /*
   if (itemById[player.inventory[player.activeInventory].id]==='townteleport'){
@@ -2581,6 +2614,7 @@ async function playerAction(playerName) {
   */
   //what other actions are there if nothing held and
   //nothing to interact with on tile?
+  return false;
 }
 
 async function playerHeldItemAction(playerName) {
@@ -2588,14 +2622,15 @@ async function playerHeldItemAction(playerName) {
   if (player.slow === true) return;
   if (itemById[player.hand].startsWith("bow")) {
     await playerShootBow(player);
-    return;
+    return true;
   }
   if (itemById[player.hand].startsWith("fishingpole")) {
     await playerTryFishing(player);
-    return;
+    return true;
   }
   if (itemById[player.hand].startsWith("mage")){
     await playerShootBow(player, true);
+    return true;
   }
 }
 
@@ -2753,6 +2788,36 @@ async function playerShootBow(player, mage = false) {
   addProjectileToTile(arrow);
 }
 
+async function floorRoofRemove(player, tile){
+  //check tile for floor then ceiling, remove
+  if (isSafeActive(tile)) return false;
+  if (itemById[player.hand]!=="tools") return false;
+  console.log("checking for floors and roofs");
+  const floor = tile.floor ?? {};
+  const roof = tile.roof ?? {};
+  if (Object.keys(floor).length !==0){
+    let key = Object.keys(floor)[0];
+    if (tile.floor[key]?.owner){
+      if (tile.floor[key].owner!=='Admin' || player.name==='Admin'){
+        delete tile.floor;//destroys floor!
+        markTileChanged(player.x, player.y);
+        return true;
+      }
+    }
+  }
+  if (Object.keys(roof).length !==0){
+    let key = Object.keys(roof)[0];
+    if (tile.roof[key]?.owner){
+      if (tile.roof[key].owner!=='Admin' || player.name==='Admin'){
+        delete tile.roof;//destroys floor!
+        markTileChanged(player.x, player.y);
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 async function interactTile(playerName) {
   console.log('interactTile running');
   const player = players[playerName];
@@ -2761,9 +2826,13 @@ async function interactTile(playerName) {
 
   const objNames = Object.keys(mapObjects);
   if (objNames.length === 0) {
-    playerAction(playerName);//not standin on nothin, see what action does
-    return;
+    let action = await playerAction(playerName);//not standin on nothin, see what action does
+    if (action===true) return;
   }
+  
+  let buildRemove = await floorRoofRemove(player, tile);
+  if (buildRemove===true) return;
+
   const objName = objNames[0]; // interact with the first object
   const objDef = baseTiles[objName];
   if (!objDef) return;
@@ -3094,7 +3163,7 @@ async function useDoor(name) {
     // give door back to inventory
     await addItem(name, baseTiles.door.id, 1);
 
-    markTileChanged(x, y);
+    markTileChanged(player.x, player.y);
     await syncInventory(name);
     return;
   }
@@ -3113,7 +3182,7 @@ async function useDoor(name) {
     lockMsg = 'unlocked';
   }
   sendMessage('server message', `Door ${lockMsg}!`, players[name]);
-  markTileChanged(x, y);
+  markTileChanged(player.x, player.y);
 }
 
 async function resourceInteract(playerName, x, y, z, objName) {
@@ -3761,7 +3830,7 @@ async function randomFishingSpot(tile) {
 replenishResources();//run at server start to add random ores n shit
 setInterval(replenishResources, 60000 * 180);//every 3 hours
 setInterval(mapUpdate, 200);
-setInterval(mapPersist, 60000);//save map every minute
+setInterval(mapPersist, 60000*10);//save map every minute
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);

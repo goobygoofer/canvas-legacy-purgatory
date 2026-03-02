@@ -486,13 +486,36 @@ base_tiles = {
     prettyName: "water bucket",
     id: 82,
   },
+  "tools":{
+    "x":64,"y":672,
+    id: 83,
+    craft: { ironbar: 2, log: 2 },
+  },
+  "stairsR":{
+    "x":16,"y":352,
+    id: 84,
+    craft: { rock: 10 }
+  },
+  "stairsL":{
+    "x":304,"y":720,
+    id: 85,
+    craft: { rock: 10 }
+  },
+  "toolsR":{
+    "x":304,"y":432
+  },
+  "toolsL":{
+    "x":304,"y":464
+  },
   "magebookL":{
     "x":80,"y":272,
   },
   "magebookR":{
     "x":64,"y":272,
   },
-
+  "deathskull":{
+    "x":144,"y":96
+  },
 /*-----------shop items-----------------*/
   "healthpotionShop":{
     "x":256,"y":896,

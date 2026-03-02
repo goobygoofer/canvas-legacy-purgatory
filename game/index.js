@@ -1786,12 +1786,12 @@ function drawVignette(ctx, w, h, strength = 0.8) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 }
-
+/*
 function drawRain() {
   if (!rain) return;
   if (!latestView) return;
   // player tile is fixed in the view
-  const playerTile = latestView[5]?.[10];
+  const playerTile = latestView[5][10];
   const playerRoof = playerTile?.roof;
   const playerUnderRoof =
     playerRoof && Object.keys(playerRoof).length > 0;
@@ -1819,8 +1819,49 @@ function drawRain() {
     }
   }
 }
+*/
+function drawRain() {
+  if (!rain) return;
+  if (!latestView) return;
+
+  // Player is fixed at center of view
+  const column = latestView[5][10];
+  const playerTile = column?.[playerData.z];
+
+  const playerUnderRoof =
+    !!playerTile?.roof &&
+    Object.keys(playerTile.roof).length > 0;
+
+  for (let i = 0; i < latestView.length; i++) {
+    for (let j = 0; j < latestView[i].length; j++) {
+
+      const tile = latestView[i][j]?.[playerData.z];
+      if (!tile) continue;
+
+      const hasRoof =
+        !!tile.roof &&
+        Object.keys(tile.roof).length > 0;
+
+      // If player is indoors, don't draw rain on roofed tiles
+      if (playerUnderRoof && hasRoof) {
+        continue;
+      }
+
+      if (Math.floor(Math.random() * 20) > 1) continue;
+
+      ctx.drawImage(
+        spriteSheet,
+        base_tiles.rain.x, base_tiles.rain.y,
+        16, 16,
+        j * 32, i * 32,
+        32, 32
+      );
+    }
+  }
+}
 
 let fog = true;
+/*
 function drawOutsideFog() {
   if (fog===false) return;
   if (!latestView) return;
@@ -1843,6 +1884,39 @@ function drawOutsideFog() {
       }
       ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
       ctx.fillRect(j*32, i*32, 32, 32);
+    }
+  }
+}
+*/
+function drawOutsideFog() {
+  if (!fog) return;
+  if (!latestView) return;
+
+  const column = latestView[5]?.[10];
+  const playerTile = column?.[playerData.z];
+
+  const playerUnderRoof =
+    !!playerTile?.roof &&
+    Object.keys(playerTile.roof).length > 0;
+
+  if (!playerUnderRoof) return;
+
+  for (let i = 0; i < latestView.length; i++) {
+    for (let j = 0; j < latestView[i].length; j++) {
+
+      const tile = latestView[i][j]?.[playerData.z];
+      if (!tile) continue;
+
+      // IMPORTANT: only check roof at player's Z
+      const hasRoofAtPlayerZ =
+        !!tile.roof &&
+        Object.keys(tile.roof).length > 0;
+
+      // Only roofs on player's Z stay visible
+      if (hasRoofAtPlayerZ) continue;
+
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
+      ctx.fillRect(j * 32, i * 32, 32, 32);
     }
   }
 }
@@ -2729,6 +2803,7 @@ function updateView(data) {
         drawFloor(chunk);
         drawDepletedResources(chunk);
         drawPixels(chunk);
+        drawMarks(chunk);
         drawObjects(chunk);
         drawMobs(chunk);
         drawPlayers(chunk);
@@ -2749,6 +2824,23 @@ function updateView(data) {
   drawNightTime();
   drawVignette(ctx, canvas.width, canvas.height);
   drawHUD();
+}
+
+function drawMarks(chunk){
+  if (!chunk?.objects) return;
+  if (Object.keys(chunk.objects).length===0) return;
+  let key = Object.keys(chunk.objects)[0];
+  if (key==="lootbag"){
+    if (chunk.objects[key]?.owner){
+      ctx.drawImage(
+        spriteSheet,
+        base_tiles['deathskull'].x, base_tiles['deathskull'].y,
+        16, 16,
+        j*32-16, i*32,
+        32, 32
+      )
+    }
+  }
 }
 
 let surround = [

@@ -107,7 +107,8 @@ module.exports = {
     collision: false,
     roof: false,
     craft: { log: 5 },
-    craftLvl: 10
+    craftLvl: 10,
+    owner: null
   },
   "stoneplate": {
     prettyName: "stone floor",
@@ -117,7 +118,8 @@ module.exports = {
     collision: false,
     roof:false,
     craft: { rock: 5},
-    craftLvl: 10
+    craftLvl: 10,
+    owner: null
   },
   "woodroof":{
     prettyName: "wood ceiling",
@@ -127,7 +129,8 @@ module.exports = {
     collision: false,
     roof:true,
     craft: { log: 5},
-    craftLvl: 10
+    craftLvl: 10,
+    owner: null
   },
   "stoneroof": {
     prettyName: "stone ceiling",
@@ -137,7 +140,8 @@ module.exports = {
     collision: false,
     roof: true,
     craft: { rock: 5},
-    craftLvl: 10
+    craftLvl: 10,
+    owner: null
   },
   "door": {
     kind: 'item',
@@ -822,6 +826,30 @@ module.exports = {
     id: 82,
     container: "objects",
     collision: false
+  },
+  "tools":{
+    kind: "item",
+    id: 83,
+    container: "objects",
+    collision: false,
+    craft: { ironbar: 2, log: 2 },
+    equip: { slot: "hand" },
+    attack: 0,
+    craftLvl : 1
+  },
+  "stairsR":{
+    kind: "item",
+    id: 84,
+    container: "objects",
+    collision: false,
+    craft: { rock: 10 }
+  },
+  "stairsL":{
+    kind: "item",
+    id: 85,
+    container: "objects",
+    collision: false,
+    craft: { rock: 10 }
   },
 /*------------------npc shop items-------------------*/
   "healthpotionShop":{
@@ -2043,7 +2071,6 @@ module.exports = {
   "knifeR": {},
   "spikein": {},
   "spikeout": {},
-  "stairsR": {},
   "hitsplat": {},
   "leftShad": {},
   "upShad": {},
