@@ -233,7 +233,7 @@ async function getLeaderboard() {
     FROM (
       SELECT player_name, mageXp
       FROM players
-      ORDER BY fishingXp DESC
+      ORDER BY mageXp DESC
       LIMIT 1
     ) AS t
 
@@ -564,7 +564,6 @@ async function syncInventory(playerName) {
 }
 
 async function addPlayerToDb(name, pass) {
-  console.log("trying to addPlayerToDb");
   const sql = `INSERT INTO players (
     player_name, pass, x, y,
     hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp,
@@ -724,24 +723,19 @@ async function markTileChanged(x, y) {
 function addToMap(name, x, y, z=0, admin=false) {//z safety since no create z tile yet
   let tile = getTile(x, y, z);
   if (admin===true){
-    console.log("admin lay tile");
     if (!tile){
-      console.log("admin attempting to create new tile");
       map.Map[y][x][z]={};
       tile = getTile(x, y, z);
     }
   }
   if (!tile) {
-    console.error(`Tile at (${x},${y}) does not exist`);
     return;
   }
 
   const tileData = baseTiles[name];
   if (!tileData || !tileData.container) {
-    console.error(`Tile ${name} does not have a container`);
     return;
   }
-  console.log(`addToMap(${name})`);
   if (tileData.container === "b-t") {
     tile["b-t"] = name;
   }
@@ -1037,7 +1031,6 @@ function mapUpdate() {
     }
     player.lastChunkSum = newSum;
     player.lastChunkKey = chunkKey;
-    console.log('sending chunk');
     io.to(player.sock_id).emit('updateChunk', generateLiveChunk(p, chunk));
   }
 }
@@ -1160,7 +1153,6 @@ io.on('connection', async (socket) => {
 
   socket.on('createTile', data => {
     if (socket.user !== "Admin") return;
-    console.log('socket create tile called');
     createTileIfMissing(data.x, data.y, data.z);
   });
 
@@ -1202,7 +1194,6 @@ io.on('connection', async (socket) => {
     let objDef = tile.objects[objName];
     if (objDef?.owner){
       tile.objects[objName].owner = data;
-      console.log(`Set owner to ${data}`);
     }
   })
 
@@ -1213,6 +1204,7 @@ io.on('connection', async (socket) => {
     let toObj = tile.objects[Object.keys(tile.objects)[0]];
     toObj.toX = data.x;
     toObj.toY = data.y;
+    toObj.toZ = data.z;
   });
 
   socket.on("downloadMap", () => {
@@ -1251,6 +1243,10 @@ io.on('connection', async (socket) => {
   // Player deposits into bank → removes from inventory
   socket.on('bankDeposit', async (data) => {
     await bankDeposit(socket, data);
+  });
+
+  socket.on('playerStuck', async () => {
+    await teleportPlayer(socket.user, true);
   });
 
   socket.on('getLeaderboard', async () => {
@@ -1298,7 +1294,6 @@ async function bankDeposit(socket, data){
   if (!tile.objects['bankchest']) return;
   try {
     const { id, amt } = data;
-    console.log(`player depositing ${id} x${amt}`);
 
     // 1. Check how much is in inventory
     const invItems = await query(
@@ -1333,7 +1328,6 @@ async function bankWithdraw(socket, data){
   if (!tile.objects?.bankchest) return;
   try {
     const { id, amt } = data;
-    console.log(`player withdrawing ${id} x${amt}`);
 
     // 1. Check how much is in the bank
     const bankItems = await query(
@@ -1354,11 +1348,9 @@ async function bankWithdraw(socket, data){
     if (added > 0) {
       // 3. Remove from bank only the amount actually added
       await removeBankItem(player.name, id, added);
-      console.log(`Successfully withdrew ${added} of ID ${id}`);
       playerBank(player.name);
       syncInventory(player.name);
     } else {
-      console.log(`Inventory full, cannot withdraw ${id}`);
     }
   } catch (err) {
     console.error('Error handling bankWithdraw:', err);
@@ -1370,7 +1362,6 @@ function layTile(socket, data){
     console.log("not Admin or devmode");
     return;
   }
-  console.log(data);
   let x;
   let y;
   let z;
@@ -1382,7 +1373,6 @@ function layTile(socket, data){
     y = data.y;
   }
   z = players[socket.user].z;
-  console.log(`layTile z: ${z}`);
   addToMap(data.tile, x, y, z, true);
 }
 
@@ -1412,20 +1402,14 @@ function playerPaint(data){//change this later
 
 function stopPlayerTyping(socket){
   players[socket.user].typing.state = false;
-  console.log(`${socket.user} stopped typing.`);
   let player = players[socket.user];
   let tile = getTile(player.typing.lastSpot.x, player.typing.lastSpot.y, player.typing.lastSpot.z);
-  console.log(`tile typing: ${tile.typing}`);
   tile.typing = false;
-  console.log(`tile typing: ${tile.typing}`);
   markTileChanged(player.typing.lastSpot.x, player.typing.lastSpot.y);
 }
 
 function setPlayerTyping(socket){
   let player = players[socket.user];
-  if (player.typing === false) {
-    console.log(`${socket.user} is typing...`);//wut?
-  }
   player.typing.state = true;
   player.typing.lastSpot.x = player.x;
   player.typing.lastSpot.y = player.y;
@@ -1451,13 +1435,11 @@ function setPlayerKeystate(player, data){
 function tradeOfferUpdate(name, slot, amount){
   const other = players[name].tradingWith;
   if (!other) {
-    console.log("not other");
     return;
   }
 
   const item = players[name].inventory[slot];
   if (!item) {
-    console.log("not item");
     return;
   }
 
@@ -1531,7 +1513,6 @@ async function connectPlayer(socket){
 }
 
 function acceptTrade(fromName, toName){
-  console.log(`${toName} accepted ${fromName}'s trade...`);
 
   // request must exist
   if (pendingTradeRequests[toName] !== fromName) return;
@@ -1606,7 +1587,6 @@ const itemById = Object.fromEntries(
 const idByItem = name => ITEMS[name]?.id;
 
 function declineTrade(fromName, toName){
-  console.log(`${toName} declined ${fromName}'s trade...`);
 
   // request must exist
   if (pendingTradeRequests[toName] !== fromName) return;
@@ -1622,7 +1602,6 @@ function declineTrade(fromName, toName){
 function chatMessage(socket, msg){
   console.log(`${socket.user}: ${msg}`)
   if (msg[0] === "/") {
-    console.log("command message");
     parseCmdMsg(socket.user, msg);
   } else {
     let senderName = socket.user;
@@ -1639,9 +1618,7 @@ function chatMessage(socket, msg){
 async function parseCmdMsg(name, cmd) {
   let player = players[name];
   const words = cmd.slice(1).trim().split(/\s+/);
-  console.log(`words: ${words}`);
   if (words[0] === "tell") {
-    console.log("tell running");
     if (players[words[1]]) {
       let recipient = words[1];
       let msg = words.slice(2).join(" ");
@@ -1683,7 +1660,6 @@ async function parseCmdMsg(name, cmd) {
 }
 
 async function sendTradeRequest(fromName, toName) {
-  console.log(`${fromName} attempting to trade ${toName}`);
 
   if (!players[toName] || players[toName].sock_id === null) {
     sendMessage('pk message', `${toName} is not online...`, players[fromName]);
@@ -1710,14 +1686,12 @@ async function finalizeTrade(a, b) {
   const offerB = players[b].tradeOffer || {};
 
   // remove items from A → give to B
-  console.log("moving A's items");
   for (const slot in offerA) {
     const item = offerA[slot];
     if (!item) continue;
 
     const amount = Number(item.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      console.log("Invalid trade amount from A:", item);
       continue;
     }
 
@@ -1726,22 +1700,18 @@ async function finalizeTrade(a, b) {
   }
 
   // remove items from B → give to A
-  console.log("moving B's items");
   for (const slot in offerB) {
     const item = offerB[slot];
     if (!item) continue;
 
     const amount = Number(item.amount);
     if (!Number.isFinite(amount) || amount <= 0) {
-      console.log("Invalid trade amount from B:", item);
       continue;
     }
 
     await removeItem(b, item.id, amount);
     await addItem(a, item.id, amount);
   }
-
-  console.log("Trade successful!");
 
   // cleanup
   players[a].tradingWith = null;
@@ -1930,7 +1900,6 @@ function movePlayer(name, data) {
     if (colTile.objects) {
       let keys = Object.keys(colTile.objects);
       if (keys.length > 0) {
-        console.log(`obj: ${keys[0]}`);
         let obj = baseTiles[keys[0]];
         if (obj && obj.collision === true && !keys[0].startsWith('tree')) {
           targetZ = z+1;
@@ -1961,7 +1930,6 @@ function movePlayer(name, data) {
       let key = Object.keys(checkTile.objects)[0];
       if (key === "stairsL" || key === "stairsR") {
         if (player.z < 4) {
-          console.log("going up stairs");
           targetZ = player.z + 1;
         }
       }
@@ -1981,43 +1949,6 @@ function movePlayer(name, data) {
   markTileChanged(player.x, player.y);
 }
 
-/*
-function checkObscured(player){
-  let col = getColumn(player.x, player.y);
-  for (z=5; z>=0; z--){
-    if (!col?.[z]) continue;
-    let tile = col[z];
-    console.log("got here");
-    if (tile?.floor) {
-      if (Object.keys(tile.floor).length > 0) {
-        console.log("floor obscured");
-        player.obscured = z+1;
-        return;
-      }
-    }
-
-    if (col[z]?.objects){
-      let obj = baseTiles[Object.keys(col[z].objects)[0]];
-      if (obj?.collision===true){
-        console.log("obj obscured");
-        player.obscured = z+1;
-        return;
-      }
-    }
-    
-    if (col[z]?.roof){
-      if (Object.keys(col[z].roof).length>0){
-        console.log("roof obscured");
-        player.obscured = z;
-        return;
-      }
-    }
-    
-    console.log("no obscured");
-    player.obscured = false;
-  }
-}
-*/
 function checkObscured(player) {
 
   let col = getColumn(player.x, player.y);
@@ -2062,7 +1993,6 @@ function cancelPendingChannels(name){
   if (pendingTeleports[name]) {
     clearTimeout(pendingTeleports[name]);
     delete pendingTeleports[name];
-    console.log("Teleport canceled due to movement");
   }
   const channel = activeChannels[name];
 
@@ -2077,7 +2007,6 @@ function cancelPendingChannels(name){
 
 function setSprite(player, dir){
   if (!spriteMap[dir]) return;
-  console.log(`setSprite ${dir}`);
   player.sprite = spriteMap[dir];
   player.facing = dir;
 
@@ -2099,7 +2028,6 @@ function setSprite(player, dir){
 function createTileIfMissing(x, y, z) {
   if (!map.Map[y] || !map.Map[y][x]) return; // do NOT create new columns
   if (!map.Map[y][x][z]) {
-    console.log("creating new z tile");
     map.Map[y][x][z] = {
     };
   }
@@ -2107,8 +2035,6 @@ function createTileIfMissing(x, y, z) {
 
 const tileMaxX = map.Map[0].length;
 const tileMaxY = map.Map.length;
-
-console.log(`tileMaxX: ${tileMaxX}, tileMaxY: ${tileMaxY}`);
 
 function checkCollision(name, x, y, z) {
   if (x < 0 || x > tileMaxX - 1) {  //need next map on collision with edge
@@ -2228,11 +2154,12 @@ async function checkCollisionBaseTile(name, tile) {
   }
 }
 
-let npcs = ['shopkeep'];
+let npcs = ['shopkeep', 'belethor'];
 
 function npcInteract(name, npcName){
   let npcObject = baseTiles[npcName];
   if (npcObject?.does){
+    //change this to do other stuff with .does (i.e. functions, quests etc...)
     sendMessage('server message', `${npcObject.prettyName}: ${npcObject.does.speech}`, players[name]);
   }
 }
@@ -2313,7 +2240,6 @@ async function areaDamage(projId, x, y, z, radius, type, damage) {
     if (!mapTile) continue;
     if (mapTile.floor === undefined) {
       mapTile.floor = {};
-      console.log("created empty floor tile");
       if (Object.keys(mapTile.floor).length === 0) {
         areaStrike(mapTile, type);
       }
@@ -2331,14 +2257,11 @@ async function areaDamage(projId, x, y, z, radius, type, damage) {
       }
     }
     if (mapTile?.mob && players[projId]) {
-      console.log(`tile damage: ${affectedTiles[tile].x},${affectedTiles[tile].y}`);
       damageMob(projId, mapTile.mob.id, damage);
     }
     if (mapTile?.players) {
       for (p in mapTile.players) {
-        console.log(`p: ${p}, mapTile.players[p]: ${mapTile.players[p]}`);
         let targetPlayer = players[p];
-        console.log(`targetPlayer: ${targetPlayer}`);
         if (targetPlayer) {
           let fromPlayer = players[projId];
           if (!fromPlayer) {
@@ -2464,7 +2387,6 @@ async function damageMob(playerName, mobId, damage, type) {
     xp = 1;
   }
   await giveXp(playerName, xp, type);
-  console.log(`damageType: ${type}`);
   if (damage < 0) {
     damage = 0;
   }
@@ -2476,6 +2398,9 @@ async function damageMob(playerName, mobId, damage, type) {
 async function giveXp(playerName, xp, type) {
   let player = players[playerName];
   if (type===undefined) return;
+  if (itemById[player.head]==="xpHat"){
+    xp = xp*10;
+  }
   sendMessage('server message', `+${xp} ${type} xp`, player);
   switch (type) {
     case "melee":
@@ -2484,9 +2409,11 @@ async function giveXp(playerName, xp, type) {
       break;
     case "archery":
       player.archeryXpTotal += xp;
+      player.hpXpTotal += 1;
       break;
     case "mage":
       player.mageXpTotal += xp;
+      player.hpXpTotal += 1;
       break;
     case "fishing":
       player.fishingXpTotal += xp;
@@ -2632,16 +2559,50 @@ async function playerHeldItemAction(playerName) {
     await playerShootBow(player, true);
     return true;
   }
+  if (itemById[player.hand].startsWith("orb")){
+    let hotCold = await getHotCold(player);
+    if (hotCold===false){
+      sendMessage('pk message', "Not enough mana...", player);
+      return true;
+    }
+    else if (hotCold===null){
+      sendMessage('pk message', "The orb fizzles... No treasure for now...", player);
+    } else {
+     sendMessage('server message', `The orb glows...\n${hotCold}`, player);
+    }
+    return true;
+  }
+}
+
+async function getHotCold(player) {
+  if (player.mana<25) return false;
+  player.mana-=25;
+  if (treasureHidden === false) return null;
+  let px = player.x;
+  let py = player.y;
+
+  let tx = Treasure.x;
+  let ty = Treasure.y;
+
+  const dx = px - tx;
+  const dy = py - ty;
+
+  const distance = Math.sqrt(dx * dx + dy * dy);
+
+  const maxDistance = 1000; // approx map diagonal
+
+  const ratio = distance / maxDistance;
+
+  if (ratio <= 0.02) return "BURNING";
+  if (ratio <= 0.05) return "Very Hot";
+  if (ratio <= 0.1)  return "Hot";
+  if (ratio <= 0.2)  return "Warm";
+  if (ratio <= 0.4)  return "Cool";
+  if (ratio <= 0.7)  return "Cold";
+  return "Freezing";
 }
 
 async function playerTryFishing(player) {
-  console.log("fishin!");
-  //check for water +1 to last dir
-  //check if it's a fishing spot
-  //same timer as teleport
-  //bobber on fishing spot
-  //check quiver for bait, higher chance for fish/different fish
-  //chance to catch fish, catch nothing, or break pole (fishing lvl)
   let fishTileCoords = checkOnNextTile(player.x, player.y, player.z, player.lastDir, "fishingspot");
   if (fishTileCoords === false) return;
   //else it's coords!
@@ -2657,7 +2618,6 @@ async function playerTryFishing(player) {
     cancelOnMove: true,
 
     onComplete: async () => {
-      console.log("you reel in your line");
       tile.objects['fishingspot'].fishing = false;
       markTileChanged(fishTileCoords.x, fishTileCoords.y);
       sendMessage('server message', "You reel in your line.", player);
@@ -2669,7 +2629,6 @@ async function playerTryFishing(player) {
     },
 
     onCancel: () => {
-      console.log("Fishing canceled");
       tile.objects['fishingspot'].fishing = false;
       markTileChanged(fishTileCoords.x, fishTileCoords.y);
       sendMessage('server message', "You stop fishing.", player);
@@ -2760,6 +2719,7 @@ async function playerShootBow(player, mage = false) {
       return;
     } else {
       player.mana-=dustAmmo.mana;
+      sendSound(player, ['cast']);
       await giveXp(player.name, 1, "mage");
     }
   }
@@ -2784,6 +2744,9 @@ async function playerShootBow(player, mage = false) {
   if (projName==='yellowdust'){
     distance = -1;
   }
+  if (mage===false){
+    sendSound(player, ['bow']);
+  }
   const arrow = createProjectile(projName, player.lastDir, player.x, player.y, player.z, player.name, distance, slow, slowTime);
   addProjectileToTile(arrow);
 }
@@ -2792,7 +2755,6 @@ async function floorRoofRemove(player, tile){
   //check tile for floor then ceiling, remove
   if (isSafeActive(tile)) return false;
   if (itemById[player.hand]!=="tools") return false;
-  console.log("checking for floors and roofs");
   const floor = tile.floor ?? {};
   const roof = tile.roof ?? {};
   if (Object.keys(floor).length !==0){
@@ -2819,7 +2781,6 @@ async function floorRoofRemove(player, tile){
 }
 
 async function interactTile(playerName) {
-  console.log('interactTile running');
   const player = players[playerName];
   const tile = getTile(player.x, player.y, player.z);
   const mapObjects = tile.objects ?? {};
@@ -2849,7 +2810,6 @@ async function interactTile(playerName) {
       }
     }
     // 1. REMOVE OBJECT FIRST (atomic, synchronous)
-    console.log("removing obj from map");
     const removed = removeObjFromMapSync(player.x, player.y, player.z);
     if (!removed) return; // someone else already took it
 
@@ -3141,7 +3101,6 @@ function readSign(name) {
   let player = players[name];
   let tile = getTile(player.x, player.y, player.z);
   let text = String(tile.objects['sign'].text);
-  console.log(tile.objects['sign']);
   sendMessage('readSign', text, player);
 }
 
@@ -3286,8 +3245,35 @@ function useItem(playerName) {
     consume(playerName, invEntry.id);
     return;
   }
+
+  if (itemDef.dig) {
+    //player digs, either gets soil, sand, or finds treasure!
+    playerDig(player);
+    return;
+  }
   // future: consumables, activatables, etc
   // if (itemDef.consume) consumeItem(playerName, itemName);
+}
+
+async function playerDig(player){
+  if (player.z>0) return;
+  sendSound(player, ['dig']);
+  let tX = Treasure?.x;
+  let tY = Treasure?.y;
+  if (tX && tY){
+    console.log("checking for treasure");
+    //return if on treasure, player gets it
+    if (tX===player.x && tY===player.y){
+      sendMessage('server message', `<span style="color: purple;">You found buried treasure!</span>`, player);
+      await dropMobLoot(baseTiles['treasure'].drop, Treasure.x, Treasure.y);
+      Treasure={};
+      treasureHidden=false;
+      return;
+    }
+  }
+  //else get dirt or sand if applicable
+  console.log("digs up sand or dirt");
+  //if basetile sand - sand, if basetile grass - dirt
 }
 
 async function equip(playerName, id) {
@@ -3379,10 +3365,14 @@ async function eatDrinkTimed(name, itemObj) {
 
 const activeChannels = {};//can be used for other stuff
 const pendingTeleports = {};
-async function teleportPlayer(name) {
+async function teleportPlayer(name, stuck=false) {
+  let dur = 5000;
+  if (stuck===true){
+    dur = 30000
+  }
   startChannel({
     playerName: name,
-    duration: 5000,
+    duration: dur,
     cancelOnMove: true,
 
     onComplete: () => {
@@ -3406,7 +3396,6 @@ async function teleportPlayer(name) {
     },
 
     onCancel: () => {
-      console.log("Teleport canceled");
     }
   });
 }
@@ -3430,7 +3419,6 @@ function startChannel({
   const startTime = Date.now();
 
   // tell client to show progress bar
-  console.log("CHANNEL START:", playerName, duration);
   io.to(player.sock_id).emit('channelStart', {
     duration,
     startTime
@@ -3478,7 +3466,6 @@ async function dropItem(name, item) {
   const container = baseTiles[dropName]?.container ?? "objects";
 
   if (isSafeActive(tile) && player.name!=='Admin'){
-    console.log("checking if no drop");
     switch (dropName){
       case "stoneblock0":
       case "woodblock0":
@@ -3502,7 +3489,6 @@ async function dropItem(name, item) {
   }
   tile[container][dropName] = tileItem;
   if (zRaise.includes(dropName) && player.z<4){
-    console.log("going up");
     let oldTile = getTile(player.x, player.y, player.z);
     delete oldTile.players[player.name];
     markTileChanged(player.x, player.y);
@@ -3614,7 +3600,6 @@ async function craftItem(playerName, itemName, smelt = false) {
   // if inventory couldn't accept it → send to bank
   if (added === 0) {
     await addBankItem(playerName, craftedId, craftAmount);
-    console.log(`Inventory full — crafted ${itemName} sent to bank`);
     sendMessage('server message', `${itemName} was put in your bank because your inventory was full!`, player);
   } else {
     sendMessage('server message', `You made a ${itemName}!`, player);
@@ -3664,7 +3649,6 @@ function pickWeighted(list) {
 }
 
 async function playerBank(playerName) {
-  console.log("player opened bank");
   const rows = await query(`
     SELECT id, amount
     FROM bank
@@ -3684,9 +3668,41 @@ async function playerBank(playerName) {
 
 const mobs = new Map();
 
+let treasureHidden = false;
+let Treasure = {};
+async function initTreasure(){
+  treasureHidden = false;
+  Treasure = {};//empty that shit
+  for (let y = 0; y < 295; y++) {
+    for (let x = 0; x < 491; x++) {
+      if (treasureHidden===true) return;
+      let tile = getTile(x, y, 0);
+      let bt = tile?.['b-t'];
+      if (!bt || bt!=='grass') continue;
+      if (Math.floor(Math.random()*144845 < 10)){
+        Treasure.x = x;
+        Treasure.y = y;
+        treasureHidden = true;
+        console.log(`Treasure hidden at ${Treasure.x},${Treasure.y}`);
+      }
+    }
+  }
+}
+
+let rock = 0;
+let iron = 0;
+let coal = 0;
+let copper = 0;
+let silver = 0;
+let gold = 0;
+let diamond = 0;
+let amethyst = 0;
+
 async function replenishResources() {
+  await initTreasure();
   await removeMobType("mushroom");
   await removeMobType("goat");
+  await removeMobType("wolf");
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
       for (let z = 0; z<5; z++){//full send 6 z levels :o
@@ -3711,7 +3727,6 @@ async function replenishResources() {
           //will need to change this not to go on player plots and shit lol
           isEmpty(tile?.objects) &&
           isEmpty(tile?.floor) &&
-          //isEmpty(tile?.roof) &&
           isEmpty(tile?.depletedResources) &&
           tile['b-t'] === 'grass'
         ) {
@@ -3725,7 +3740,6 @@ async function replenishResources() {
         if (
           isEmpty(tile?.objects) &&
           isEmpty(tile?.floor) &&
-          //isEmpty(tile?.roof) &&
           isEmpty(tile?.depletedResources) &&
           tile['b-t'] === 'grass'
         ) {
@@ -3760,7 +3774,24 @@ async function replenishResources() {
             }
           }
         }
-
+        let randWolf = Math.floor(Math.random() * 10000);
+        if (randGoat < 3 && z===0) {
+          if (
+            isEmpty(tile?.objects) &&
+            isEmpty(tile?.floor) &&
+            isEmpty(tile?.roof) &&
+            isEmpty(tile?.depletedResources) &&
+            tile['b-t'] === 'grass' &&
+            !isSafeActive(tile)
+          ) {
+            let testWolf = createMob('wolf', x, y);
+            mobs.set(testWolf.id, testWolf);
+            tile.mob = {
+              id: testWolf.id,
+              sprite: "wolfL"
+            }
+          }
+        }
         // Loop over both containers so all stages are eligible
         for (const containerName of ["objects", "depletedResources"]) {
           const container = tile[containerName];
@@ -3785,6 +3816,7 @@ async function replenishResources() {
             // Add new stage into objects container
             tile.objects ??= {};
             tile.objects[nextName] = { name: nextName };
+            oreCount(nextName);
             markTileChanged(x, y);
           }
         }
@@ -3792,6 +3824,46 @@ async function replenishResources() {
     }
   }
   console.log(`Mobs: ${mobs.size}`);
+  console.log(`
+    rock: ${rock},
+    iron: ${iron},
+    coal: ${coal},
+    copper: ${copper},
+    silver: ${silver},
+    gold: ${gold},
+    diamond: ${diamond},
+    amethyst: ${amethyst},
+    total: ${rock+iron+coal+copper+silver+gold+diamond+amethyst}
+  `);
+}
+
+function oreCount(name){
+  switch (name){
+    case "rock0":
+      rock+=1;
+      return;
+    case "ironrock0":
+      iron+=1;
+      return;
+    case "coalrock0":
+      coal+=1;
+      return;
+    case "copperrock0":
+      copper+=1;
+      return;
+    case "silverrock0":
+      silver+=1;
+      return;
+    case "goldrock0":
+      gold+=1;
+      return;
+    case "diamondrock0":
+      diamond+=1;
+      return;
+    case "amethystrock0":
+      amethyst+=1;
+      return;
+  }
 }
 
 async function randomFishingSpot(tile) {
@@ -3808,7 +3880,6 @@ async function randomFishingSpot(tile) {
     let spotTile = getTile(s.x, s.y, s.z);
     if (!spotTile) continue;
     if (spotTile===null) {
-      console.log("spotTile null!");
       continue;
     }
     if (baseTiles[spotTile['b-t']].collision === false) {
@@ -3818,10 +3889,7 @@ async function randomFishingSpot(tile) {
   }
   if (valid === true) {
     //add a fishing spot!
-    console.log("added fishing spot!");
-    console.log(`fishingspot x:${tile.x}, y:${tile.y}`);
     addToMap('fishingspot', tile.x, tile.y);
-    console.log(`tile.objects: ${tile.objects}`);
     tile.objects['fishingspot'].fishing = false;
     tile.objects['fishingspot'].amount = Math.floor(Math.random() * 24);
   }
@@ -3830,7 +3898,7 @@ async function randomFishingSpot(tile) {
 replenishResources();//run at server start to add random ores n shit
 setInterval(replenishResources, 60000 * 180);//every 3 hours
 setInterval(mapUpdate, 200);
-setInterval(mapPersist, 60000*10);//save map every minute
+setInterval(mapPersist, 60000);//save map every minute
 
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`Server running on port ${PORT}`);
@@ -3930,7 +3998,6 @@ function spawnMinion(mob) {
       sprite: mob.spawnMinion + "L"
     }
     mob.spawnCount += 1;
-    console.log(mobs.get(testMinion.id));
   }
 }
 
@@ -4036,6 +4103,7 @@ function moveToward(mob, target) {
   const dy = Math.sign(py - mob.y);
 
   // try x first if farther away horizontally
+  if (mob.type==="spiderQueen") return;
   if (Math.abs(px - mob.x) > Math.abs(py - mob.y)) {
     if (dx !== 0 && tryMove(mob, mob.x + dx, mob.y)) return;
     if (dy !== 0 && tryMove(mob, mob.x, mob.y + dy)) return;
@@ -4056,7 +4124,7 @@ function mobRangeAttack(mob, target) {
   const dir = getDirectionToward(mob.x, mob.y, target.x, target.y);
   let decay = 10;
   if (mob.type==='spiderQueen'){
-    decay = 2;
+    decay = 0;
   }
   if (mob.rangeAttack?.slow === true) {
     let slowTime = mob.rangeAttack.slowTime;
@@ -4418,7 +4486,6 @@ function rangeAttackMob(proj, mob) {
   let player = players[proj.ownerId];
   let damage = Math.floor(Math.random() * baseTiles[proj.type].attack);
   if (baseTiles[itemById[player.hand]]?.attack) {
-    console.log("+damage from held item");
     damage += Math.floor(Math.random() * baseTiles[itemById[player.hand]].attack);
   }
   if (proj.type.includes('arrow')){
@@ -4426,7 +4493,6 @@ function rangeAttackMob(proj, mob) {
     damageMob(proj.ownerId, mob.id, damage, "archery");
   }
   if (proj.type.includes('dust')){
-    console.log("damage mob dust");
     damage += Math.floor(Math.random() * players[proj.ownerId].mageLvl);//change to mageLvl
     damageMob(proj.ownerId, mob.id, damage, "mage");
   }
@@ -4450,10 +4516,8 @@ function rangeAttackPlayer(proj, targetName) {
       damage += Math.floor(Math.random()*baseTiles[itemById[player.hand]].attack);
     }
     if (baseTiles[itemById[player.hand]]?.attack) {
-      console.log("+damage from held item");
       damage += Math.floor(Math.random() * baseTiles[itemById[player.hand]].attack);
     }
-    console.log(`${proj.ownerId} hit ${targetName} with ${proj.type} for ${damage} damage!`);
     if (proj.type.includes('arrow')){
       damage += Math.floor(Math.random() * players[proj.ownerId].archeryLvl);
       damagePlayer(player, targetPlayer, damage, "archery");
@@ -4500,7 +4564,6 @@ function updateProjectiles() {
       if (proj.type.startsWith("arrow") && players[proj.ownerId]) {//still not perfect, fix
         if (proj.type.startsWith('arrowfire') || proj.type.includes('orangedust')) {
           io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
-          console.log("end damage");
           areaDamage(proj.ownerId, proj.x, proj.y, proj.z, 1, "fire", 12);
         } else {
           spreadDropItem(proj.x, proj.y, proj.z, proj.type);
@@ -4516,7 +4579,6 @@ function updateProjectiles() {
       proj.life = 0;
       if (proj.type.startsWith('arrowfire') || proj.type.includes('orangedust')) {
         io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
-        console.log('added false damage');
         areaDamage(proj.ownerId, proj.x, proj.y, proj.z, 1, "fire", 12);
         removeProjectileFromTile(proj);
         projectiles.delete(id);
@@ -4535,7 +4597,6 @@ function updateProjectiles() {
       markTileChanged(proj.x, proj.y);
       if (proj.type.startsWith('arrowfire') || proj.type.includes('orangedust')) {
         io.emit('explosion', { x: proj.x, y: proj.y, color: 'orange' });
-        console.log('end of life damage');
         areaDamage(proj.ownerId, proj.x, proj.y, 1, proj.z, "fire", 15);
       }
       if (proj.type.includes('yellowdust')) {

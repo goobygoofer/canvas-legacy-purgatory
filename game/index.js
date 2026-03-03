@@ -244,7 +244,10 @@ function loadSounds() {
     damage: "audio/damage.wav",
     chop: "audio/chop.mp3",
     pickaxe: "audio/pickaxe.wav",
-    miss: "audio/miss.mp3"
+    miss: "audio/miss.mp3",
+    dig: "audio/dig.mp3",
+    bow: "audio/bow.mp3",
+    cast: "audio/cast.mp3"
   };
 
   for (const [key, url] of Object.entries(soundFiles)) {
@@ -505,6 +508,11 @@ function logout(){
   socket.disconnect();
   location.reload();
   return false;
+}
+
+function playerStuck(){
+  socket.emit('playerStuck');
+  console.log("unsticking lol");
 }
 
 function settings(){
@@ -1786,40 +1794,7 @@ function drawVignette(ctx, w, h, strength = 0.8) {
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);
 }
-/*
-function drawRain() {
-  if (!rain) return;
-  if (!latestView) return;
-  // player tile is fixed in the view
-  const playerTile = latestView[5][10];
-  const playerRoof = playerTile?.roof;
-  const playerUnderRoof =
-    playerRoof && Object.keys(playerRoof).length > 0;
 
-  for (let i = 0; i < latestView.length; i++) {
-    for (let j = 0; j < latestView[i].length; j++) {
-
-      const tile = latestView[i][j];
-      const roof = tile?.roof;
-      const hasRoof = roof && Object.keys(roof).length > 0;
-
-      // if player is indoors, don't draw rain on roofed tiles
-      if (playerUnderRoof && hasRoof) {
-        continue;
-      }
-      if (Math.floor(Math.random() * 20) > 1) continue;
-
-      ctx.drawImage(
-        spriteSheet,
-        base_tiles.rain.x, base_tiles.rain.y,
-        16, 16,
-        j * 32, i * 32,
-        32, 32
-      );
-    }
-  }
-}
-*/
 function drawRain() {
   if (!rain) return;
   if (!latestView) return;
@@ -1861,33 +1836,7 @@ function drawRain() {
 }
 
 let fog = true;
-/*
-function drawOutsideFog() {
-  if (fog===false) return;
-  if (!latestView) return;
-  // player tile is fixed in the view
-  const playerTile = latestView[5]?.[10];
-  const playerRoof = playerTile?.roof;
-  const playerUnderRoof =
-    playerRoof && Object.keys(playerRoof).length > 0;
-  if (!playerUnderRoof) return;
-  for (let i = 0; i < latestView.length; i++) {
-    for (let j = 0; j < latestView[i].length; j++) {
 
-      const tile = latestView[i][j];
-      const roof = tile?.roof;
-      const hasRoof = roof && Object.keys(roof).length > 0;
-
-      // if player is indoors, don't draw rain on roofed tiles
-      if (playerUnderRoof && hasRoof) {
-        continue;
-      }
-      ctx.fillStyle = "rgba(0, 0, 0, 0.5)";
-      ctx.fillRect(j*32, i*32, 32, 32);
-    }
-  }
-}
-*/
 function drawOutsideFog() {
   if (!fog) return;
   if (!latestView) return;
@@ -2305,6 +2254,22 @@ function drawPlayers(chunk){
       //p being name, ...players[p].sprite (draw that lol)
       let equipToDraw = [];
       try {
+        ctx.fillStyle = "rgba(36, 36, 36, 0.35)"; // soft shadow
+        ctx.beginPath();
+
+        // Center horizontally (tileX + 16)
+        // Slightly above bottom of tile (tileY + 26 works well)
+        ctx.ellipse(
+          j*32 + 16,   // centerX
+          i*32 + 28,   // centerY
+          8,            // radiusX (16px wide)
+          2,            // radiusY (4px high)
+          0,
+          0,
+          Math.PI * 2
+        );
+
+        ctx.fill();
         ctx.drawImage(
           spriteSheet,
           base_tiles[spriteName].x, base_tiles[spriteName].y,
@@ -2375,10 +2340,10 @@ function drawMobs(chunk){
   )
 }
 
-function draw32Mobs(data){
-  const chunk = data.chunk;
+function draw32Mobs(data, j, i){
+  const chunk = data;
   if (!chunk.mob) return;
-
+  console.log('drawing 32 mob');
   const mob = chunk.mob;
 
 ctx.drawImage(
@@ -2387,8 +2352,8 @@ ctx.drawImage(
   base_tiles[mob.sprite].y,
   base_tiles[mob.sprite].spriteSize,
   base_tiles[mob.sprite].spriteSize,
-  data.x * 32,
-  data.y * 32,
+  j * 32,
+  i * 32,
   base_tiles[mob.sprite].drawSize,
   base_tiles[mob.sprite].drawSize
 );
@@ -2695,59 +2660,6 @@ function playerHasRoofOnOrAbove() {
   return false;
 }
 
-//draw everything here
-/*
-function updateView(data){
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  let bigMobs = [];
-  for (i in data){
-    for (j in data[i]){
-      if (data[i][j]===null || data[i][j]===undefined){
-        ctx.drawImage(
-          spriteSheet,
-          base_tiles['water'].x, base_tiles['water'].y,
-          16,16,
-          j*32, i*32,
-          32, 32
-        )
-        continue;
-      }
-      let columnChunk = data[i][j];
-      let levels = Object.keys(columnChunk)
-        .map(Number)
-        .sort((a, b) => a - b);
-      for (let z of levels) {
-        if (playerData.obscured && z > playerData.z) {
-          continue;
-        }
-
-        let chunk = columnChunk[z];
-        if (!chunk) continue;
-
-
-        drawBaseTile(chunk);
-        drawFloor(chunk);
-        drawDepletedResources(chunk);
-        drawPixels(chunk);
-        drawObjects(chunk);
-        drawMobs(chunk);
-        drawPlayers(chunk);
-        drawProjectiles(chunk);
-        drawRoofs(chunk, i, j, z);
-        drawSafeTiles(chunk);
-        drawChatBubbles(chunk);
-      }
-    }
-  }
-  drawExplosions();
-  drawRain();
-  drawOutsideFog();
-  drawNightTime();
-  drawVignette(ctx, canvas.width, canvas.height);
-  drawHUD();
-}
-*/
-
 const shadowCasters = [
   "rockroof", "woodroof", "stoneroof",
   "woodblock0","woodblock1","woodblock2","woodblock3",
@@ -2757,11 +2669,11 @@ const shadowCasters = [
   "silverrock0","silverrock1","silverrock2","silverrock3", "silverrock4",
   "goldrock0","goldrock1","goldrock2","goldrock3", "goldrock4",
   "copperrock0","copperrock1","copperrock2","copperrock3", "copperrock4",
-  "diamondrock0","diamondrock1","diamondrock2","diamondrock3", "diamondrock4"
+  "diamondrock0","diamondrock1","diamondrock2","diamondrock3", "diamondrock4",
+  "amethystrock0", "amethystrock1", "amethystrock2", "amethystrock3", "amethystrock4"
 ];
 function updateView(data) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  let bigMobs = [];
 
   for (i in data) {
     for (j in data[i]) {
@@ -2800,18 +2712,27 @@ function updateView(data) {
           }
         }
         drawBaseTile(chunk);
-        drawFloor(chunk);
         drawDepletedResources(chunk);
+        drawFloor(chunk);
+        drawMobs(chunk);
+        if (data?.[i - 1]) {
+          if (data[i - 1]?.[j - 1]) {
+            if (data[i - 1][j - 1]?.[z]) {
+              if (data[i - 1][j - 1][z]?.mob) {
+                let mob = data[i - 1][j - 1][z].mob.sprite;
+                if (base_tiles[mob]?.spriteSize) {
+                  draw32Mobs(data[i - 1][j - 1][z], j - 1, i - 1);
+                }
+              }
+            }
+          }
+        }
         drawPixels(chunk);
         drawMarks(chunk);
         drawObjects(chunk);
-        drawMobs(chunk);
         drawPlayers(chunk);
         drawProjectiles(chunk);
         drawRoofs(chunk, i, j, z);
-
-
-
         drawSafeTiles(chunk);
         drawChatBubbles(chunk);
       }
@@ -2849,168 +2770,7 @@ let surround = [
   { x: 1, y: 0 , sprite: base_tiles['shadRight']},
   { x: 0, y: 1 , sprite: base_tiles['shadDown']}
 ]
-/*
-function drawShadows() {
-  if (!latestView) return;
 
-  for (let y = 0; y < latestView.length; y++) {
-    for (let x = 0; x < latestView[y].length; x++) {
-
-      const cell = latestView[y][x];
-      if (!cell) continue;
-
-      // ---- DETERMINE IF TILE IS CASTER ----
-      let isCaster = false;
-
-      for (let z in cell) {
-        const tile = cell[z];
-        if (!tile?.objects) continue;
-
-        for (let key in tile.objects) {
-          if (shadowCasters.includes(key)) {
-            isCaster = true;
-            break;
-          }
-        }
-
-        if (isCaster) break;
-      }
-
-      if (!isCaster) continue;
-
-      // ---- CAST TO SURROUNDINGS ----
-      for (let dir of surround) {
-
-        const nx = x + dir.x;
-        const ny = y + dir.y;
-
-        if (!latestView[ny]?.[nx]) continue;
-
-        const neighborCell = latestView[ny][nx];
-
-        // ---- CHECK NEIGHBOR COLLISION (ALL Z) ----
-        let neighborBlocks = false;
-for (let nz in neighborCell) {
-  const neighborTile = neighborCell[nz];
-
-  // If tile exists, check blockers
-  if (neighborTile) {
-
-    if (neighborTile.objects) {
-      for (let key in neighborTile.objects) {
-        if (base_tiles[key]?.collision === true) {
-          neighborBlocks = true;
-          break;
-        }
-      }
-    }
-
-    if (neighborTile.roof && Object.keys(neighborTile.roof).length > 0) {
-      neighborBlocks = true;
-    }
-
-    if (neighborBlocks) break;
-  }
-
-  // If neighborTile does NOT exist,
-  // we do nothing — shadow remains allowed.
-}
-
-        // ---- DRAW ONLY IF NOT BLOCKED ----
-        if (!neighborBlocks) {
-          ctx.drawImage(
-            spriteSheet,
-            dir.sprite.x,
-            dir.sprite.y,
-            16,
-            16,
-            nx * 32,
-            ny * 32,
-            32,
-            32
-          );
-        }
-      }
-    }
-  }
-}
-*/
-/*
-function drawShadows() {
-  if (!latestView) return;
-
-  for (let y = 0; y < latestView.length; y++) {
-    for (let x = 0; x < latestView[y].length; x++) {
-
-      const cell = latestView[y][x];
-      if (!cell) continue;
-
-      const zLevels = Object.keys(cell)
-        .filter(z => z !== "version")
-        .sort((a, b) => Number(a) - Number(b));
-
-      for (let z of zLevels) {
-
-        const tile = cell[z];
-        if (!tile?.objects) continue;
-
-        // ---- CHECK IF THIS Z IS A CASTER ----
-        let isCaster = false;
-
-        for (let key in tile.objects) {
-          if (shadowCasters.includes(key)) {
-            isCaster = true;
-            break;
-          }
-        }
-
-        if (!isCaster) continue;
-
-        // ---- CAST AT SAME Z LEVEL ----
-        for (let dir of surround) {
-
-          const nx = x + dir.x;
-          const ny = y + dir.y;
-
-          if (!latestView[ny]?.[nx]?.[z]) continue;
-
-          const neighborTile = latestView[ny][nx][z];
-
-          let neighborBlocks = false;
-
-          if (neighborTile.objects) {
-            for (let key in neighborTile.objects) {
-              if (base_tiles[key]?.collision === true) {
-                neighborBlocks = true;
-                break;
-              }
-            }
-          }
-
-          if (neighborTile.roof &&
-              Object.keys(neighborTile.roof).length > 0) {
-            neighborBlocks = true;
-          }
-
-          if (!neighborBlocks) {
-            ctx.drawImage(
-              spriteSheet,
-              dir.sprite.x,
-              dir.sprite.y,
-              16,
-              16,
-              nx * 32,
-              ny * 32,
-              32,
-              32
-            );
-          }
-        }
-      }
-    }
-  }
-}
-*/
 function drawShadows() {
   if (!latestView) return;
 

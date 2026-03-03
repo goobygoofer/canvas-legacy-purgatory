@@ -501,6 +501,49 @@ base_tiles = {
     id: 85,
     craft: { rock: 10 }
   },
+  "orbFinder":{
+    prettyName: "locator orb",
+    "x":32,"y":1200,
+    id: 86,
+    craft: { amethystbar: 1 },//change to purple ore which will be rare af
+  },
+  "spade":{
+    "x":128,"y":352,
+    id: 87,
+    craft: { log:1, ironbar: 1 },
+  },
+  "xpHat":{
+    prettyName: "cap of experience",
+    "x":208,"y":432,
+    id: 88,
+  },
+  "amethyst":{
+    "x":112,"y":1136,
+    id: 89,
+  },
+  "amethystbar":{
+    "x":96,"y":1136,
+    prettyName: "amethyst bar",
+    id: 90,
+    smelt: { amethyst: 5 },
+  },
+  //LAST ADDED ITEM 
+  "pShadow":{
+    "x":256,"y":752
+  },
+  "xpHatR":{
+    "x":191,"y":432
+  },
+  "xpHatL":{
+    "x":177,"y":432
+  },
+ 
+  "orbFinderR":{
+    "x":48,"y":1200
+  },
+  "orbFinderL":{
+    "x":64,"y":1200,
+  },
   "toolsR":{
     "x":304,"y":432
   },
@@ -798,6 +841,12 @@ base_tiles = {
   },
   "goatL":{
     "x":208,"y":288
+  },
+  "wolfR":{
+    "x":112,"y":528
+  },
+  "wolfL": {
+    "x":96,"y":528
   },
   "zorgR":{
     "x":80,"y":144
@@ -1183,6 +1232,25 @@ base_tiles = {
   "diamondrock4": {
     "x":96,"y":720
   },
+  "amethystrock0":{
+    collision:true,
+    "x":176,"y":0
+  },
+  "amethystrock1":{
+    collision:true,
+    "x":256,"y":1136
+  },
+  "amethystrock2":{
+    collision:true,
+    "x":272,"y":1136
+  },
+  "amethystrock3":{
+    collision:true,
+    "x":288,"y":1136
+  },
+  "amethystrock4":{
+    "x":304,"y":1136
+  },
   "web": { "x": 208, "y": 400 },
   "webRight": { "x": 208, "y": 400 },
   "webUp": { "x": 208, "y": 400 },
@@ -1365,6 +1433,7 @@ base_tiles = {
   "ratR": { "x": 112, "y": 144 },
   "ratL": { "x": 192, "y": 128 },
   "shopkeep": { "x": 16, "y": 128 },//no shopkeepL "y"et
+  "belethor": {"x":208,"y":1088},
   "gnollR": { "x": 224, "y": 576 },
   "gnollL": { "x": 240, "y": 576 },
   "rangeGoblinR": { "x": 80, "y": 336 },

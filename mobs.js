@@ -308,6 +308,30 @@ const mobTypes = {
         thinkSpeed: 0,
         collision: true
     }),
+    wolf: (x, y) => ({
+        id: getNextMobId(),
+        type: "wolf",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 100,
+        attack: 20,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 12,
+        leashRadius: 40,
+
+        nextThink: 0,
+        thinkSpeed: 500+Math.floor(Math.random()*100),
+        facing: "left",
+
+        drop: [
+            { name: "hide", min: 1, max: 2, weight: 200 }
+        ]
+    }),
 };
 
 function createMob(type, x, y) {
