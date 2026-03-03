@@ -173,6 +173,7 @@ async function getLeaderboard() {
     FROM (
       SELECT player_name, hpXp
       FROM players
+      WHERE player_name <> 'Admin'
       ORDER BY hpXp DESC
       LIMIT 1
     ) AS t
@@ -183,6 +184,7 @@ async function getLeaderboard() {
     FROM (
       SELECT player_name, swordXp
       FROM players
+      WHERE player_name <> 'Admin'
       ORDER BY swordXp DESC
       LIMIT 1
     ) AS t
@@ -193,6 +195,7 @@ async function getLeaderboard() {
     FROM (
       SELECT player_name, archeryXp
       FROM players
+      WHERE player_name <> 'Admin'
       ORDER BY archeryXp DESC
       LIMIT 1
     ) AS t
@@ -203,6 +206,7 @@ async function getLeaderboard() {
     FROM (
       SELECT player_name, craftXp
       FROM players
+      WHERE player_name <> 'Admin'
       ORDER BY craftXp DESC
       LIMIT 1
     ) AS t
@@ -213,6 +217,7 @@ async function getLeaderboard() {
     FROM (
       SELECT player_name, woodcuttingXp
       FROM players
+      WHERE player_name <> 'Admin'
       ORDER BY woodcuttingXp DESC
       LIMIT 1
     ) AS t
@@ -223,6 +228,7 @@ async function getLeaderboard() {
     FROM (
       SELECT player_name, fishingXp
       FROM players
+      WHERE player_name <> 'Admin'
       ORDER BY fishingXp DESC
       LIMIT 1
     ) AS t
@@ -233,6 +239,7 @@ async function getLeaderboard() {
     FROM (
       SELECT player_name, mageXp
       FROM players
+      WHERE player_name <> 'Admin'
       ORDER BY mageXp DESC
       LIMIT 1
     ) AS t
@@ -243,6 +250,7 @@ async function getLeaderboard() {
     FROM (
       SELECT player_name, miningXp
       FROM players
+      WHERE player_name <> 'Admin'
       ORDER BY miningXp DESC
       LIMIT 1
     ) AS t;
@@ -253,7 +261,7 @@ async function getLeaderboard() {
   return rows; // array of { skill, player_name, xp }
 }
 
-async function initPlayer(name) {
+async function initPlayer(name) {//try this with select * isntead
   const sql = `
     SELECT
       x, y, z,
@@ -2251,7 +2259,7 @@ async function areaDamage(projId, x, y, z, radius, type, damage) {
           if (!mapTile?.depletedResources){
             delete mapTile.objects;
             mapTile.objects = {};
-            mapTile.objects['deattree0'] = {name: 'deadtree0'}
+            mapTile.objects['deadtree0'] = {name: 'deadtree0'}
           }
         }
       }
