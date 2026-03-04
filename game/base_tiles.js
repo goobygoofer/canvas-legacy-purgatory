@@ -821,6 +821,11 @@ base_tiles = {
   "yellowdustDown": {"x":96,"y":432},
   "yellowdustLeft": {"x":112,"y":432},
   "yellowdustRight": {"x":128,"y":432},
+
+  "stoneUp": { "x": 256, "y": 0 },
+  "stoneDown": { "x": 256, "y": 0 },
+  "stoneLeft": { "x": 256, "y": 0 },
+  "stoneRight": { "x": 256, "y": 0 },
   "speedbootsL": {
     "x":161,"y":448
   },
@@ -885,6 +890,16 @@ base_tiles = {
   },
   "spiderQueenR":{
     "x":176,"y":400,
+    spriteSize: 32,
+    drawSize: 64
+  },
+  "trollR":{
+    "x":208,"y":592,
+    spriteSize: 32,
+    drawSize: 64
+  },
+  "trollL":{
+    "x":240,"y":592,
     spriteSize: 32,
     drawSize: 64
   },
@@ -1014,6 +1029,14 @@ base_tiles = {
     container: "safeTile",
     collision:false
   },
+  "questTile":{
+    "x":256,"y":1072,
+    kind: "questTile",
+    container: "questTile",
+    collision:false,
+    questName:null,
+    stagePass:null
+  },
   "craftTools":{
     "x":64, "y":672
   },
@@ -1026,6 +1049,7 @@ base_tiles = {
   "murderR":{
     "x":63, "y":176
   },
+
   "heartContainer": { "x": 128, "y": 528 },
   "staminaPot": { "x": 64, "y": 1072 },
   "bridge": { "x": 0, "y": 80 },
@@ -1432,8 +1456,10 @@ base_tiles = {
   "ghostL": { "x": 64, "y": 96 },//ghost facing left coords
   "ratR": { "x": 112, "y": 144 },
   "ratL": { "x": 192, "y": 128 },
+  //NPCs
   "shopkeep": { "x": 16, "y": 128 },//no shopkeepL "y"et
   "belethor": {"x":208,"y":1088},
+  "merchant": {"x":304,"y":640},
   "gnollR": { "x": 224, "y": 576 },
   "gnollL": { "x": 240, "y": 576 },
   "rangeGoblinR": { "x": 80, "y": 336 },

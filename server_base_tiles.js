@@ -972,6 +972,9 @@ module.exports = {
   "web": {
     attack: 5
   },
+  "stone":{
+    attack: 25
+  },
   "campfire1": {
     container: "objects",
     collision: true
@@ -2067,17 +2070,55 @@ module.exports = {
     container: "objects",
     collision: true,
     prettyName: "Shopkeep",
-    does: {
-      speech: "Stand on an item in the shop and press Shift to buy it!"
-    }
+    speech: "Stand on an item in the shop and press Shift to buy it!"
   },
   "belethor": {
     kind: "npc",
     container: "objects",
     collision: true,
     prettyName: "Belethor",
-    does: {
-      speech: "They threw me down here for selling my sister...\nGood luck getting out of here..."
+    speech: "They threw me down here for selling my sister...\nGood luck getting out of here..."
+  },
+  "merchant":{
+    kind: "npc",
+    container: "objects",
+    collision: true,
+    prettyName: "Merchant",
+    quest: {
+      name: "trollQuest",
+      0:{
+        speech:`Hello, Traveller!\n The bridge east of the mountain pass is currently blocked by an
+        angry troll! I can't deliver my goods... If you can defeat it, I will reward you handsomely!`,
+        action: async (player, query, addItem) => {
+          //set trollQuest to 1
+          await query(
+            "UPDATE players SET trollQuest = 1 WHERE player_name = ?",
+            [player.name]           
+          );
+          player.trollQuest = 1;
+        }
+      },
+      1:{
+        speech: `Did you defeat the troll yet?!`
+      },
+      2:{
+        speech: `Thank you so much! Please take this. (The merchant hands you some strange stones!)`,
+        action: async (player, query, addItem) => {
+          let added = await addItem(player.name, 89, 4);
+          if (added===0){
+            sendMessage('pk message', "Clear some inventory space to recieve your reward!", player);
+            return;
+          }
+          await query(
+            "UPDATE players SET trollQuest = 3 WHERE player_name = ?",
+            [player.name]           
+          );
+          player.trollQuest = 3;
+        }
+      },
+      3:{
+        speech: `Thank you so much! Trade will be much better without that nasty troll...`
+      }
     }
   },
   "void": {
@@ -2157,6 +2198,13 @@ module.exports = {
     container: "safeTile",
     collision:false
   },
+  "questTile":{
+    kind: "questTile",
+    container: "questTile",
+    collision:false,
+    questName:null,
+    stagePass:null
+  },
   "sign": {
     kind: "interactable",
     container: "objects",
@@ -2167,141 +2215,6 @@ module.exports = {
     kind: "b-t",
     container: "objects",
     collision: false
-  },
-  "cutGrass": {/*when grass2 gets cut*/ },
-  "stoneSwordL": {},
-  "stoneSwordR": {},
-  "chatDots": {},
-  "spiderL": {},
-  "heartContainer": {},
-  "staminaPot": {},
-  "heartPiece": {},
-  "switch": {},
-  "hookshot": {},
-  "hookshotL": {},
-  "hookshotR": {},
-  "hookshotleft": {},
-  "hookshotright": {},
-  "hookshotup": {},
-  "hookshotdown": {},
-  "helpBG": {},
-  "container": {},
-  "heart": {},
-  "babaBase": {},
-  "babaRest": {},
-  "babaUp": {},
-  "babaDown": {},
-  "babaLeft": {},
-  "babaRight": {},
-  "empty-heart": {},
-  "ghostR": {},
-  "ghostL": {},
-  "snowtree": {},
-  "mushroom": {},
-  "rupee": {},
-  //"stoneblock": {},
-  "stump2": {},
-  "stump3": {},
-  "rain": {},
-  "fenceV": {},
-  "fenceH": {},
-  "boulder": {},
-  "rockpile": {},
-  "mapsign": {},
-  "bed": {},
-  "cactus": {},
-  "ankh": {},
-  //"door2": {},
-  //"door3": {},
-  "skull": {},
-  "table": {},
-  "chair": {},
-  "deskHORIZ": {},
-  "deskVERT": {},
-  "deskCRV1": {},
-  "deskCRV2": {},
-  "deskCRV3": {},
-  "deskCRV4": {},
-  "redx": {},
-  "redDownArrow": {},
-  "glasspane1": {},
-  "cloud": {},
-  "axeR": {},
-  "axeL": {},
-  "pickaxeR": {},
-  "pickaxeL": {},
-  "statDisp": {},
-  "splitlog": {},
-  "upArrow": {},
-  "downArrow": {},
-  "hpIcon": {},
-  "fPoleR": {},
-  "fPoleL": {},
-  "fPole": {},
-  "bobber": {},
-  "chest2": {},
-  "raft": {},
-  "sail": {},
-  "key": {},
-  "scroll": {},
-  "trashcan": {},
-  "F": {},
-  "C": {},
-  "hitOutlineLeft": {},
-  "hitOutlineRight": {},
-  "leatherArmorL": {},
-  "leatherArmorR": {},
-  "leatherArmorI": {},
-  "brasskey": {},
-  "heart": {},
-  "speedbootsI": {},
-  "speedbootsR": {},
-  "speedbootsL": {},
-  "UPARROW": {},
-  "DOWNARROW": {},
-  "palmtree": {},
-  "longbow": {},
-  "longbowL": {},
-  "longbowR": {},
-  "knife": {},
-  "knifeL": {},
-  "knifeR": {},
-  "spikein": {},
-  "spikeout": {},
-  "hitsplat": {},
-  "leftShad": {},
-  "upShad": {},
-  "rightShad": {},
-  "downShad": {},
-  "ulShad": {},
-  "urShad": {},
-  "llShad": {},
-  "lrShad": {},
-  "pebble": {},
-  "whitewave": {},
-  "fireballup": {},
-  "fireballdown": {},
-  "fireballleft": {},
-  "fireballright": {},
-  "mapExit": {},
-  "mobGenerator": {},
-  "skeletonR": {},
-  "skeletonL": {},
-  "skelUp": {},
-  "skelDown": {},
-  "skelHit": {},
-  "skelAtt": {},
-  "ghostR": {},
-  "ghostL": {},
-  "ratR": {},
-  "ratL": {},
-  "spiderR": {},
-  "spiderL": {},
-  "gnollR": {},
-  "gnollL": {},
-  "rangeGoblinR": {},
-  "rangeGoblinL": {},
-  "mageLichR": {},
-  "mageLichL": {}
+  }
 }
 

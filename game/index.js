@@ -486,11 +486,17 @@ function onKeyUp(e) {
   socket.emit('player input', { key, state: false }); // one emit per keyup
 }
 
+let lastAction = Date.now();
 function handleShiftKey(){
-  if (crafting){
-    craftItem();
+  if (Date.now()<lastAction+200){
     return;
   }
+  lastAction = Date.now();
+  if (crafting){
+      craftItem();
+    return;
+  }
+
   socket.emit('action');
 }
 
@@ -2343,7 +2349,7 @@ function drawMobs(chunk){
 function draw32Mobs(data, j, i){
   const chunk = data;
   if (!chunk.mob) return;
-  console.log('drawing 32 mob');
+
   const mob = chunk.mob;
 
 ctx.drawImage(
@@ -2576,6 +2582,18 @@ function drawSafeTiles(chunk){
   );
 }
 
+function drawQuestTiles(chunk){
+  const qTile = chunk?.questTile;
+  if (!qTile) return;
+  if (!devMode) return;
+  ctx.drawImage(
+    spriteSheet,
+    base_tiles['safeTile'].x, base_tiles['safeTile'].y,
+    16, 16,
+    j * 32, i * 32, 32, 32
+  );
+}
+
 function drawHUD(){
   //right now just hp in bottom left of screen
   const hpPosX = 5;
@@ -2734,6 +2752,7 @@ function updateView(data) {
         drawProjectiles(chunk);
         drawRoofs(chunk, i, j, z);
         drawSafeTiles(chunk);
+        drawQuestTiles(chunk);
         drawChatBubbles(chunk);
       }
     }

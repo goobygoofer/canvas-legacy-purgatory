@@ -207,7 +207,7 @@ const mobTypes = {
         leashRadius: 15,
 
         nextThink: 0,
-        thinkSpeed: 250+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
         drop: [
@@ -332,6 +332,41 @@ const mobTypes = {
             { name: "hide", min: 1, max: 2, weight: 200 }
         ]
     }),
+    troll: (x, y) => ({
+        id: getNextMobId(),
+        type: "troll",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 2000,
+        attack: 20,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 10,
+        leashRadius: 0,
+
+        nextThink: 0,
+        thinkSpeed: 500+Math.floor(Math.random()*100),
+        facing: "left",
+        rangeAttack: {
+          type: "stone",
+          slow: true,
+          slowTime: 1000
+        },
+        drop: [
+            { name: "hide", min: 1, max: 10, weight: 100 },
+            { name: "coin", min: 100, max: 500, weight: 50 },
+            { name: "rock", min: 100, max: 500, weight: 10 }
+        ],
+        quest: {
+          name: "trollQuest",
+          active: 1,//when player can attack it
+          passive: 2//when it won't appear to player
+        }
+    }),
 };
 
 function createMob(type, x, y) {
@@ -341,6 +376,12 @@ function createMob(type, x, y) {
 }
 
 const mobSpawns = [
+  {
+    type: "troll",
+    x: 249, y:76,
+    count: 1,
+    respawnTime: 20000
+  },
   {//rats south of Old Haven
     type: "rat",
     x: 35,

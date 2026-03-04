@@ -263,25 +263,7 @@ async function getLeaderboard() {
 
 async function initPlayer(name) {//try this with select * isntead
   const sql = `
-    SELECT
-      x, y, z,
-      hp,
-      mana,
-      swordXp,
-      archeryXp,
-      hpXp,
-      woodcuttingXp,
-      miningXp,
-      craftXp,
-      fishingXp,
-      mageXp,
-      murderer,
-      criminal,
-      head,
-      body,
-      hand,
-      feet,
-      quiver
+    SELECT *
     FROM players
     WHERE player_name = ?
   `;
@@ -372,7 +354,9 @@ async function initPlayer(name) {//try this with select * isntead
     tradeAccepted: false,
     slow: false,//like when hit by web
     slowTime: 0,//set with proj.slowTime
-    obscured: false
+    obscured: false,
+    //quests
+    trollQuest:result[0].trollQuest
   };
   let player = players[name];
   addPlayerToTile(name, player.x, player.y, player.z);
@@ -472,6 +456,7 @@ async function addItem(playerName, itemId, amount) {
   );
 
   if (stackResult.affectedRows > 0) {
+    await syncInventory(playerName);
     return amount;
   }
 
@@ -490,6 +475,7 @@ async function addItem(playerName, itemId, amount) {
       `,
       [playerName, itemId, amount]
     );
+    await syncInventory(playerName);
     return amount;
   } catch (err) {
     // Another concurrent insert won — stack instead
@@ -502,10 +488,12 @@ async function addItem(playerName, itemId, amount) {
         `,
         [amount, playerName, itemId]
       );
+      await syncInventory(playerName);
       return amount;
     }
     throw err;
   }
+  
 }
 
 async function getInventoryCount(playerName) {
@@ -774,6 +762,9 @@ function clearTile(x, y, z) {
   delete tile.depletedResources;
   if (tile && tile.safeTile !== undefined) {
     delete tile.safeTile;
+  }
+  if (tile && tile.questTile!==undefined){
+    delete tile.questTile;
   }
   markTileChanged(x, y);
 }
@@ -1214,6 +1205,17 @@ io.on('connection', async (socket) => {
     toObj.toY = data.y;
     toObj.toZ = data.z;
   });
+
+  socket.on('setQuestTile', (data) => {
+    if (!devMode && socket.user !== 'Admin') return;
+    let player = players[socket.user];
+    let tile = getTile(player.x, player.y, player.z);
+    let qTile = tile.questTile;
+    if (!qTile) return;
+    qTile.questName = data.name;
+    qTile.stagePass = data.stage;
+    qTile.prettyName = data.prettyName;
+  })
 
   socket.on("downloadMap", () => {
     if (!devMode || socket.user !== "Admin") return;
@@ -1776,75 +1778,6 @@ const crimSpriteMap = {
 
 const directions = ['up', 'down', 'left', 'right'];
 
-/*
-function movePlayer(name, data) {
-  cancelPendingChannels(name);
-  let player = players[name];
-  if (Date.now() < player.lastMove + player.movementSpeed) {
-    return;//since this calls checkCollision, might have to add a lastHit
-    //as well, that number might be different? idk
-  }
-  slowPlayer(player);
-  player.lastMove = Date.now();
-  let modCoords;
-  let _dir;
-  directions.forEach(dir => {
-    _dir = dir;
-    if (data[dir]) {
-      const [dx, dy] = dirOffsets[dir];
-      modCoords = { x: player.x + dx, y: player.y + dy};
-    }
-  });
-  setSprite(player, _dir);
-  player.lastDir = _dir;
-  addPlayerToTile(name, player.x, player.y, player.z);
-  markTileChanged(player.x, player.y);
-  if (checkCollision(name, modCoords.x, modCoords.y, player.z)) return;
-
-  let tile = getTile(player.x, player.y, player.z);
-  delete tile.players[name];
-  markTileChanged(player.x, player.y);
-  sendSound(player, [player.step]);
-  if (player.step === "stepR") {
-    player.step = "stepL";
-  } else {
-    player.step = "stepR";
-  }
-  let checkTile = getTile(modCoords.x, modCoords.y, player.z);//next tile
-  let checkCol = getColumn(modCoords.x, modCoords.y);
-  
-  if (!checkTile){
-    for (let z = player.z-1; z>=0; z--){
-      if (!checkCol[z]){
-        player.z=z;
-        continue;
-      };
-      if (checkCol[z]?.roof){
-        if (Object.keys(checkCol[z].roof).length>0){
-          break;//z stays same
-        }
-      }
-      if (checkCol[z]?.objects){
-        let keys = Object.keys(checkCol[z].objects);
-        if (baseTiles[checkCol[z].objects[keys[0]]].collision===true){
-          break;//z stays same
-        }
-      }
-      if (z===0){
-        player.z=0;
-      }
-    }
-  } else {
-    //checkTile exists, make sure it's valid
-  }
-  
-  player.x = modCoords.x;
-  player.y = modCoords.y;
-  addPlayerToTile(name, modCoords.x, modCoords.y, player.z);
-  markTileChanged(player.x, player.y);
-}
-*/
-
 function movePlayer(name, data) {
   cancelPendingChannels(name);
 
@@ -2045,6 +1978,7 @@ const tileMaxX = map.Map[0].length;
 const tileMaxY = map.Map.length;
 
 function checkCollision(name, x, y, z) {
+  let player = players[name];
   if (x < 0 || x > tileMaxX - 1) {  //need next map on collision with edge
     return true;
   }
@@ -2066,7 +2000,12 @@ function checkCollision(name, x, y, z) {
       return true;
     }
   }
-
+  if (tile?.questTile){//for entry into quest only areas
+    if (player[tile.questTile.questName]<tile.questTile.stagePass){
+      sendMessage('pk message', `You must complete ${tile.questTile.prettyName} to pass...`, player);
+      return true;
+    }
+  }
   //player melee here??
   if (checkMelee(name, x, y, z)) {//stay in place if hitting somebody
     return true;
@@ -2162,13 +2101,41 @@ async function checkCollisionBaseTile(name, tile) {
   }
 }
 
-let npcs = ['shopkeep', 'belethor'];
+let npcs = ['shopkeep', 'belethor', 'merchant'];
 
-function npcInteract(name, npcName){
+async function npcInteract(name, npcName){
+  let player = players[name];
   let npcObject = baseTiles[npcName];
-  if (npcObject?.does){
-    //change this to do other stuff with .does (i.e. functions, quests etc...)
-    sendMessage('server message', `${npcObject.prettyName}: ${npcObject.does.speech}`, players[name]);
+  if (npcObject?.speech){
+    sendMessage('server message', `${npcObject.prettyName}: ${npcObject.speech}`, player);
+  }
+  if (npcObject?.quest){
+    await npcQuest(player, npcObject);
+  }
+}
+
+async function npcQuest(player, npcObj){
+  //get quest name from npcObj
+  //check player's quest stage
+  //speech/actions accordingly
+  let questName = npcObj.quest.name;
+  let questStage = player[questName];
+  let npcSpeech = npcObj.quest[questStage].speech;
+  sendMessage('server message', npcSpeech, player);
+  if (npcObj.quest[questStage]?.action){
+    npcObj.quest[questStage].action(player, query, addItem);//won't necessarily query, but fine this way
+  }
+}
+
+async function mobQuestLogic(player, questName, mob){
+  if (questName==='trollQuest'){
+    if (player.trollQuest===1){
+      await query(
+        "UPDATE players SET trollQuest = 2 WHERE player_name = ?",
+        [player.name]
+      );
+      player.trollQuest = 2;
+    }
   }
 }
 
@@ -2387,6 +2354,7 @@ function meleeAttackMob(playerName, mobId) {
 async function damageMob(playerName, mobId, damage, type) {
   let player = players[playerName];
   let targetMob = mobs.get(mobId);
+  targetMob.lastHitBy = playerName;
   let xp = Math.floor(damage / 10);
   if (targetMob.hp - damage < 0) {
     xp = Math.floor(Math.floor(targetMob.hp / 10));
@@ -2439,6 +2407,9 @@ async function giveXp(playerName, xp, type) {
 }
 
 async function killMob(mob) {
+  if (mob?.quest){
+    await mobQuestLogic(players[mob.lastHitBy], mob.quest.name, mob);  
+  }
   const tile = getTile(mob.x, mob.y);
   delete tile.mob;
   await dropMobLoot(mob.drop, mob.x, mob.y);
@@ -3164,6 +3135,20 @@ async function resourceInteract(playerName, x, y, z, objName) {
 
   const objDef = baseTiles[objName];
   if (!objDef || objDef.kind !== "resource") return;
+  /* ---------- drops ---------- */
+  if (objDef.drops) {
+    for (const [itemName, amount] of Object.entries(objDef.drops)) {
+      const itemId = idByItem(itemName);
+      if (itemId){
+        let added = await addItem(playerName, itemId, amount);
+        if (added===0){
+          sendMessage('pk message', "Your inventory is full!", player);
+          return;
+        }
+      } 
+    }
+    await syncInventory(playerName);
+  }
   if (itemById[player.hand].startsWith('axe')) {
     sendSound(player, ['chop']);
     //player.woodcuttingXpTotal += 1;
@@ -3173,14 +3158,6 @@ async function resourceInteract(playerName, x, y, z, objName) {
     sendSound(player, ['pickaxe']);
     //player.miningXpTotal += 1;
     await giveXp(player.name, 1, "mining");
-  }
-  /* ---------- drops ---------- */
-  if (objDef.drops) {
-    for (const [itemName, amount] of Object.entries(objDef.drops)) {
-      const itemId = idByItem(itemName);
-      if (itemId) await addItem(playerName, itemId, amount);
-    }
-    await syncInventory(playerName);
   }
   //rare drop
   if (objDef.rareDrop) {//implies also has .rarity
@@ -3465,8 +3442,17 @@ async function dropItem(name, item) {
       return;
     }
   }
+  if (tile?.questTile){
+    sendMessage('pk message', "You cannot drop items here...", player);
+    return;
+  }
   if(!player.inventory[item]){
     return;
+  }
+  if (tile?.['b-t']){
+    if (tile['b-t']==='water'){
+      return;
+    }
   }
   const invItem = player.inventory[item]; // current inventory slot
   const baseName = itemById[invItem.id];  // normal name from ID
@@ -3481,6 +3467,8 @@ async function dropItem(name, item) {
       case "woodplate":
       case "stoneroof":
       case "stoneplate":
+      case "stairsR":
+      case "stairsL":
         sendMessage('pk message', `You cannot drop this item in a safe zone.`, player);
         return;
     }
@@ -3977,7 +3965,6 @@ function updateMob(mob, now) {
   const player = findPlayerInRange(mob);
 
   if (player) {
-
     // 🧷 leash check
     if (distFromSpawn(mob) > mob.leashRadius) {
       mob.state = "return";
@@ -4111,7 +4098,7 @@ function moveToward(mob, target) {
   const dy = Math.sign(py - mob.y);
 
   // try x first if farther away horizontally
-  if (mob.type==="spiderQueen") return;
+  if (mob.type==="spiderQueen" || mob.type==='troll') return;
   if (Math.abs(px - mob.x) > Math.abs(py - mob.y)) {
     if (dx !== 0 && tryMove(mob, mob.x + dx, mob.y)) return;
     if (dy !== 0 && tryMove(mob, mob.x, mob.y + dy)) return;
@@ -4172,6 +4159,7 @@ function inAttackRange(mob, player) {
 }
 
 function attackPlayer(mob, player) {
+  if (player.z!==0) return;
   if (Date.now() > mob.lastAttack + mob.thinkSpeed) {
     mob.lastAttack = Date.now();
     let damage = mob.attack;
@@ -4201,13 +4189,15 @@ function attackPlayer(mob, player) {
 function spawnResourceMob(playerName, x, y, z, chance) {
   let player = players[playerName];
   if (player.z>0) return;
-  if (Math.floor(Math.random() * 100) < 90) return;
+  if (Math.floor(Math.random() * 100) < 99) return;
   //see what player is holding, hatchet/pickaxe, spawn treeEnt or stoneGolem
   let mobName = null;
   let mobDrop = null;
+  let dropMin = null;
   if (itemById[players[playerName].hand].startsWith('pickaxe')) {
     mobName = "rockGolem";
     mobDrop = "rock";
+    dropMin = player.miningLvl*10;
   }
   if (itemById[players[playerName].hand].startsWith('axe')) {
     mobName = "treeEnt";
@@ -4216,10 +4206,10 @@ function spawnResourceMob(playerName, x, y, z, chance) {
   if (mobName === null) return;//aww
   let testResMob = createMob("resourceMob", x, y, z);
   testResMob.type = mobName;//hopefully works?
-  testResMob.hp = 10;//just for now, scale by lvl
-  testResMob.attack = 1;//just for now, scale
+  testResMob.hp = Math.floor(player.hp/2);//just for now, scale by lvl
+  testResMob.attack = Math.floor(player.swordLvl/2);//just for now, scale
   testResMob.drop.push(
-    { name: mobDrop, min: 100, max: 500, weight: 100 }
+    { name: mobDrop, min: dropMin, max: dropMin*10, weight: 100 }
   )
   mobs.set(testResMob.id, testResMob);
   let tile = getTile(x, y, z);
@@ -4489,7 +4479,7 @@ function checkProjectileCollision(proj) {
 
 //add all functionality, sounds, rand hits/crits, etc
 function rangeAttackMob(proj, mob) {
-  if (mobs.get(proj.ownerId) !== undefined || mobs.get(proj.ownerId) !==null) return;
+  if (mobs.get(proj.ownerId) !== undefined && mobs.get(proj.ownerId) !==null) return;
   let mobObj = mobs.get(mob.id);
   let player = players[proj.ownerId];
   let damage = Math.floor(Math.random() * baseTiles[proj.type].attack);
