@@ -821,7 +821,9 @@ async function playerDeath(player) {
     }
   }
   player.hp = player.maxHp;//change to player level max hp
-  await dropPlayerLootbag(player.name, player.x, player.y, player.z);
+  if (player.name!=="Admin"){
+    await dropPlayerLootbag(player.name, player.x, player.y, player.z);
+  }
   respawnPlayer(player.name);
 }
 
@@ -4140,7 +4142,9 @@ function findPlayerInRange(mob) {
 function tryMove(mob, newX, newY) {
   const oldTile = getTile(mob.x, mob.y);
   const newTile = getTile(newX, newY);
-
+  if (newTile?.safeTile){
+    return false;
+  }
   if (!newTile) return false;
   if (newTile.mob) return false;
   if (mobCollision(newTile)) return false;
@@ -4332,14 +4336,15 @@ function spawnResourceMob(playerName, x, y, z, chance) {
   if (itemById[players[playerName].hand].startsWith('axe')) {
     mobName = "treeEnt";
     mobDrop = "log";
+    dropMin = player.woodcuttingLvl*10;
   }
   if (mobName === null) return;//aww
   let testResMob = createMob("resourceMob", x, y, z);
   testResMob.type = mobName;//hopefully works?
-  testResMob.hp = Math.floor(player.hp/2);//just for now, scale by lvl
+  testResMob.hp = Math.floor(player.hpLvl/2);//just for now, scale by lvl
   testResMob.attack = Math.floor(player.swordLvl/2);//just for now, scale
   testResMob.drop.push(
-    { name: mobDrop, min: dropMin, max: dropMin*10, weight: 100 }
+    { name: mobDrop, min: dropMin, max: dropMin*2, weight: 100 }
   )
   mobs.set(testResMob.id, testResMob);
   let tile = getTile(x, y, z);
