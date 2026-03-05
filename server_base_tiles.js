@@ -2031,7 +2031,7 @@ module.exports = {
     'roof':false,
     'collision': false,
     'container':"objects",
-    toX:null,toY:null
+    toX:null,toY:null,toZ:null
   },
   "upStairs": {
     kind: "interactable",

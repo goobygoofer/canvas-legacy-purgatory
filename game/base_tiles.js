@@ -1030,7 +1030,7 @@ base_tiles = {
     collision:false
   },
   "questTile":{
-    "x":256,"y":1072,
+    "x":240,"y":1072,
     kind: "questTile",
     container: "questTile",
     collision:false,

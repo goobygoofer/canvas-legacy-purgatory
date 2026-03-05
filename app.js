@@ -356,7 +356,8 @@ async function initPlayer(name) {//try this with select * isntead
     slowTime: 0,//set with proj.slowTime
     obscured: false,
     //quests
-    trollQuest:result[0].trollQuest
+    trollQuest:result[0].trollQuest,
+    maze1:0//always this, just to set off quest tile
   };
   let player = players[name];
   addPlayerToTile(name, player.x, player.y, player.z);
@@ -1137,7 +1138,7 @@ io.on('connection', async (socket) => {
   })
 
   socket.on('paint', data => {
-    playerPaint(data);
+    playerPaint(socket.user, data);
   });
 
   socket.on("layTile", data => {
@@ -1178,6 +1179,12 @@ io.on('connection', async (socket) => {
     markTileChanged(player.x, player.y);
   });
 
+  socket.on('adminItem', async (data) => {
+    if (!devMode && socket.user !== 'Admin') return;
+    let player = players[socket.user];
+    await addItem('Admin', data.id, data.amt);
+  })
+
   socket.on('setSign', (data) => {
     if (!devMode && socket.user !== 'Admin') return;
     let player = players[socket.user];
@@ -1204,6 +1211,9 @@ io.on('connection', async (socket) => {
     toObj.toX = data.x;
     toObj.toY = data.y;
     toObj.toZ = data.z;
+    if (data?.exclusiveTo){
+      toObj.exclusiveTo=data.exclusiveTo;//like for maze n shit
+    }
   });
 
   socket.on('setQuestTile', (data) => {
@@ -1386,24 +1396,31 @@ function layTile(socket, data){
   addToMap(data.tile, x, y, z, true);
 }
 
-function playerPaint(data){//change this later
+function playerPaint(name, data){//change this later
   if (data.y < 0 || data.y > 499 || data.x < 0 || data.x > 499) return;
+  let player = players[name];
+  if (!player) return;
+  let tile = getTile(data.x, data.y, player.z);
+  let below = null;
+  if (player.z>0){
+    below = getTile(data.x, data.y, player.z-1);
+  }
   if (data.btn === "right") {
-    if (map.Map[data.y][data.x]?.pixels) {
-      map.Map[data.y][data.x].pixels[data.subY][data.subX] = -1;
+    if (map.Map[data.y][data.x][0]?.pixels) {
+      map.Map[data.y][data.x][0].pixels[data.subY][data.subX] = -1;
     }
   } else {
-    if (map.Map[data.y][data.x]?.pixels) {
-      map.Map[data.y][data.x].pixels[data.subY][data.subX] = data.c;
+    if (map.Map[data.y][data.x][0]?.pixels) {
+      map.Map[data.y][data.x][0].pixels[data.subY][data.subX] = data.c;
     } else {
-      map.Map[data.y][data.x].pixels ??=
+      map.Map[data.y][data.x][0].pixels ??=
         [
           [-1, -1, -1, -1],
           [-1, -1, -1, -1],
           [-1, -1, -1, -1],
           [-1, -1, -1, -1]
         ];
-      map.Map[data.y][data.x].pixels[data.subY][data.subX] = data.c;
+      map.Map[data.y][data.x][0].pixels[data.subY][data.subX] = data.c;
     }
 
   }
@@ -1942,7 +1959,9 @@ function cancelPendingChannels(name){
     delete activeChannels[name];
 
     channel.onCancel?.();
-    io.to(players[name].sock_id).emit('channelCancel');
+    if (players[name]){
+      io.to(players[name].sock_id).emit('channelCancel');
+    }
   }
 }
 
@@ -2001,9 +2020,13 @@ function checkCollision(name, x, y, z) {
     }
   }
   if (tile?.questTile){//for entry into quest only areas
+    let qName = tile.questTile.questName;
     if (player[tile.questTile.questName]<tile.questTile.stagePass){
       sendMessage('pk message', `You must complete ${tile.questTile.prettyName} to pass...`, player);
       return true;
+    }
+    if (qName && qName.startsWith('maze')){
+      initMaze(player, qName);
     }
   }
   //player melee here??
@@ -2046,6 +2069,21 @@ function checkCollision(name, x, y, z) {
     return true;//lol they can't go to safe area!
   }
   return false;
+}
+
+async function initMaze(player, maze){
+  switch (maze){
+    case 'maze1':
+      //player timer to add dungeon stairs to end of maze for x seconds
+      //async function setMazeTimer(name, mazeName, dur, from, to, ) {
+      await setMazeTimer(
+        player.name, maze, 6000,
+        {x:265, y:12, z:0},
+        {x:520, y:342, z:0},
+        {x:259, y:13, z:0}
+      )
+      break;
+  }
 }
 
 async function checkCollisionBaseTile(name, tile) {
@@ -2839,12 +2877,29 @@ function restoreObjToMap(x, y, z, removed) {
 
 async function openLootbag(playerName, lootbagObject, x, y, z) {
   if (!lootbagObject || !lootbagObject.items) return;
-
+  let player = players[playerName];
   if (lootbagObject.locked) return;
   lootbagObject.locked = true;
 
   let lootChat = {};
-
+  let lootTile = getTile(x, y, z);
+  if (lootbagObject?.teleBack) {
+    lootTile.players = {};
+    markTileChanged(x, y);
+    let returnTo = lootbagObject.teleBack;
+    if (returnTo) {
+      player.x = returnTo.x;
+      player.y = returnTo.y;
+      player.z = returnTo.z;
+    } else {
+      player.x = 49;
+      player.y = 49;
+      player.z = 0;
+    }
+    addPlayerToTile(playerName, player.x, player.y, player.z);
+    markTileChanged(player.x, player.y);
+    sendMessage('server message', `Magic in the lootbag teleports you!`, player);
+  }
   try {
     for (const name of Object.keys(lootbagObject.items)) {
       const item = lootbagObject.items[name];
@@ -3036,6 +3091,12 @@ async function purchaseItem(playerName, objName) {
 async function enterExit(name, exitObject){
   //start a timer
   //move player to new coords
+  if (exitObject?.exclusiveTo){
+    if (exitObject.exclusiveTo!==name){
+      //sendMessage
+      return;
+    }
+  }
   let toCoords = {x: exitObject.toX, y: exitObject.toY, z: exitObject.toZ}
   startChannel({
     playerName: name,
@@ -3385,6 +3446,61 @@ async function teleportPlayer(name, stuck=false) {
   });
 }
 
+let mazeDrops = {
+  maze1: 
+    [
+      { name: "coin", min: 100, max: 1000, weight: 10000 },
+      { name: "gold", min: 1, max: 10, weight: 1000 },
+      { name: "diamond", min: 1, max: 5, weight: 100 },
+      { name: "amethyst", min:1, max: 2, weight: 1 }
+    ],
+}
+
+async function setMazeTimer(name, mazeName, dur, from, to, teleBack) {
+  if (activeChannels[mazeName]) return;
+  const player = players[name];
+  if (!player) return;
+  let fromX = from.x;
+  let fromY = from.y;
+  let fromZ = from.z;
+  let toX = to.x;
+  let toY = to.y;
+  let toZ = to.z;
+  //add stairs here
+  //put prize in to area, picking up prize must tele player back to maze
+  let fromTile = getTile(from.x, from.y, from.z);
+  addToMap('dungeonStairs', from.x, from.y, from.z);
+  fromTile.objects['dungeonStairs'].exclusiveTo=name;//only initiating player can enter!
+  markTileChanged(from.x, from.y);
+  sendMessage('server message', `You have ${dur/1000} seconds to reach the stairs at the end of the maze!`, player);
+  let stairKey = Object.keys(fromTile.objects)[0];
+  let stairObj = fromTile.objects[stairKey];
+  stairObj.toX = toX;
+  stairObj.toY = toY;
+  stairObj.toZ = toZ;
+  let toTile = getTile(toX, toY, toZ);
+  if (toTile?.objects){
+    delete toTile.objects;
+    markTileChanged(toX, toY);
+  }
+  await dropMobLoot(mazeDrops[mazeName], toX, toY);
+  toTile.objects['lootbag'].teleBack = teleBack;
+  startChannel({
+    playerName: mazeName,
+    duration: dur,
+    cancelOnMove: false,
+    onComplete: () => {
+      //delete stairs here, prize stays
+      delete fromTile.objects;//should delete stairs
+      markTileChanged(fromX, fromY);
+      sendMessage('pk message', `The stairs disappear from the end of the maze...`, player);
+    },
+
+    onCancel: () => {
+    }
+  });
+}
+
 function startChannel({
   playerName,
   duration,            // ms
@@ -3393,26 +3509,35 @@ function startChannel({
   cancelOnMove = true
 }) {
   const player = players[playerName];
-  if (!player) return;
+  //if (!player) return;
 
   // already channeling
   if (activeChannels[playerName]) return;
-
-  const startX = player.x;
-  const startY = player.y;
-  const startZ = player.z;
+  let startX; let startY; let startZ;
+  if (player){
+    startX = player.x;
+    startY = player.y;
+    startZ = player.z;
+  } else {
+    startX = 0;
+    startY = 0;
+    startZ = 0;
+  }
   const startTime = Date.now();
-
   // tell client to show progress bar
-  io.to(player.sock_id).emit('channelStart', {
-    duration,
-    startTime
-  });
+  if (player){
+    io.to(player.sock_id).emit('channelStart', {
+      duration,
+      startTime
+    });
+  }
 
   const timer = setTimeout(() => {
     delete activeChannels[playerName];
     onComplete?.();
-    io.to(player.sock_id).emit('channelEnd');
+    if (player){
+      io.to(player.sock_id).emit('channelEnd');
+    }
   }, duration);
 
   activeChannels[playerName] = {
@@ -4120,6 +4245,11 @@ function mobRangeAttack(mob, target) {
   let decay = 10;
   if (mob.type==='spiderQueen'){
     decay = 0;
+  }
+  if (mob.type==='troll'){
+    if (dir==='right'){
+      return;
+    }
   }
   if (mob.rangeAttack?.slow === true) {
     let slowTime = mob.rangeAttack.slowTime;

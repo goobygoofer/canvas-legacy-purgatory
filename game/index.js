@@ -2588,7 +2588,7 @@ function drawQuestTiles(chunk){
   if (!devMode) return;
   ctx.drawImage(
     spriteSheet,
-    base_tiles['safeTile'].x, base_tiles['safeTile'].y,
+    base_tiles['questTile'].x, base_tiles['questTile'].y,
     16, 16,
     j * 32, i * 32, 32, 32
   );
@@ -2680,6 +2680,7 @@ function playerHasRoofOnOrAbove() {
 
 const shadowCasters = [
   "rockroof", "woodroof", "stoneroof",
+  "woodblock", "stoneblock",
   "woodblock0","woodblock1","woodblock2","woodblock3",
   "rock0","rock1","rock2","rock3", "rock4",
   "ironrock0","ironrock1","ironrock2","ironrock3","ironrock4",
@@ -2806,7 +2807,7 @@ function drawShadows() {
       for (let z of zLevels) {
 
         const tile = cell[z];
-        if (!tile?.objects || !tile?.roof) continue;
+        //if (!tile?.objects || !tile?.roof) continue;
 
         // ---- CHECK IF THIS Z IS A CASTER ----
         let isCaster = false;
