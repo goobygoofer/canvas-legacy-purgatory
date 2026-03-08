@@ -235,6 +235,17 @@ async function getLeaderboard() {
 
     UNION ALL
 
+    SELECT 'Cooking' AS skill, player_name, cookingXp AS xp
+    FROM (
+      SELECT player_name, cookingXp
+      FROM players
+      WHERE player_name <> 'Admin'
+      ORDER BY cookingXp DESC
+      LIMIT 1
+    ) AS t
+
+    UNION ALL
+
     SELECT 'Mage' AS skill, player_name, mageXp AS xp
     FROM (
       SELECT player_name, mageXp
@@ -275,6 +286,8 @@ async function initPlayer(name) {//try this with select * isntead
   let swordXp = result[0].swordXp;
   let mageXp = result[0].mageXp;
   let fishingXp = result[0].fishingXp;
+  let cookingXp = result[0].cookingXp;
+  let cookingLvl = await levelFromXp(cookingXp);
   let archeryXp = result[0].archeryXp;
   let craftXp = result[0].craftXp;
   let miningXp = result[0].miningXp;
@@ -341,6 +354,8 @@ async function initPlayer(name) {//try this with select * isntead
     craftLvl: craftLvl,
     woodcuttingLvl: woodcuttingLvl,
     miningLvl: miningLvl,
+    cookingXpTotal: cookingXp,
+    cookingLvl: cookingLvl,
     lastState: null,
     isCrafting: false,
     lastHitBy: null,
@@ -357,6 +372,7 @@ async function initPlayer(name) {//try this with select * isntead
     obscured: false,
     //quests
     trollQuest:result[0].trollQuest,
+    chefQuest:result[0].chefQuest,
     maze1:0//always this, just to set off quest tile
   };
   let player = players[name];
@@ -391,6 +407,7 @@ async function dbPlayer(name) {
     miningXp = ?,
     archeryXp = ?,
     fishingXp = ?,
+    cookingXp = ?,
     head = ?,
     body = ?,
     hand = ?,
@@ -411,6 +428,7 @@ async function dbPlayer(name) {
     player.miningXpTotal,
     player.archeryXpTotal,
     player.fishingXpTotal,
+    player.cookingXpTotal,
     player.head,
     player.body,
     player.hand,
@@ -525,6 +543,7 @@ async function removeItem(playerName, itemId, amount) {
     AND amount <= 0
   `;
   await query(cleanup, [playerName, itemId]);
+  await syncInventory(playerName);
 }
 
 async function addBankItem(playerName, itemId, amount) {
@@ -806,6 +825,8 @@ async function emitPlayerState(player) {
       woodcuttingXpTotal: player.woodcuttingXpTotal,
       miningLvl: player.miningLvl,
       miningXpTotal: player.miningXpTotal,
+      cookingXpTotal: player.cookingXpTotal,
+      cookingLvl: player.cookingLvl,
       activeInvItem: player.activeInventory,
       obscured: player.obscured
     });
@@ -904,6 +925,11 @@ async function dropPlayerLootbag(playerName) {
   for (const item of inv) {
     const name = Object.keys(baseTiles).find(key => baseTiles[key].id === item.id);
     if (!name) continue; // skip invalid items
+    if (noTradeDrop.includes(name)){
+      let noName = baseTiles[name]?.prettyName ?? name;
+      sendMessage('pk message', `Your ${noName} is subjected to the elements and disappears...`, player);
+      continue;
+    }
     lootbag.items[name] = { id: item.id, amt: item.amount };
   }
 
@@ -1257,6 +1283,20 @@ io.on('connection', async (socket) => {
     await syncInventory(socket.user);
   });
 
+  socket.on('cookItem', async (data) => {
+    let player = players[socket.user];
+    if (player.chefQuest===0){
+      sendMessage('pk message', `You must start the Chef's Quest to use the cooking range!`, player);
+      return;
+    }
+    if (player.chefQuest<=1 && data!=='cookedRedfish'){
+      sendMessage('pk message', `You must finish the Chef's Quest to prepare this!`, player);
+      return;     
+    }
+    await craftItem(socket.user, data);
+    await syncInventory(socket.user);
+  });
+
   // Player withdraws from bank → goes into inventory
   socket.on('bankWithdraw', async (data) => {
     await bankWithdraw(socket, data);
@@ -1469,6 +1509,11 @@ function tradeOfferUpdate(name, slot, amount){
 
   const item = players[name].inventory[slot];
   if (!item) {
+    return;
+  }
+  if (noTradeDrop.includes(itemById[item.id])){
+    let noName = baseTiles[itemById[item.id]]?.prettyName ?? itemById[item.id];
+    sendMessage('pk message', `${noName}'s cannot be traded!`, players[name]);
     return;
   }
 
@@ -2077,7 +2122,7 @@ async function initMaze(player, maze){
   switch (maze){
     case 'maze1':
       //player timer to add dungeon stairs to end of maze for x seconds
-      //async function setMazeTimer(name, mazeName, dur, from, to, ) {
+      //async function setMazeTimer(name, mazeName, dur, from, to, teleBack) {
       await setMazeTimer(
         player.name, maze, 6000,
         {x:265, y:12, z:0},
@@ -2093,55 +2138,60 @@ async function checkCollisionBaseTile(name, tile) {
   if (!player) return;
 
   if (tile['b-t'] === 'water') {
-    const activeSlotIndex = player.activeInventory;
-    const activeSlot = player.inventory[activeSlotIndex];
-    if (!activeSlot) return;
-
-    const activeItem = itemById[activeSlot.id];
-    if (activeItem !== 'bucket') return;
-
-    const bucketId = idByItem('bucket');
-    const waterBucketId = baseTiles['waterbucket'].id;
-
-    // Check if player already has water bucket
-    const existing = await getItemAmount(name, waterBucketId);
-    if (existing > 0) {
-      // stacking allowed
-      // remove one bucket
-      await removeItem(name, bucketId, 1);
-      await addItem(name, waterBucketId, 1);
-      sendMessage('server message', `You fill the bucket with water.`, player);
-      await syncInventory(name);
-      return;
-    }
-
-    // Inventory full? Check if we can replace this slot
-    const slotsUsed = await getInventoryCount(name);
-    if (slotsUsed >= 32) {
-      // If the **current slot has the bucket**, we can replace it
-      player.inventory[activeSlotIndex].id = waterBucketId;
-      sendMessage('server message', `You fill the bucket with water.`, player);
-      await removeItem(name, bucketId, 1);
-      await addItem(name, waterBucketId, 1);
-      await syncInventory(name);
-      return;
-    }
-
-    // Otherwise, normal add
-    const added = await addItem(name, waterBucketId, 1);
-    if (added === 0) {
-      sendMessage('pk message', `Your inventory is full.`, player);
-      return;
-    }
-
-    // Remove bucket
-    await removeItem(name, bucketId, 1);
-    sendMessage('server message', `You fill the bucket with water.`, player);
-    await syncInventory(name);
+    await waterTileInteract(player, tile);
   }
+  //if tile campfire cook food
 }
 
-let npcs = ['shopkeep', 'belethor', 'merchant'];
+async function waterTileInteract(player, tile){
+  const activeSlotIndex = player.activeInventory;
+  const activeSlot = player.inventory[activeSlotIndex];
+  if (!activeSlot) return;
+
+  const activeItem = itemById[activeSlot.id];
+  if (activeItem !== 'bucket') return;
+
+  const bucketId = idByItem('bucket');
+  const waterBucketId = baseTiles['waterbucket'].id;//dafuq lol
+
+  // Check if player already has water bucket
+  const existing = await getItemAmount(player.name, waterBucketId);
+  if (existing > 0) {
+    // stacking allowed
+    // remove one bucket
+    await removeItem(player.name, bucketId, 1);
+    await addItem(player.name, waterBucketId, 1);
+    sendMessage('server message', `You fill the bucket with water.`, player);
+    await syncInventory(player.name);
+    return;
+  }
+
+  // Inventory full? Check if we can replace this slot
+  const slotsUsed = await getInventoryCount(player.name);
+  if (slotsUsed >= 32) {
+    // If the **current slot has the bucket**, we can replace it
+    player.inventory[activeSlotIndex].id = waterBucketId;
+    sendMessage('server message', `You fill the bucket with water.`, player);
+    await removeItem(player.name, bucketId, 1);
+    await addItem(player.name, waterBucketId, 1);
+    await syncInventory(player.name);
+    return;
+  }
+
+  // Otherwise, normal add
+  const added = await addItem(player.name, waterBucketId, 1);
+  if (added === 0) {
+    sendMessage('pk message', `Your inventory is full.`, player);
+    return;
+  }
+
+  // Remove bucket
+  await removeItem(player.name, bucketId, 1);
+  sendMessage('server message', `You fill the bucket with water.`, player);
+  await syncInventory(player.name);
+}
+
+let npcs = ['shopkeep', 'belethor', 'merchant', 'chef'];
 
 async function npcInteract(name, npcName){
   let player = players[name];
@@ -2163,7 +2213,7 @@ async function npcQuest(player, npcObj){
   let npcSpeech = npcObj.quest[questStage].speech;
   sendMessage('server message', npcSpeech, player);
   if (npcObj.quest[questStage]?.action){
-    npcObj.quest[questStage].action(player, query, addItem);//won't necessarily query, but fine this way
+    npcObj.quest[questStage].action(player, query, addItem, removeItem, getItemAmount, sendMessage);//won't necessarily query, but fine this way
   }
 }
 
@@ -2442,6 +2492,9 @@ async function giveXp(playerName, xp, type) {
       break;
     case "mining":
       player.miningXpTotal += xp;
+      break;
+    case "cook":
+      player.cookingXpTotal += xp;
       break;
   }
 }
@@ -2971,6 +3024,10 @@ async function checkInteract(name, mapObjects) {
     io.to(players[name].sock_id).emit('crafting');//opens up crafting for player
     return true;
   }
+  if (objName === 'cookingRange'){
+    io.to(players[name].sock_id).emit('cooking');//opens up crafting for player
+    return true;
+  }
   if (objName === 'forge') {
     smeltOre(name);//tries to smelt whatever player has selected in inventory
     return true;
@@ -3212,15 +3269,15 @@ async function resourceInteract(playerName, x, y, z, objName) {
     }
     await syncInventory(playerName);
   }
+  let resXp = 1;
+  if (objDef?.xp) resXp = objDef.xp;
   if (itemById[player.hand].startsWith('axe')) {
     sendSound(player, ['chop']);
-    //player.woodcuttingXpTotal += 1;
-    await giveXp(player.name, 1, "woodcutting");
+    await giveXp(player.name, resXp, "woodcutting");
   }
   if (itemById[player.hand].startsWith('pickaxe')) {
     sendSound(player, ['pickaxe']);
-    //player.miningXpTotal += 1;
-    await giveXp(player.name, 1, "mining");
+    await giveXp(player.name, resXp, "mining");
   }
   //rare drop
   if (objDef.rareDrop) {//implies also has .rarity
@@ -3557,6 +3614,10 @@ let zRaise = [
   'stoneblock0'
 ]
 
+let noTradeDrop = [//items that can't be dropped, lootbagged, or traded
+  "orbFinder"
+]
+
 async function dropItem(name, item) {
   let player = players[name];
   if (player.murderer) {
@@ -3600,7 +3661,11 @@ async function dropItem(name, item) {
         return;
     }
   }
-
+  if (noTradeDrop.includes(dropName)){
+    let noName = baseTiles[dropName]?.prettyName ?? dropName;
+    sendMessage('pk message', `${noName}'s cannot be dropped!`, player);
+    return;
+  }
   tile[container] ??= {};
 
   //tile[container][dropName] = { name: dropName };
@@ -3658,44 +3723,76 @@ async function craftItem(playerName, itemName, smelt = false) {
     sendMessage('pk message', `DON'T`, player);
     return;
   }
+  //
   let tile = getTile(player.x, player.y, player.z);
   const tileObjects = tile.objects;
 
   // normal crafting requires craft table; smelting bypasses table check
-  if (!smelt && !tileObjects?.craftTable) return;
+  if (!smelt && !tileObjects?.craftTable && !tileObjects?.cookingRange) return;
 
   const itemDef = baseTiles[itemName];
-  if (!itemDef?.craft && !itemDef?.smelt) return; // not craftable
+  if (!itemDef?.craft && !itemDef?.smelt && !itemDef?.cook) return; // not craftable
   // ---------- check materials ----------
   let craftAmount = 1;
   if (itemDef?.craftAmount) {
     craftAmount = itemDef.craftAmount;
   }
+  //above here
   if (itemDef?.craft || itemDef?.smelt) {
     if (itemDef?.craftLvl > player.craftLvl) {
       sendMessage('pk message', `You need a crafting level of ${itemDef.craftLvl} to make this item...`, player);
       return;
     }
-    let materialSlot;
-    if (itemDef?.craft) materialSlot = "craft";
-    if (itemDef?.smelt) materialSlot = "smelt";
-    if (itemDef?.brew) materialSlot = "brew"
-    for (const [materialName, requiredAmount] of Object.entries(itemDef[materialSlot])) {
-      const materialId = idByItem(materialName);
-      const playerAmount = await getItemAmount(playerName, materialId);
-      if (playerAmount < requiredAmount){
-        sendMessage('pk message', `You don't have enough ${materialName} to make this...`, player);
-        return;
-      };
-    }
-    //remove materials
-    for (const [materialName, requiredAmount] of Object.entries(itemDef[materialSlot])) {
-      const materialId = idByItem(materialName);
-      await removeItem(playerName, materialId, requiredAmount);
-      //players[playerName].craftXpTotal += requiredAmount;
-      await giveXp(playerName, requiredAmount, "craft");
+  }
+  if (itemDef?.cook){
+    if (itemDef?.cookingLvl > player.cookingLvl){
+      sendMessage('pk message', `You need a cooking level of ${itemDef.cookLvl} to prepare this...`, player);
+      return;
     }
   }
+  let materialSlot;
+  if (itemDef?.craft) materialSlot = "craft";
+  if (itemDef?.smelt) materialSlot = "smelt";
+  if (itemDef?.brew) materialSlot = "brew";
+  if (itemDef?.cook) materialSlot = "cook";
+  let questStatus = true;
+  if (materialSlot==='cook'){
+    questStatus = await chefQuestLogic(player, itemName);
+  }
+  if (!questStatus){
+    sendMessage('pk message', `You must complete the Chef's Quest to prepare this!`, player);
+    return;
+  }
+  for (const [materialName, requiredAmount] of Object.entries(itemDef[materialSlot])) {
+    const materialId = idByItem(materialName);
+    const playerAmount = await getItemAmount(playerName, materialId);
+    if (playerAmount < requiredAmount) {
+      sendMessage('pk message', `You don't have enough ${materialName} to make this...`, player);
+      return;
+    };
+  }
+  //remove materials
+  let xpType;
+  switch (materialSlot){
+    case 'craft':
+    case 'smelt':
+      xpType = 'craft';
+      break;
+    case 'cook':
+      xpType = 'cook';
+      break;
+  }
+  let xpGiven = 0;
+  for (const [materialName, requiredAmount] of Object.entries(itemDef[materialSlot])) {
+    const materialId = idByItem(materialName);
+    await removeItem(playerName, materialId, requiredAmount);
+    xpGiven+=requiredAmount;
+    //await giveXp(playerName, requiredAmount, xpType);
+  }
+  if (itemDef?.xp){
+    xpGiven=itemDef.xp;
+  }
+  await giveXp(playerName, xpGiven, xpType);
   // ---------- add crafted item (WITH SAFETY) ----------
   const craftedId = idByItem(itemName);
   if (!craftedId){
@@ -3728,6 +3825,63 @@ async function craftItem(playerName, itemName, smelt = false) {
     sendMessage('server message', `You made a ${itemName}!`, player);
   }
   await syncInventory(playerName);
+}
+
+async function chefQuestLogic(player, itemName){
+  if (player.chefQuest===1){
+    if (itemName==='cookedRedfish'){
+      await query(
+        "UPDATE players SET chefQuest = 2 WHERE player_name = ?",
+        [player.name]
+      );
+      player.chefQuest = 2;
+      return true;
+    } else return false;
+  }
+  if (player.chefQuest===2 && itemName!=='cookedRedfish'){
+    sendMessage('pk message', `You must complete the Chef's Quest to prepare this!`, player);
+    return false;
+  }
+  if (player.chefQuest===3){
+    if (itemName==='bread'){
+      await query(
+        "UPDATE players SET chefQuest = 4 WHERE player_name = ?",
+        [player.name]
+      );
+      player.chefQuest = 4;
+      return true;     
+    }
+  else if (itemName==='cookedRedfish'){
+    return true;
+  } else {
+      sendMessage('pk message', `You must complete the Chef's Quest to prepare this!`, player);
+      return false;
+    }
+  }
+  if (player.chefQuest===4){
+    if (itemName==='cookedRedfish' || itemName==='bread'){
+      return true;
+    } else {
+      sendMessage('pk message', `You must complete the Chef's Quest to prepare this!`, player);
+      return false;
+    }
+  }
+  if (player.chefQuest===5){
+    if (itemName==='fishSandwich'){
+      await query(
+        "UPDATE players SET chefQuest = 6 WHERE player_name = ?",
+        [player.name]
+      );
+      player.chefQuest = 6;
+    }
+    else if (itemName==='bread' || itemName==='cookedRedfish'){
+      return true;
+    } else {
+      sendMessage('pk message', `You must complete the Chef's Quest to prepare this!`, player);
+      return false;
+    }
+  }
+  return true;
 }
 
 async function smeltOre(playerName) {

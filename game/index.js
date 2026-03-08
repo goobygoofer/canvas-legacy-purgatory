@@ -159,6 +159,10 @@ const craftableList = Object.keys(base_tiles).filter(
   name => base_tiles[name]?.craft && Object.keys(base_tiles[name].craft).length > 0
 );
 
+const cookableList = Object.keys(base_tiles).filter(
+  name => base_tiles[name]?.cook && Object.keys(base_tiles[name].cook).length > 0
+);
+
 //console.log(craftableList);
 
 // optional helper: get recipe for a given item
@@ -437,6 +441,7 @@ canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
 function closePopups(){
   crafting = false;
+  cooking = false;
   showLeaderboard = false;
   if (bankOpen){
     closeBank();
@@ -797,7 +802,7 @@ function handleMainClick(cX, cY, mX=null, mY=null, subX=null, subY=null){
     sendPaint(mX, mY, subX, subY, currentButton);
     return;
   }
-  if (crafting){
+  if (crafting || cooking){
     handleCraftMenuClick(cX, cY);
     return;
   }
@@ -818,7 +823,13 @@ function isCraftButtonClicked(mx, my) {
 
 function handleCraftMenuClick(mx, my){
   if (isCraftButtonClicked(mx, my)){
-    craftItem();
+    if (crafting){
+      craftItem();
+    }
+    if (cooking){
+      //cookItem();
+      cookItem();
+    }
   }
   if (
     mx < CRAFT_X || mx > CRAFT_X + CRAFT_W ||
@@ -834,10 +845,20 @@ function handleCraftMenuClick(mx, my){
   const row = Math.floor(ly / cellW);
 
   const index = row * CRAFT_COLS + col;
-
-  if (index < 0 || index >= craftableList.length) return;
-
-  activeCraftItem = craftableList[index];
+  if (crafting){
+    if (index < 0 || index >= craftableList.length) return;
+  }
+  if (cooking){
+    console.log(`index: ${index}`);
+    if (index < 0 || index >= cookableList.length) return;
+  }
+  if (crafting){
+    activeCraftItem = craftableList[index];
+  }
+  if (cooking){
+    console.log("cooking index");
+    activeCraftItem = cookableList[index];
+  }
 }
 
 function handleSettingsClick(mouseX, mouseY) {
@@ -890,6 +911,18 @@ function toggleCrafting(){
   crafting = true;
 }
 
+let cooking = false;
+function toggleCooking(){
+  activeTab = "inventory";
+  if (painting===true){
+    togglePaint();
+  }
+  drawInventory();
+  cooking = true;
+}
+
+
+
 function updateInventory(data){
   playerData.inventory = data;
   drawInventory();
@@ -912,6 +945,10 @@ function togglePaint(){
 
 function craftItem(){
   socket.emit('craftItem', activeCraftItem);
+}
+
+function cookItem(){
+  socket.emit('cookItem', activeCraftItem);
 }
 
 function sendPaint(x, y, subX, subY, leftRight){
@@ -997,6 +1034,8 @@ socket.on('playerState', (data)=> {
   playerData.miningXpTotal=data.miningXpTotal;
   playerData.mageXpTotal=data.mageXpTotal;
   playerData.mageLvl=data.mageLvl;
+  playerData.cookingXpTotal = data.cookingXpTotal;
+  playerData.cookingLvl = data.cookingLvl;
   playerData.mana=data.mana;
   playerData.activeInvItem=data.activeInvItem;
   playerData.obscured=data.obscured;
@@ -1021,6 +1060,10 @@ socket.on('updateInventory', (data) => {
 
 socket.on('crafting', (data) => {
   toggleCrafting();
+});
+
+socket.on('cooking', (data) => {
+  toggleCooking();
 });
 
 socket.on('mapDownload', (data) => {
@@ -1495,7 +1538,7 @@ function drawLeaderboard() {
   ctx.font = '14px Arial';
   ctx.textAlign = 'left';
   const startY = y + 60;
-  const lineHeight = 26;
+  const lineHeight = 18;
 
   // column positions
   const colSkill = x + 20;
@@ -1701,7 +1744,8 @@ const statsConfig = [
   { key: "craftLvl", name: "Crafting", sx: base_tiles['craftTools'].x, sy: base_tiles['craftTools'].y, xpTotalKey: "craftXpTotal" },
   { key: "woodcuttingLvl", name: "Woodcutting", sx: base_tiles['axe'].x, sy: base_tiles['axe'].y, xpTotalKey: "woodcuttingXpTotal" },
   { key: "miningLvl", name: "Mining", sx: base_tiles['pickaxe'].x, sy: base_tiles['pickaxe'].y, xpTotalKey: "miningXpTotal" },
-  { key: "fishingLvl", name: "Fishing", sx: base_tiles['fishingpole'].x, sy: base_tiles['fishingpole'].y, xpTotalKey: "fishingXpTotal" }
+  { key: "fishingLvl", name: "Fishing", sx: base_tiles['fishingpole'].x, sy: base_tiles['fishingpole'].y, xpTotalKey: "fishingXpTotal" },
+  { key: "cookingLvl", name: "Cooking", sx: base_tiles['cookedRedfish'].x, sy: base_tiles['cookedRedfish'].y, xpTotalKey: "cookingXpTotal" }
 ];
 
 function drawStats(mx, my) {
@@ -2418,13 +2462,17 @@ function getEquipSprite(item, facing){
 }
 
 function drawCrafting(){
-  if (ispainting || !crafting) return;
-  if (!crafting) return;//this necessary?
+  //if (ispainting || !crafting || !cooking) return;
+  if (!crafting && !cooking) return;//this necessary?
   ctx.fillStyle = "#ffae4485"
   ctx.fillRect(100, 50, 400, 200);
 let hoveredCraftItem = null;
 
-craftableList.forEach((item, i) => {
+let drawList;
+if (cooking) drawList = cookableList;
+if (crafting) drawList = craftableList;
+
+drawList.forEach((item, i) => {
   const col = i % CRAFT_COLS;
   const row = Math.floor(i / CRAFT_COLS);
 
@@ -2476,8 +2524,15 @@ if (hoveredCraftItem) {
 
 function drawCraftTooltip(itemName, x, y) {
   if (tool_tips===false) return;
-  const recipe = base_tiles[itemName]?.craft;
-  if (!recipe) return;
+  let recipe;
+  if (crafting){
+    recipe = base_tiles[itemName]?.craft;
+    if (!recipe) return;
+  }
+  if (cooking){
+    recipe = base_tiles[itemName]?.cook;
+    if (!recipe) return;
+  }
 
   const padding = 6;
   const iconSize = 16;
@@ -2682,6 +2737,7 @@ const shadowCasters = [
   "rockroof", "woodroof", "stoneroof",
   "woodblock", "stoneblock",
   "woodblock0","woodblock1","woodblock2","woodblock3",
+  "stoneblock0", "stoneblock1", "stoneblock3",  
   "rock0","rock1","rock2","rock3", "rock4",
   "ironrock0","ironrock1","ironrock2","ironrock3","ironrock4",
   "coalrock0","coalrock1","coalrock2","coalrock3", "coalrock4",

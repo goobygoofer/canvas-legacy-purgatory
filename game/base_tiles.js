@@ -527,7 +527,135 @@ base_tiles = {
     id: 90,
     smelt: { amethyst: 5 },
   },
+  "cookedRedfish":{
+    "x":64,"y":496,
+    prettyName: "cooked redfish",
+    kind: "item",
+    id: 91,
+    container: "objects",
+    collision: false,
+    cook: { redfish: 1 }
+  },
+  "wheat":{//wheatPlant will have stages later
+    "x":240,"y":432,
+    kind: "item",
+    id: 92,
+    container: "objects",
+    collision: false
+  },
+  "bread":{
+    "x":256,"y":432,
+    kind: "item",
+    id: 93,
+    container: "objects",
+    collision: false,
+    hp: 5,
+    time: 2000,
+    consume: true,
+    cook: { wheat: 1, waterbucket: 1 }
+  },
+  "tomato":{
+    "x":256,"y":496,
+    kind: "item",
+    id: 94,
+    container: "objects",
+    collision: false,
+    hp: 10,
+    time: 2000,
+    consume: true
+  },
+  "fishSandwich":{
+    "x":288,"y":496,
+    kind: "item",
+    id: 95,
+    container: "objects",
+    collision: false,
+    hp: 40,
+    time: 2000,
+    consume: true,
+    cook: { bread: 1, cookedRedfish: 1, tomato: 1 }
+  },
+  "rawMeat":{
+    "x":288,"y":304,
+    kind: "item",
+    id: 96,
+    container: "objects",
+    collision: false,
+    hp: -20,
+    time: 2000,
+    consume: true
+  },
+  "cookedMeat":{
+    "x":304,"y":304,
+    kind: "item",
+    id: 97,
+    container: "objects",
+    collision: false,
+    hp: 20,
+    time: 2000,
+    consume: true,
+    cook: {rawMeat:1}
+  },
+  "meatSandwich":{
+    "x":272,"y":496,
+    kind: "item",
+    id: 98,
+    container: "objects",
+    collision: false,
+    hp: 45,
+    time: 2000,
+    consume: true,
+    cook: {cookedMeat:1, bread:1, tomato:1}
+  },
+  "carrot":{
+    "x":288,"y":512,
+    kind: "item",
+    id: 99,
+    container: "objects",
+    collision: false,
+    hp: 10,
+    time: 2000,
+    consume: true
+  },
+  "rawRatmeat":{//96, 144
+    "x":96,"y":144,
+    prettyName: "raw rat meat",
+    kind: "item",
+    id: 100,
+    container: "objects",
+    collision: false,
+    hp: -25,
+    time: 2000,
+    consume: true
+  },
+  "cookedRatmeat":{
+    "x":128,"y":672,
+    prettyName: "cooked rat meat",
+    kind: "item",
+    id: 101,
+    container: "objects",
+    collision: false,
+    hp: 5,
+    time: 2000,
+    consume: true,
+    cook: {rawRatmeat:1}
+  },
+  "ratStew":{
+    "x":112,"y":752,
+    prettyName: "rat stew",
+    kind: "item",
+    id: 102,
+    container: "objects",
+    collision: false,
+    hp: 100,
+    time: 1000,
+    consume: true,
+    cook: {cookedRatmeat: 1, carrot: 2, tomato: 2, waterbucket: 1}
+  },
   //LAST ADDED ITEM 
+  "cookingRange":{
+    "x":192,"y":992
+  },
   "pShadow":{
     "x":256,"y":752
   },
@@ -559,7 +687,24 @@ base_tiles = {
   "deathskull":{
     "x":144,"y":96
   },
-/*-----------shop items-----------------*/
+/*-----------npc shop items-----------------*/
+  "wheatShop":{
+    "x":240,"y":432,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 25},
+    amount: 1,
+    item: "wheat",
+  },
+
+  "tomatoShop":{
+    "x":256,"y":496,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 25},
+    amount: 1,
+    item: "tomato"
+  },
   "healthpotionShop":{
     "x":256,"y":896,
     container: "objects",
@@ -1460,6 +1605,7 @@ base_tiles = {
   "shopkeep": { "x": 16, "y": 128 },//no shopkeepL "y"et
   "belethor": {"x":208,"y":1088},
   "merchant": {"x":304,"y":640},
+  "chef": {"x":304,"y":640},
   "gnollR": { "x": 224, "y": 576 },
   "gnollL": { "x": 240, "y": 576 },
   "rangeGoblinR": { "x": 80, "y": 336 },

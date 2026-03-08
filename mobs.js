@@ -27,7 +27,8 @@ const mobTypes = {
 
         drop: [
             { name: "coin", min: 1, max: 3, weight: 100 },
-            { name: "hide", min: 1, max: 1, weight: 40 }
+            { name: "hide", min: 1, max: 1, weight: 40 },
+            { name: "rawRatmeat", min:1, max:1, weight: 1}
         ]
     }),
     skeleton: (x, y) => ({
@@ -131,7 +132,8 @@ const mobTypes = {
         facing: "left",
         passive: true,
         drop: [
-            { name: "hide", min: 1, max: 2, weight: 100 }
+            { name: "hide", min: 1, max: 2, weight: 100 },
+            { name: "rawMeat", min:1, max:1, weight: 50 }
         ]
     }),
     zorg: (x, y) => ({
@@ -329,7 +331,8 @@ const mobTypes = {
         facing: "left",
 
         drop: [
-            { name: "hide", min: 1, max: 2, weight: 200 }
+            { name: "hide", min: 1, max: 2, weight: 200 },
+            { name: "rawMeat", min:1, max:1, weight: 50 }
         ]
     }),
     troll: (x, y) => ({

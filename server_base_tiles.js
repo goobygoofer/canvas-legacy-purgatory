@@ -894,7 +894,130 @@ module.exports = {
     smelt: { amethyst: 5 },
     craftLvl: 20
   },
+  "cookedRedfish":{
+    prettyName: "cooked redfish",
+    kind: "item",
+    id: 91,
+    container: "objects",
+    collision: false,
+    cook: { redfish: 1 }
+  },
+  "wheat":{//wheatPlant will have stages later
+    kind: "item",
+    id: 92,
+    container: "objects",
+    collision: false
+  },
+  "bread":{
+    kind: "item",
+    id: 93,
+    container: "objects",
+    collision: false,
+    hp: 15,
+    time: 1000,
+    consume: true,
+    cook: { wheat: 1, waterbucket: 1 }
+  },
+  "tomato":{
+    kind: "item",
+    id: 94,
+    container: "objects",
+    collision: false,
+    hp: 10,
+    time: 2000,
+    consume: true
+  },
+  "fishSandwich":{
+    prettyName: "fish sandwich",
+    kind: "item",
+    id: 95,
+    container: "objects",
+    collision: false,
+    hp: 40,
+    time: 2000,
+    consume: true,
+    cook: { bread: 1, cookedRedfish: 1, tomato: 1 }
+  },
+  "rawMeat":{
+    prettyName: "raw meat",
+    kind: "item",
+    id: 96,
+    container: "objects",
+    collision: false,
+    hp: -20,
+    time: 2000,
+    consume: true
+  },
+  "cookedMeat":{
+    prettyName: "cooked meat",
+    kind: "item",
+    id: 97,
+    container: "objects",
+    collision: false,
+    hp: 20,
+    time: 2000,
+    consume: true,
+    cook: {rawMeat: 1}
+  },
+  "meatSandwich":{
+    prettyName: "meat sandwich",
+    kind: "item",
+    id: 98,
+    container: "objects",
+    collision: false,
+    hp: 45,
+    time: 2000,
+    consume: true,
+    cook: {cookedMeat:1, bread:1, tomato:1}
+  },
+  "carrot":{
+    kind: "item",
+    id: 99,
+    container: "objects",
+    collision: false,
+    hp: 10,
+    time: 2000,
+    consume: true
+  },
+  "rawRatmeat":{//96, 144
+    prettyName: "raw rat meat",
+    kind: "item",
+    id: 100,
+    container: "objects",
+    collision: false,
+    hp: -25,
+    time: 2000,
+    consume: true
+  },
+  "cookedRatmeat":{
+    prettyName: "cooked rat meat",
+    kind: "item",
+    id: 101,
+    container: "objects",
+    collision: false,
+    hp: 5,
+    time: 2000,
+    consume: true,
+    cook: {rawRatmeat:1}
+  },
+  "ratStew":{
+    prettyName: "rat stew",
+    kind: "item",
+    id: 102,
+    container: "objects",
+    collision: false,
+    hp: 100,
+    time: 1000,
+    consume: true,
+    cook: {cookedRatmeat: 1, carrot: 2, tomato: 2, waterbucket: 1}
+  },
   //LAST ADDED ITEM
+  "cookingRange":{
+    prettyName: "cooking range",
+    kind: "interactable",
+    container: "objects",
+    collision: false
+  },
   "treasure":{
     drop: [
       { name: "coin", min: 1, max: 10000, weight: 10000 },
@@ -906,6 +1029,20 @@ module.exports = {
     ]
   },
 /*------------------npc shop items-------------------*/
+  "wheatShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 25},
+    amount: 1,
+    item: "wheat"
+  },
+  "tomatoShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 25},
+    amount: 1,
+    item: "tomato"
+  },
   "healthpotionShop":{
     container: "objects",
     kind: "interactable",
@@ -992,6 +1129,7 @@ module.exports = {
     rarity: 50,//every 50 trees by chance
     depletesTo: "tree1",
     requiresTool: "axe",
+    xp: 1,
     regrowsTo: [
       { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
@@ -1007,6 +1145,7 @@ module.exports = {
     rarity: 50,
     depletesTo: "tree2",
     requiresTool: "axe",
+    xp: 1,
     regrowsTo: [
       { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
@@ -1021,6 +1160,7 @@ module.exports = {
     rarity: 50,
     depletesTo: "tree3",
     requiresTool: "axe",
+    xp: 1,
     regrowsTo: [
       { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
@@ -1036,6 +1176,7 @@ module.exports = {
     rarity: 50,
     depletesTo: "tree4",
     requiresTool: "axe",
+    xp: 1,
     regrowsTo: [
       { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
@@ -1097,6 +1238,7 @@ module.exports = {
     depletesTo: "ironrock1",
     requiresTool: "pickaxe",
     reqLvl: 5,
+    xp: 5,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1119,6 +1261,7 @@ module.exports = {
     depletesTo: "ironrock2",
     requiresTool: "pickaxe",
     reqLvl: 5,
+    xp: 5,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1140,6 +1283,7 @@ module.exports = {
     depletesTo: "ironrock3",
     requiresTool: "pickaxe",
     reqLvl: 5,
+    xp: 5,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1161,6 +1305,7 @@ module.exports = {
     depletesTo: "ironrock4",
     requiresTool: "pickaxe",
     reqLvl: 5,
+    xp: 5,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1195,6 +1340,7 @@ module.exports = {
     drops: { rock: 1 },
     depletesTo: "rock1",
     requiresTool: "pickaxe",
+    xp: 1,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1214,6 +1360,7 @@ module.exports = {
     drops: { rock: 1 },
     depletesTo: "rock2",
     requiresTool: "pickaxe",
+    xp: 1,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1232,6 +1379,7 @@ module.exports = {
     drops: { rock: 1 },
     depletesTo: "rock3",
     requiresTool: "pickaxe",
+    xp: 1,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1250,6 +1398,7 @@ module.exports = {
     drops: { rock: 1 },
     depletesTo: "rock4",
     requiresTool: "pickaxe",
+    xp: 1,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1286,6 +1435,7 @@ module.exports = {
     depletesTo: "coalrock1",
     requiresTool: "pickaxe",
     reqLvl: 10,
+    xp: 8,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1307,6 +1457,7 @@ module.exports = {
     depletesTo: "coalrock2",
     requiresTool: "pickaxe",
     reqLvl: 10,
+    xp: 8,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1328,6 +1479,7 @@ module.exports = {
     depletesTo: "coalrock3",
     requiresTool: "pickaxe",
     reqLvl: 10,
+    xp: 8,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1349,6 +1501,7 @@ module.exports = {
     depletesTo: "coalrock4",
     requiresTool: "pickaxe",
     reqLvl: 10,
+    xp: 8,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1385,6 +1538,7 @@ module.exports = {
     depletesTo: "silverrock1",
     requiresTool: "pickaxe",
     reqLvl: 30,
+    xp: 15,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1406,6 +1560,7 @@ module.exports = {
     depletesTo: "silverrock2",
     requiresTool: "pickaxe",
     reqLvl: 30,
+    xp: 15,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1427,6 +1582,7 @@ module.exports = {
     depletesTo: "silverrock3",
     requiresTool: "pickaxe",
     reqLvl: 30,
+    xp: 15,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1448,6 +1604,7 @@ module.exports = {
     depletesTo: "silverrock4",
     requiresTool: "pickaxe",
     reqLvl: 30,
+    xp: 15,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1484,6 +1641,7 @@ module.exports = {
     depletesTo: "copperrock1",
     requiresTool: "pickaxe",
     reqLvl: 10,
+    xp: 10,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1505,6 +1663,7 @@ module.exports = {
     depletesTo: "copperrock2",
     requiresTool: "pickaxe",
     reqLvl: 10,
+    xp: 10,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1526,6 +1685,7 @@ module.exports = {
     depletesTo: "copperrock3",
     requiresTool: "pickaxe",
     reqLvl: 10,
+    xp: 10,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1547,6 +1707,7 @@ module.exports = {
     depletesTo: "copperrock4",
     requiresTool: "pickaxe",
     reqLvl: 10,
+    xp: 10,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1583,6 +1744,7 @@ module.exports = {
     depletesTo: "goldrock1",
     requiresTool: "pickaxe",
     reqLvl: 50,
+    xp: 20,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1604,6 +1766,7 @@ module.exports = {
     depletesTo: "goldrock2",
     requiresTool: "pickaxe",
     reqLvl: 50,
+    xp: 20,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1625,6 +1788,7 @@ module.exports = {
     depletesTo: "goldrock3",
     requiresTool: "pickaxe",
     reqLvl: 50,
+    xp: 20,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1646,6 +1810,7 @@ module.exports = {
     depletesTo: "goldrock4",
     requiresTool: "pickaxe",
     reqLvl: 50,
+    xp: 20,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1682,6 +1847,7 @@ module.exports = {
     depletesTo: "diamondrock1",
     requiresTool: "pickaxe",
     reqLvl: 70,
+    xp: 30,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1703,6 +1869,7 @@ module.exports = {
     depletesTo: "diamondrock2",
     requiresTool: "pickaxe",
     reqLvl: 70,
+    xp: 30,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1724,6 +1891,7 @@ module.exports = {
     depletesTo: "diamondrock3",
     requiresTool: "pickaxe",
     reqLvl: 70,
+    xp: 30,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1745,6 +1913,7 @@ module.exports = {
     depletesTo: "diamondrock4",
     requiresTool: "pickaxe",
     reqLvl: 70,
+    xp: 30,
     regrowsTo: [
       { name: "rock0", weight: 10000 },
       { name: "ironrock0", weight: 1500 },
@@ -1925,6 +2094,7 @@ module.exports = {
     depletesTo: "oak1",
     requiresTool: "axe",
     reqLvl: 25,
+    xp: 25,
     regrowsTo: [
       { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
@@ -1939,6 +2109,7 @@ module.exports = {
     depletesTo: "oak2",
     requiresTool: "axe",
     reqLvl: 25,
+    xp: 25,
     regrowsTo: [
       { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
@@ -1953,6 +2124,7 @@ module.exports = {
     depletesTo: "oak3",
     requiresTool: "axe",
     reqLvl: 25,
+    xp: 25,
     regrowsTo: [
       { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
@@ -1967,6 +2139,7 @@ module.exports = {
     depletesTo: "tree4",
     requiresTool: "axe",
     reqLvl: 25,
+    xp: 25,
     regrowsTo: [
       { name: "tree0", weight: 1000 },
       { name: "oak0", weight: 50 }
@@ -2070,14 +2243,14 @@ module.exports = {
     container: "objects",
     collision: true,
     prettyName: "Shopkeep",
-    speech: "Stand on an item in the shop and press Shift to buy it!"
+    speech: "Stand on an item in the shop and press Shift to buy it!\n"
   },
   "belethor": {
     kind: "npc",
     container: "objects",
     collision: true,
     prettyName: "Belethor",
-    speech: "They threw me down here for selling my sister...\nGood luck getting out of here..."
+    speech: "They threw me down here for selling my sister...\nGood luck getting out of here...\n"
   },
   "merchant":{
     kind: "npc",
@@ -2087,9 +2260,8 @@ module.exports = {
     quest: {
       name: "trollQuest",
       0:{
-        speech:`Hello, Traveller!\n The bridge east of the mountain pass is currently blocked by an
-        angry troll! I can't deliver my goods... If you can defeat it, I will reward you handsomely!`,
-        action: async (player, query, addItem) => {
+        speech:`Hello, Traveller!\n The bridge east of the mountain pass is currently blocked by an angry troll! I can't deliver my goods... If you can defeat it, I will reward you handsomely!\n`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
           //set trollQuest to 1
           await query(
             "UPDATE players SET trollQuest = 1 WHERE player_name = ?",
@@ -2102,11 +2274,11 @@ module.exports = {
         speech: `Did you defeat the troll yet?!`
       },
       2:{
-        speech: `Thank you so much! Please take this. (The merchant hands you some strange stones!)`,
-        action: async (player, query, addItem) => {
+        speech: `Thank you so much! Please take this.\n(The merchant hands you some strange stones!)\n`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
           let added = await addItem(player.name, 89, 4);
           if (added===0){
-            sendMessage('pk message', "Clear some inventory space to recieve your reward!", player);
+            sendMessage('pk message', "Clear some inventory space to recieve your reward!\n", player);
             return;
           }
           await query(
@@ -2117,7 +2289,109 @@ module.exports = {
         }
       },
       3:{
-        speech: `Thank you so much! Trade will be much better without that nasty troll...`
+        speech: `Thank you so much! Trade will be much better without that nasty troll...\n`
+      }
+    }
+  },
+  "chef":{
+    kind: "npc",
+    container: "objects",
+    collision: true,
+    prettyName: "Chef D",
+    quest: {
+      name: "chefQuest",
+      0:{
+        speech:`Chef D: Hey I need some help in the kitchen!\nCatch and cook me a redfish, but don't cook it on an open fire like a bandit... use the range over there by standing on it and pressing Shift!\n`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          await query(
+            "UPDATE players SET chefQuest = 1 WHERE player_name = ?",
+            [player.name]           
+          );
+          player.chefQuest = 1;
+        }
+      },
+      1:{
+        speech:`Chef D: Hurry up and get that redfish cooked!\nCatch a redfish, stand on the range, and press Shift,\n
+        heard?!`//gets incremented to 2 by cooking redfish, can't trade for one!
+      },
+      2:{
+        speech:`Chef D: Finally! Now take this wheat... Get some water in a bucket and come back to the range and make some bread! Wheat's out of season, if you lose it I have some over there that you can buy...\n`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          let added = await addItem(player.name, 92, 3);
+          if (added === 0) {
+            sendMessage('pk message', "Clear some inventory space to take the wheat!\n", player);
+            return;
+          }
+          await query(
+            "UPDATE players SET chefQuest = 3 WHERE player_name = ?",
+            [player.name]
+          );
+          player.chefQuest = 3;
+        }
+      },
+      3:{
+        speech: `Chef D: I don't smell bread baking!`
+      },
+      4:{
+        speech: `Chef D: Bout time! Take this tomato and make a delicious fish sammich!\n`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          let added = await addItem(player.name, 94, 3);
+          if (added === 0) {
+            sendMessage('pk message', "Clear some inventory space to take the tomato!", player);
+            return;
+          }
+          await query(
+            "UPDATE players SET chefQuest = 5 WHERE player_name = ?",
+            [player.name]
+          );
+          player.chefQuest = 5;
+        }
+      },
+      5:{
+        speech: `Chef D: I'm-- er I mean -- the customer is starving, hurry it up!\n`
+      },
+      6:{
+        speech: `Chef D: Got the sammich? Give it here!`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          const sammich = await getItemAmount(player.name, 95);
+          if (sammich===0){
+            sendMessage('pk message', `You don't even have the sammich on you!`, player);
+          }
+          await removeItem(player.name, 95, 1);
+          await query(
+            "UPDATE players SET chefQuest = 7 WHERE player_name = ?",
+            [player.name]
+          );
+          player.chefQuest = 7;
+        }
+      },
+      7:{
+        speech: `Chef D: Order up!\n(the chef eats the sammich in one bite!)\nThat was delicious! Now that you've got some cooking skills under your belt, feel free to use the range and cook whatever you want!\n`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          await query(
+            "UPDATE players SET chefQuest = 8 WHERE player_name = ?",
+            [player.name]
+          );
+          player.chefQuest = 8;
+        }
+      },
+      8:{
+        speech: `Chef D: I feel bad for eating that sammich... Here, it's payday!\n(the chef pays you some coin)\n`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          let added = await addItem(player.name, 21, 250);
+          if (added===0){
+            sendMessage('pk message', "Clear some inventory space to recieve your reward!", player);
+            return;
+          }
+          await query(
+            "UPDATE players SET chefQuest = 9 WHERE player_name = ?",
+            [player.name]           
+          );
+          player.chefQuest = 9;
+        }
+      },
+      9:{
+        speech:`Chef D: I could really go for a nice rat stew right now!\n`
       }
     }
   },
