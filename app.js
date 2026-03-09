@@ -4364,7 +4364,7 @@ async function randomFishingSpot(tile) {
 
 replenishResources();//run at server start to add random ores n shit
 setInterval(replenishResources, 60000 * 180);//every 3 hours
-setInterval(() => replenishResources(true), 10000);//1000*30*60);//every 30 minutes plant stage
+setInterval(() => replenishResources(true), 1000*30*60);//every 30 minutes plant stage
 setInterval(mapUpdate, 200);
 setInterval(mapPersist, 60000);//save map every minute
 
