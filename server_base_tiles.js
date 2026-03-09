@@ -906,7 +906,11 @@ module.exports = {
     kind: "item",
     id: 92,
     container: "objects",
-    collision: false
+    collision: false,
+    hp: 5,
+    time: 1000,
+    consume: true,
+    seed: {item:"wheatSeed", amt: 4},
   },
   "bread":{
     kind: "item",
@@ -925,7 +929,8 @@ module.exports = {
     collision: false,
     hp: 10,
     time: 2000,
-    consume: true
+    consume: true,
+    seed: {item:'tomatoSeed', amt:4}
   },
   "fishSandwich":{
     prettyName: "fish sandwich",
@@ -977,7 +982,8 @@ module.exports = {
     collision: false,
     hp: 10,
     time: 2000,
-    consume: true
+    consume: true,
+    seed: {item:"carrotSeed", amt: 4}
   },
   "rawRatmeat":{//96, 144
     prettyName: "raw rat meat",
@@ -1011,6 +1017,62 @@ module.exports = {
     consume: true,
     cook: {cookedRatmeat: 1, carrot: 2, tomato: 2, waterbucket: 1}
   },
+  "wheatSeed":{
+    prettyName: "wheat seed",
+    kind: "item",
+    id: 103,
+    container: "objects",
+    collision: false,
+    dropChange: "wheatPlant0",
+    containerChange: "resource",
+    farm: true,
+    owner: null//set by dropOwnedItem
+  },
+  "tomatoSeed":{
+    prettyName: "tomato seed",
+    kind: "item",
+    id: 104,
+    container: "objects",
+    collision: false,
+    farm: true,
+    dropChange: "tomatoPlant0",
+    containerChange: "resource",
+    owner: null
+  },
+  "carrotSeed":{
+    prettyName: "carrot seed",
+    kind: "item",
+    id: 105,
+    container: "objects",
+    collision: false,
+    farm: true,
+    dropChange: "carrotPlant0",
+    containerChange: "resource",
+    owner: null
+  },
+  "grape":{
+    prettyName: "grape",
+    kind: "item",
+    id: 106,
+    container: "objects",
+    collision: false,
+    mana: 10,
+    time: 500,
+    consume: true,
+    seed: {item:"grapeSeed", amt: 4}
+  },
+  "grapeSeed":{
+    prettyName: "grape seed",
+    kind: "item",
+    id: 107,
+    container: "objects",
+    collision: false,
+    farm: true,
+    dropChange: "grapePlant0",
+    containerChange: "resource",
+    owner: null,
+    lvl: 30
+  },
   //LAST ADDED ITEM
   "cookingRange":{
     prettyName: "cooking range",
@@ -1029,6 +1091,27 @@ module.exports = {
     ]
   },
 /*------------------npc shop items-------------------*/
+  "redfishShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 50},
+    amount: 1,
+    item: "redfish"
+  },
+  "codShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 20},
+    amount: 1,
+    item: "cod"
+  },
+  "goldfishShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 25},
+    amount: 1,
+    item: "goldfish"
+  },
   "wheatShop":{
     container: "objects",
     kind: "interactable",
@@ -1120,6 +1203,170 @@ module.exports = {
     attack : 20
   },
   // -----------------------------------resources----------------------------------------
+  //farming resources
+  "wheatPlant0":{
+    kind: "resource",
+    container: "objects",
+    collision: false,
+    prettyName: "wheat",
+    regrowsTo: [
+      {name: "wheatPlant1", weight: 100}
+    ],
+    farming: true,
+    owner: null
+  },
+  "wheatPlant1":{
+    kind: "resource",
+    container: "objects",
+    collision: false,
+    prettyName: "wheat",
+    regrowsTo: [
+      {name: "wheatPlant2", weight: 100}
+    ],
+    farming: true,
+    owner: null
+  },
+  "wheatPlant2":{
+    kind: "resource",
+    container: "objects",
+    collision: false,
+    prettyName: "wheat",
+    regrowsTo: [
+      {name: "wheatPlant3", weight: 100}
+    ],
+    farming: true,
+    owner:null
+  },
+  "wheatPlant3":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    prettyName: "wheat",
+    owner: null,
+    farming: true,
+    drops: "wheat",
+    xp: 20
+  },
+  "tomatoPlant0":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "tomato",
+    regrowsTo:[
+      {name: "tomatoPlant1", weight: 100}
+    ]
+  },
+  "tomatoPlant1":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "tomato",
+    regrowsTo:[
+      {name: "tomatoPlant2", weight: 100}
+    ]    
+  },
+  "tomatoPlant2":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "tomato",
+    drops: "tomato",
+    xp: 10
+  },
+  "carrotPlant0":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "carrot",
+    regrowsTo: [
+      {name: "carrotPlant1", weight: 100}
+    ]
+  },
+  "carrotPlant1":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "carrot",
+    regrowsTo: [
+      {name: "carrotPlant2", weight: 100}
+    ]
+  },
+  "carrotPlant2":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "carrot",
+    drops: "carrot",
+    xp: 10
+  },
+  "grapePlant0":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant1", weight: 100}
+    ],
+    lvl: 30
+  },
+  "grapePlant1":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant2", weight: 100}
+    ]
+  },
+  "grapePlant2":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant3", weight: 100}
+    ]
+  },
+  "grapePlant3":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant4", weight: 100}
+    ]
+  },
+  "grapePlant4":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    drops: "grape",
+    xp: 50
+  },
+  //last farming resource
   "tree0": {
     kind: "resource",
     container: "objects",
@@ -2301,7 +2548,7 @@ module.exports = {
     quest: {
       name: "chefQuest",
       0:{
-        speech:`Chef D: Hey I need some help in the kitchen!\nCatch and cook me a redfish, but don't cook it on an open fire like a bandit... use the range over there by standing on it and pressing Shift!\n`,
+        speech:`Hey I need some help in the kitchen!\nCatch and cook me a redfish, but don't cook it on an open fire like a bandit... use the range over there by standing on it and pressing Shift!\n`,
         action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
           await query(
             "UPDATE players SET chefQuest = 1 WHERE player_name = ?",
@@ -2311,11 +2558,11 @@ module.exports = {
         }
       },
       1:{
-        speech:`Chef D: Hurry up and get that redfish cooked!\nCatch a redfish, stand on the range, and press Shift,\n
+        speech:`Hurry up and get that redfish cooked!\nCatch a redfish, stand on the range, and press Shift,\n
         heard?!`//gets incremented to 2 by cooking redfish, can't trade for one!
       },
       2:{
-        speech:`Chef D: Finally! Now take this wheat... Get some water in a bucket and come back to the range and make some bread! Wheat's out of season, if you lose it I have some over there that you can buy...\n`,
+        speech:`Finally! Now take this wheat... Get some water in a bucket and come back to the range and make some bread! Wheat's out of season, if you lose it I have some over there that you can buy...\n`,
         action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
           let added = await addItem(player.name, 92, 3);
           if (added === 0) {
@@ -2330,10 +2577,10 @@ module.exports = {
         }
       },
       3:{
-        speech: `Chef D: I don't smell bread baking!`
+        speech: `I don't smell bread baking!`
       },
       4:{
-        speech: `Chef D: Bout time! Take this tomato and make a delicious fish sammich!\n`,
+        speech: `Bout time! Take this tomato and make a delicious fish sammich!\n`,
         action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
           let added = await addItem(player.name, 94, 3);
           if (added === 0) {
@@ -2348,10 +2595,10 @@ module.exports = {
         }
       },
       5:{
-        speech: `Chef D: I'm-- er I mean -- the customer is starving, hurry it up!\n`
+        speech: `I'm-- er I mean -- the customer is starving, hurry it up!\n`
       },
       6:{
-        speech: `Chef D: Got the sammich? Give it here!`,
+        speech: `Got the sammich? Give it here!`,
         action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
           const sammich = await getItemAmount(player.name, 95);
           if (sammich===0){
@@ -2366,7 +2613,7 @@ module.exports = {
         }
       },
       7:{
-        speech: `Chef D: Order up!\n(the chef eats the sammich in one bite!)\nThat was delicious! Now that you've got some cooking skills under your belt, feel free to use the range and cook whatever you want!\n`,
+        speech: `Order up!\n(the chef eats the sammich in one bite!)\nThat was delicious! Now that you've got some cooking skills under your belt, feel free to use the range and cook whatever you want!\n`,
         action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
           await query(
             "UPDATE players SET chefQuest = 8 WHERE player_name = ?",
@@ -2376,7 +2623,7 @@ module.exports = {
         }
       },
       8:{
-        speech: `Chef D: I feel bad for eating that sammich... Here, it's payday!\n(the chef pays you some coin)\n`,
+        speech: `I feel bad for eating that sammich... Here, it's payday!\n(the chef pays you some coin)\n`,
         action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
           let added = await addItem(player.name, 21, 250);
           if (added===0){
@@ -2391,7 +2638,122 @@ module.exports = {
         }
       },
       9:{
-        speech:`Chef D: I could really go for a nice rat stew right now!\n`
+        speech:`I could really go for a nice rat stew right now!\n`
+      }
+    }
+  },
+  "farmer":{
+    kind: "npc",
+    container: "objects",
+    collision: true,
+    prettyName: "Olive the Farmer",
+    quest: {
+      name:'farmerQuest',
+      0:{
+        speech: `Talk to me again if you have helped Chef D!`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          if (player.chefQuest<8) {
+            sendMessage('pk message', `You must complete the Chef's Quest to start this quest!`, player);
+            return;
+          }
+          await query(
+            "UPDATE players SET farmerQuest = 1 WHERE player_name = ?",
+            [player.name]
+          );
+          player.farmerQuest = 1;
+        }
+      },
+      1:{
+        speech: `Take these seeds to my brother, the Hermit... He may know how to grow plants out of season...`,
+          action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          let added = await addItem(player.name, 104, 1);
+          if (added===0){
+            sendMessage('pk message', "Clear some inventory space to take the seeds!", player);
+            return;
+          }
+          await query(
+            "UPDATE players SET farmerQuest = 2 WHERE player_name = ?",
+            [player.name]
+          );
+          player.farmerQuest = 2;
+        }
+      },
+      2:{
+        speech: `Have you talked to my brother, the Hermit, yet?`
+      },
+      3:{
+        speech: `Have you tried planting the seeds yet? Just find an empty patch of grass outside of town and drop the seed, it should germinate!`
+      },
+      4:{
+        speech: `I see you've planted the seeds! Go back and check in a while... You should be able to dig up your crops with a spade when it is at it's final growth stage! Plants you own are marked for you to see...`
+      },
+      5:{
+        speech: `Nicely done! That green thumb really helped! Now that we can grow things out of season, we can send the merchant with food for the neighboring villages!`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          await query(
+            "UPDATE players SET farmerQuest = 6 WHERE player_name = ?",
+            [player.name]
+          );
+          player.farmerQuest = 6;
+        }
+      },
+      6:{
+        speech: `Here, take this for your help!`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          let added = await addItem(player.name, 21, 500);
+          if (added===0){
+            sendMessage('pk message', "Clear some inventory space to receive your reward!", player);
+            return;
+          }
+          await query(
+            "UPDATE players SET farmerQuest = 7 WHERE player_name = ?",
+            [player.name]
+          );
+          player.farmerQuest = 7;
+        },
+      },
+      7:{
+        speech: `How's the harvest?`
+      }
+    }
+  },
+  "hermit":{
+    kind: "npc",
+    container: "objects",
+    collision: true,
+    prettyName: "Old Hermit",
+    quest: {
+      name:'farmerQuest',
+      0:{
+        speech: `Get out of my house!`
+      },
+      1:{
+        speech: `Didn't I tell you to scram?! I'm trying to herm it in peace!`
+      },
+      2:{
+        speech: `My sister sent you eh?...plants out of season eh?... Here...(the hermit grabs your hand and dunks your thumb in green paint!) HAHA! Now you've got a green thumb! Go try planting something now... it should grow. Although it might take a while...`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          await query(
+            "UPDATE players SET farmerQuest = 3 WHERE player_name = ?",
+            [player.name]
+          );
+          player.farmerQuest = 3;
+        }
+      },
+      3:{
+        speech: `No really, it's just paint... Tell my sister to quit sending people to bother me...`
+      },
+      4: {
+        speech: `Hermit? I hardly know it! (incessant chortling)`
+      },
+      5:{
+        speech: `I should quit being a hermit and come out of my shell... heheh, get it? Like a hermit crab? heheh...`
+      },
+      6:{
+        speech: `(the hermit appears to be chewing loudly on nothing...)`
+      },
+      7:{
+        speech: `(the hermit appears to be chewing loudly on nothing...)`
       }
     }
   },
@@ -2478,6 +2840,16 @@ module.exports = {
     collision:false,
     questName:null,
     stagePass:null
+  },
+  "fenceHORIZ":{
+    kind: "object",
+    container: "objects",
+    collision: true
+  },
+  "fenceVERT":{
+    kind: "object",
+    container: "objects",
+    collision: true
   },
   "sign": {
     kind: "interactable",

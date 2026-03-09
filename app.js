@@ -246,6 +246,17 @@ async function getLeaderboard() {
 
     UNION ALL
 
+    SELECT 'Farming' AS skill, player_name, farmingXp AS xp
+    FROM (
+      SELECT player_name, farmingXp
+      FROM players
+      WHERE player_name <> 'Admin'
+      ORDER BY farmingXp DESC
+      LIMIT 1
+    ) AS t
+
+    UNION ALL
+
     SELECT 'Mage' AS skill, player_name, mageXp AS xp
     FROM (
       SELECT player_name, mageXp
@@ -288,6 +299,8 @@ async function initPlayer(name) {//try this with select * isntead
   let fishingXp = result[0].fishingXp;
   let cookingXp = result[0].cookingXp;
   let cookingLvl = await levelFromXp(cookingXp);
+  let farmingXp = result[0].farmingXp;
+  let farmingLvl = await levelFromXp(farmingXp);
   let archeryXp = result[0].archeryXp;
   let craftXp = result[0].craftXp;
   let miningXp = result[0].miningXp;
@@ -356,6 +369,8 @@ async function initPlayer(name) {//try this with select * isntead
     miningLvl: miningLvl,
     cookingXpTotal: cookingXp,
     cookingLvl: cookingLvl,
+    farmingXpTotal: farmingXp,
+    farmingLvl: farmingLvl,
     lastState: null,
     isCrafting: false,
     lastHitBy: null,
@@ -373,6 +388,7 @@ async function initPlayer(name) {//try this with select * isntead
     //quests
     trollQuest:result[0].trollQuest,
     chefQuest:result[0].chefQuest,
+    farmerQuest:result[0].farmerQuest,
     maze1:0//always this, just to set off quest tile
   };
   let player = players[name];
@@ -408,6 +424,7 @@ async function dbPlayer(name) {
     archeryXp = ?,
     fishingXp = ?,
     cookingXp = ?,
+    farmingXp = ?,
     head = ?,
     body = ?,
     hand = ?,
@@ -429,6 +446,7 @@ async function dbPlayer(name) {
     player.archeryXpTotal,
     player.fishingXpTotal,
     player.cookingXpTotal,
+    player.farmingXpTotal,
     player.head,
     player.body,
     player.hand,
@@ -554,7 +572,9 @@ async function addBankItem(playerName, itemId, amount) {
     ON DUPLICATE KEY UPDATE amount = amount + VALUES(amount)
   `;
   await query(sql, [playerName, itemId, amount]);
-  await ifEquippedRemove(playerName, itemId);
+  if (players[playerName]){
+    await ifEquippedRemove(playerName, itemId);
+  }
 }
 
 async function removeBankItem(playerName, itemId, amount = 1) {
@@ -827,8 +847,11 @@ async function emitPlayerState(player) {
       miningXpTotal: player.miningXpTotal,
       cookingXpTotal: player.cookingXpTotal,
       cookingLvl: player.cookingLvl,
+      farmingXpTotal: player.farmingXpTotal,
+      farmingLvl: player.farmingLvl,
       activeInvItem: player.activeInventory,
-      obscured: player.obscured
+      obscured: player.obscured,
+      name: player.name
     });
   }
 }
@@ -2191,13 +2214,13 @@ async function waterTileInteract(player, tile){
   await syncInventory(player.name);
 }
 
-let npcs = ['shopkeep', 'belethor', 'merchant', 'chef'];
+let npcs = ['shopkeep', 'belethor', 'merchant', 'chef', 'farmer', 'hermit'];
 
 async function npcInteract(name, npcName){
   let player = players[name];
   let npcObject = baseTiles[npcName];
   if (npcObject?.speech){
-    sendMessage('server message', `${npcObject.prettyName}: ${npcObject.speech}`, player);
+    sendMessage('server message', `\n${npcObject.prettyName}: ${npcObject.speech}`, player);
   }
   if (npcObject?.quest){
     await npcQuest(player, npcObject);
@@ -2205,13 +2228,10 @@ async function npcInteract(name, npcName){
 }
 
 async function npcQuest(player, npcObj){
-  //get quest name from npcObj
-  //check player's quest stage
-  //speech/actions accordingly
   let questName = npcObj.quest.name;
   let questStage = player[questName];
   let npcSpeech = npcObj.quest[questStage].speech;
-  sendMessage('server message', npcSpeech, player);
+  sendMessage('server message', `\n${npcObj.prettyName}: ${npcSpeech}`, player);
   if (npcObj.quest[questStage]?.action){
     npcObj.quest[questStage].action(player, query, addItem, removeItem, getItemAmount, sendMessage);//won't necessarily query, but fine this way
   }
@@ -2242,7 +2262,7 @@ function checkMelee(name, x, y, z) {
     const playerTarget = tilePlayerNames[0];
 
     // allow attack if tile is not safe OR target is a murderer
-    if (!isSafe || (players[playerTarget] && players[playerTarget].murderer)) {
+    if (!isSafe || (players[playerTarget] && players[playerTarget].murderer) || (players[playerTarget] && players[playerTarget].criminal)) {
       meleeAttack(name, playerTarget);
       return true;
     }
@@ -2495,6 +2515,9 @@ async function giveXp(playerName, xp, type) {
       break;
     case "cook":
       player.cookingXpTotal += xp;
+      break;
+    case "farming":
+      player.farmingXpTotal += xp;
       break;
   }
 }
@@ -3016,6 +3039,12 @@ let exits = [
 async function checkInteract(name, mapObjects) {
   let objKeys = Object.keys(mapObjects);
   let objName = objKeys[0];
+  if (mapObjects[objName]?.owner){
+    if (baseTiles[objName]?.farming){
+      farmingCheck(name, mapObjects[objName], objName);
+      return true;
+    }
+  }
   if (exits.includes(objName)){
     enterExit(name, mapObjects[objName]);//that particular object so coords can be stored
     return true;
@@ -3060,6 +3089,23 @@ async function checkInteract(name, mapObjects) {
     return true;
   }
   return false;
+}
+
+function farmingCheck(playerName, plantObject, plantName){
+  let player = players[playerName];
+  if (!player) return;
+  let prettyName = baseTiles[plantName].prettyName;
+  let growthText;
+  if (baseTiles[plantName]?.regrowsTo){
+    growthText = "is not ready to harvest...";
+  } else {
+    growthText = "is ready to harvest, dig it up with a spade!";
+  }
+  if (plantObject.owner===playerName){
+    sendMessage('server message', `Your ${prettyName} ${growthText}`, player);
+  } else {
+    sendMessage('pk message', `This is not your ${prettyName}!`, player);
+  }
 }
 
 async function restUnownedBed(name){
@@ -3140,8 +3186,12 @@ async function purchaseItem(playerName, objName) {
     }
 
     if (added > 0) {
-        sendMessage('server message', `You bought ${buyAmount} ${itemDef?.prettyName ?? itemDef.item}!`, player);
-        syncInventory(playerName);
+      if (itemDef.item==='redfish' || itemDef.item==='cod' || itemDef.item==='goldfish'){
+        //give Kfish the gold lol
+        await addBankItem('Klinthios', idByItem(costItemName), costAmount);
+      }
+      sendMessage('server message', `You bought ${buyAmount} ${itemDef?.prettyName ?? itemDef.item}!`, player);
+      syncInventory(playerName);
     }
     syncInventory(playerName);
     return true;
@@ -3362,6 +3412,10 @@ function useItem(playerName) {
 
 async function playerDig(player){
   if (player.z>0) return;
+  if (Date.now()<player.lastGather+1000){
+    return;
+  }
+  player.lastGather = Date.now();
   sendSound(player, ['dig']);
   let tX = Treasure?.x;
   let tY = Treasure?.y;
@@ -3379,6 +3433,47 @@ async function playerDig(player){
   //else get dirt or sand if applicable
   console.log("digs up sand or dirt");
   //if basetile sand - sand, if basetile grass - dirt
+  //farming!
+  let tile = getTile(player.x, player.y, player.z);//returns if no z 0 anyway
+  if (tile?.objects){
+    let objKey = Object.keys(tile.objects)[0];
+    if (objKey){
+      if (baseTiles[objKey]?.farming) {
+        await harvestPlant(player, tile, objKey);
+      }
+    }
+  }
+}
+
+async function harvestPlant(player, tile, plantName){
+  console.log(plantName);
+  let plant = tile.objects[plantName];
+  let added = addItem(player.name, idByItem(baseTiles[plantName].drops), 1);
+  if (added===0) {
+    sendMessage('pk message', `You must clear some inventory space to harvest this!`, player);
+    return;
+  }
+  plant.amt-=1;
+  sendMessage('server message', `You harvest the ${baseTiles[plantName].drops}.`);
+  if (plant.owner===player.name){
+    await giveXp(player.name, baseTiles[plantName].xp, "farming");
+    if (baseTiles[plantName].drops==='tomato' && player.farmerQuest===4){
+      sendMessage('server message', `Go show Olive the farmer the tomato!`, player);
+      await query(
+        "UPDATE players SET farmerQuest = 5 WHERE player_name = ?",
+        [player.name]
+      );
+      player.farmerQuest = 5;
+    }
+  } else {
+    //criminal!
+    await setCriminal(player.name, true, 60*1000*10);
+    sendMessage('pk message', `A passerby reported you for stealing crops!`, player);
+  }
+  if (plant.amt<=0){
+    delete tile.objects;//should work lol
+    markTileChanged(player.x, player.y);
+  }
 }
 
 async function equip(playerName, id) {
@@ -3456,6 +3551,14 @@ async function eatDrinkTimed(name, itemObj) {
         if (player.mana > player.maxMana) {
           player.mana = player.maxMana;
         }
+      }
+      if (itemObj?.seed){
+        //give player seed(s) from plant seed: {item: "tomatoSeed", amt: 5}
+        console.log(`item: ${itemObj.seed['item']}, amt: ${itemObj.seed['amt']}`);
+        let seedId = idByItem(itemObj.seed['item']);
+        let seedAmt = itemObj.seed['amt'];
+        await addItem(player.name, seedId, seedAmt);//hmm other stuff, like key hidden in a cake or some shit lol
+        sendMessage('server message', `You pick some seeds out of your teeth.`, player);
       }
 
       await removeItem(name, itemObj.id, 1);
@@ -3642,10 +3745,13 @@ async function dropItem(name, item) {
       return;
     }
   }
+
   const invItem = player.inventory[item]; // current inventory slot
   const baseName = itemById[invItem.id];  // normal name from ID
   const dropName = baseTiles[baseName]?.dropChange ?? baseName;
-  const container = baseTiles[dropName]?.container ?? "objects";
+  const container = baseTiles[dropName]?.containerChange ?? baseTiles[dropName].container;//this might break?
+  //for farming, seed changes to resource with regrowsTo, owner/player.name added
+  //new interval for plant regrowth stages (hourly)
 
   if (isSafeActive(tile) && player.name!=='Admin'){
     switch (dropName){
@@ -3666,16 +3772,66 @@ async function dropItem(name, item) {
     sendMessage('pk message', `${noName}'s cannot be dropped!`, player);
     return;
   }
+  if (baseTiles[dropName]?.farming && player.z>0){
+    sendMessage('pk message', `You can only plant seeds at ground level!`, player);
+    return;
+  }
+  if (baseTiles[dropName]?.farming){
+    if (player.farmerQuest<3){
+      sendMessage('pk message', `You must help Olive the Farmer to plant seeds!`, player);
+      return;
+    }
+    if (baseTiles[dropName]?.lvl>player.farmingLvl){
+      console.log("not reqd lvl");
+      sendMessage('pk message', `You need level ${baseTiles[dropName].lvl} farming to plant this!`, player);
+      return;
+    }
+    if (tile?.['b-t']!=='grass'){
+      sendMessage('pk message', `You can only plant seeds in fresh earth!`, player);
+      return;
+    }
+    if (tile?.floor){
+      if (Object.keys(tile.floor).length>0){
+        sendMessage('pk message', `You can't plant that here!`, player);
+        return;
+      }
+    }
+    if (tile?.roof){
+      if (Object.keys(tile.roof).length>0){
+        sendMessage('pk message', `Sunlight can't reach your plant here!`, player);
+        return;
+      }  
+    }
+    if (isSafeActive(tile)){
+      sendMessage('pk message', `Farming is not permitted within zones guarded by the kingdom!`, player);
+      return;    
+    }
+    //this should be all the cases
+  }
+  if (baseTiles[dropName]?.farming){//fuck, there's .farm and .farming in baseTiles...
+    console.log("planting seed");
+    if (dropName==='tomatoPlant0' && player.farmerQuest===3){
+      console.log("tomatoPlant0!");
+      sendMessage('server message', `The tomato seed germinated! While waiting for it to grow, go talk to Olive the Farmer!`, player);
+      await query(
+        "UPDATE players SET farmerQuest = 4 WHERE player_name = ?",
+        [player.name]
+      );
+      player.farmerQuest = 4;
+    }
+  }
   tile[container] ??= {};
-
-  //tile[container][dropName] = { name: dropName };
   const tileItem = { name: dropName };
 
   // only set owner if the base tile defines it
-  if ("owner" in baseTiles[dropName]) {
+  if ("owner" in baseTiles[dropName]) {//should work for farming
     await dropOwnedItem(player, baseName, tileItem);
   }
+
+  //set on tile
   tile[container][dropName] = tileItem;
+
+  //z raise
   if (zRaise.includes(dropName) && player.z<4){
     let oldTile = getTile(player.x, player.y, player.z);
     delete oldTile.players[player.name];
@@ -3684,8 +3840,9 @@ async function dropItem(name, item) {
     addPlayerToTile(player.name, player.x, player.y, player.z);
     markTileChanged(player.x, player.y);
   }
-  await removeItem(name, players[name].inventory[item].id, 1);
-  await ifEquippedRemove(name, players[name].inventory[item].id);
+  let item_Id = player.inventory[item].id;
+  await removeItem(name, item_Id, 1);
+  await ifEquippedRemove(name, item_Id);
   markTileChanged(player.x, player.y);
   await syncInventory(name);
 }
@@ -3975,16 +4132,19 @@ let gold = 0;
 let diamond = 0;
 let amethyst = 0;
 
-async function replenishResources() {
-  await initTreasure();
-  await removeMobType("mushroom");
-  await removeMobType("goat");
-  await removeMobType("wolf");
+async function replenishResources(farming=false) {
+  if (!farming){
+    await initTreasure();
+    await removeMobType("mushroom");
+    await removeMobType("goat");
+    await removeMobType("wolf");
+  }
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
       for (let z = 0; z<5; z++){//full send 6 z levels :o
         const tile = getTile(x, y, z);
         if (!tile || tile === undefined || tile === null) continue;
+
         if (tile?.typing === true) {
           delete tile.typing;
         }
@@ -3996,79 +4156,10 @@ async function replenishResources() {
             randomFishingSpot(tile);
           }
         }
-        const isEmpty = obj => !obj || Object.keys(obj).length === 0;
-        //delete all flowers first
-        //plant regens like this need separate fxns
-        Object.keys(tile?.objects ?? {}).forEach(k => k.startsWith("flower") && delete tile.objects[k]);
-        if (
-          //will need to change this not to go on player plots and shit lol
-          isEmpty(tile?.objects) &&
-          isEmpty(tile?.floor) &&
-          isEmpty(tile?.depletedResources) &&
-          tile['b-t'] === 'grass'
-        ) {
-          //random chance to grow a flower!
-          const flowers = ['flowerred', 'floweryellow', 'flowerwhite'];
-          let randFlower = Math.floor(Math.random() * 1000);
-          if (randFlower < flowers.length) {
-            addToMap(flowers[randFlower], x, y);
-          }
+        if (!farming){
+          await randMobsAndPlants(tile, x, y);
         }
-        if (
-          isEmpty(tile?.objects) &&
-          isEmpty(tile?.floor) &&
-          isEmpty(tile?.depletedResources) &&
-          tile['b-t'] === 'grass'
-        ) {
-          //random chance place a mushroom mob!
-          let randMushroom = Math.floor(Math.random() * 2000);
-          if (randMushroom < 3 && z===0) {
-            //add mushroom
-            let mushroom1 = createMob('mushroom', x, y);
-            mobs.set(mushroom1.id, mushroom1);
-            tile.mob = {
-              id: mushroom1.id,
-              sprite: "mushroomL"
-            }
-          }
-        }
-
-        //random chance for roaming goat!
-        let randGoat = Math.floor(Math.random() * 3000);
-        if (randGoat < 3 && z===0) {//1/1000
-          if (
-            isEmpty(tile?.objects) &&
-            isEmpty(tile?.floor) &&
-            isEmpty(tile?.roof) &&
-            isEmpty(tile?.depletedResources) &&
-            tile['b-t'] === 'grass'
-          ) {
-            let testGoat = createMob('goat', x, y);
-            mobs.set(testGoat.id, testGoat);
-            tile.mob = {
-              id: testGoat.id,
-              sprite: "goatL"
-            }
-          }
-        }
-        let randWolf = Math.floor(Math.random() * 10000);
-        if (randGoat < 3 && z===0) {
-          if (
-            isEmpty(tile?.objects) &&
-            isEmpty(tile?.floor) &&
-            isEmpty(tile?.roof) &&
-            isEmpty(tile?.depletedResources) &&
-            tile['b-t'] === 'grass' &&
-            !isSafeActive(tile)
-          ) {
-            let testWolf = createMob('wolf', x, y);
-            mobs.set(testWolf.id, testWolf);
-            tile.mob = {
-              id: testWolf.id,
-              sprite: "wolfL"
-            }
-          }
-        }
+        
         // Loop over both containers so all stages are eligible
         for (const containerName of ["objects", "depletedResources"]) {
           const container = tile[containerName];
@@ -4077,22 +4168,42 @@ async function replenishResources() {
           for (const objName in { ...container }) { // spread to avoid mutation issues
             const def = baseTiles[objName];
             if (!def?.regrowsTo) continue;
-
-            // Optional throttle
-            if (def.regrowChance && Math.random() > def.regrowChance) continue;
-
+            if (!def?.farming){
+              if (farming){
+                continue;
+              }
+            }
+            if (def?.farming){
+              if (!farming){
+                continue;
+              }
+            }
             // Pick weighted
             const nextName = Array.isArray(def.regrowsTo)
               ? pickWeighted(def.regrowsTo)
               : def.regrowsTo;
             if (!nextName) continue;
-
+            let owner;
+            if (container[objName]?.owner){
+              owner = container[objName].owner;
+            }
             // Remove old stage
             delete container[objName];
-
             // Add new stage into objects container
             tile.objects ??= {};
             tile.objects[nextName] = { name: nextName };
+            if (farming){
+              tile.objects[nextName].owner = owner;
+            }
+            if (farming && players[owner]){
+              console.log("owner exists");
+              let player = players[owner];
+              if (!baseTiles[nextName]?.regrowsTo){
+                console.log("setting plant amt");
+                //final stage, add amt depending on players level, always 4
+                tile.objects[nextName].amt = 4;//+ Math.floor(Math.random()*Math.floor(player.farmingLvl/10));
+              }
+            }
             oreCount(nextName);
             markTileChanged(x, y);
           }
@@ -4112,6 +4223,82 @@ async function replenishResources() {
     amethyst: ${amethyst},
     total: ${rock+iron+coal+copper+silver+gold+diamond+amethyst}
   `);
+}
+
+async function randMobsAndPlants(tile, x, y){
+  const isEmpty = obj => !obj || Object.keys(obj).length === 0;
+  //delete all flowers first
+  //plant regens like this need separate fxns
+  Object.keys(tile?.objects ?? {}).forEach(k => k.startsWith("flower") && delete tile.objects[k]);
+  if (
+    //will need to change this not to go on player plots and shit lol
+    isEmpty(tile?.objects) &&
+    isEmpty(tile?.floor) &&
+    isEmpty(tile?.depletedResources) &&
+    tile['b-t'] === 'grass'
+  ) {
+    //random chance to grow a flower!
+    const flowers = ['flowerred', 'floweryellow', 'flowerwhite'];
+    let randFlower = Math.floor(Math.random() * 1000);
+    if (randFlower < flowers.length) {
+      addToMap(flowers[randFlower], x, y);
+    }
+  }
+  if (
+    isEmpty(tile?.objects) &&
+    isEmpty(tile?.floor) &&
+    isEmpty(tile?.depletedResources) &&
+    tile['b-t'] === 'grass'
+  ) {
+    //random chance place a mushroom mob!
+    let randMushroom = Math.floor(Math.random() * 2000);
+    if (randMushroom < 3 && z === 0) {
+      //add mushroom
+      let mushroom1 = createMob('mushroom', x, y);
+      mobs.set(mushroom1.id, mushroom1);
+      tile.mob = {
+        id: mushroom1.id,
+        sprite: "mushroomL"
+      }
+    }
+  }
+
+  //random chance for roaming goat!
+  let randGoat = Math.floor(Math.random() * 3000);
+  if (randGoat < 3 && z === 0) {//1/1000
+    if (
+      isEmpty(tile?.objects) &&
+      isEmpty(tile?.floor) &&
+      isEmpty(tile?.roof) &&
+      isEmpty(tile?.depletedResources) &&
+      tile['b-t'] === 'grass'
+    ) {
+      let testGoat = createMob('goat', x, y);
+      mobs.set(testGoat.id, testGoat);
+      tile.mob = {
+        id: testGoat.id,
+        sprite: "goatL"
+      }
+    }
+  }
+  let randWolf = Math.floor(Math.random() * 10000);
+  if (randGoat < 3 && z === 0) {
+    if (
+      isEmpty(tile?.objects) &&
+      isEmpty(tile?.floor) &&
+      isEmpty(tile?.roof) &&
+      isEmpty(tile?.depletedResources) &&
+      tile['b-t'] === 'grass' &&
+      !isSafeActive(tile)
+    ) {
+      let testWolf = createMob('wolf', x, y);
+      mobs.set(testWolf.id, testWolf);
+      tile.mob = {
+        id: testWolf.id,
+        sprite: "wolfL"
+      }
+    }
+  }
 }
 
 function oreCount(name){
@@ -4174,6 +4361,7 @@ async function randomFishingSpot(tile) {
 
 replenishResources();//run at server start to add random ores n shit
 setInterval(replenishResources, 60000 * 180);//every 3 hours
+setInterval(() => replenishResources(true), 1000*30*60);//every 30 minutes plant stage
 setInterval(mapUpdate, 200);
 setInterval(mapPersist, 60000);//save map every minute
 

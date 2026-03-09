@@ -136,6 +136,31 @@ const mobTypes = {
             { name: "rawMeat", min:1, max:1, weight: 50 }
         ]
     }),
+    domesticGoat: (x, y) => ({
+        id: getNextMobId(),
+        type: "domesticGoat",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 20,
+        attack: 0,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 0,
+        leashRadius: 25,
+
+        nextThink: 0,
+        thinkSpeed: 2000+Math.floor(Math.random()*100),
+        facing: "left",
+        passive: true,
+        drop: [
+            { name: "hide", min: 1, max: 2, weight: 100 },
+            { name: "rawMeat", min:1, max:1, weight: 50 }
+        ]
+    }),
     zorg: (x, y) => ({
         id: getNextMobId(),
         type: "zorg",
@@ -379,6 +404,12 @@ function createMob(type, x, y) {
 }
 
 const mobSpawns = [
+  {
+    type: "domesticGoat",
+    x:98, y:44,
+    count: 2,
+    respawnTime: 20000
+  },
   {
     type: "troll",
     x: 249, y:76,

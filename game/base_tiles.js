@@ -652,6 +652,54 @@ base_tiles = {
     consume: true,
     cook: {cookedRatmeat: 1, carrot: 2, tomato: 2, waterbucket: 1}
   },
+  "wheatSeed":{
+    "x":288,"y":448,
+    prettyName: "wheat seed",
+    kind: "item",
+    id: 103,
+    container: "objects",
+    collision: false//after this, needs some kind of drop attribute
+  },
+  "tomatoSeed":{
+    "x":192,"y":512,
+    prettyName: "tomato seed",
+    kind: "item",
+    id: 104,
+    container: "objects",
+    collision: false
+  },
+  "carrotSeed":{
+    "x":16,"y":528,
+    prettyName: "carrot seed",
+    kind: "item",
+    id: 105,
+    container: "objects",
+    collision: false
+  },
+  "grape":{
+    "x":192,"y":464,
+    prettyName: "grape",
+    kind: "item",
+    id: 106,
+    container: "objects",
+    collision: false,
+    mana: 10,
+    time: 500,
+    consume: true,
+    seed: {item:"grapeSeed", amt: 4}
+  },
+  "grapeSeed":{
+    "x":256,"y":464,
+    prettyName: "grape seed",
+    kind: "item",
+    id: 107,
+    container: "objects",
+    collision: false,
+    farm: true,
+    dropChange: "grapePlant0",
+    containerChange: "resource",
+    owner: null    
+  },
   //LAST ADDED ITEM 
   "cookingRange":{
     "x":192,"y":992
@@ -688,6 +736,30 @@ base_tiles = {
     "x":144,"y":96
   },
 /*-----------npc shop items-----------------*/
+  "redfishShop":{
+    "x":208,"y":480,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 50},
+    amount: 1,
+    item: "redfish"
+  },
+  "codShop":{
+    "x":256,"y":480,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 20},
+    amount: 1,
+    item: "cod"
+  },
+  "goldfishShop":{
+    "x":272, "y":480,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 25},
+    amount: 1,
+    item: "goldfish"
+  },
   "wheatShop":{
     "x":240,"y":432,
     container: "objects",
@@ -992,6 +1064,12 @@ base_tiles = {
   "goatL":{
     "x":208,"y":288
   },
+  "domesticGoatR":{
+    "x":192,"y":288
+  },
+  "domesticGoatL":{
+    "x":208,"y":288
+  },
   "wolfR":{
     "x":112,"y":528
   },
@@ -1228,6 +1306,167 @@ base_tiles = {
     "y": 0,
     "collision": true,
   },
+  "wheatPlant0":{
+    "x":0,"y":532,
+    kind: "resource",
+    container: "objects",
+    collision: false,
+    farming: true,
+    regrowsTo: [
+      {name: "wheatPlant1", weight: 100}
+    ]
+  },
+  "wheatPlant1":{
+    "x":240,"y":448,
+    kind: "resource",
+    container: "objects",
+    collision: false,
+    farming: true,
+    regrowsTo: [
+      {name: "wheatPlant2", weight: 100}
+    ]
+  },
+  "wheatPlant2":{
+    "x":224,"y":448,
+    kind: "resource",
+    container: "objects",
+    collision: false,
+    farming: true,
+    regrowsTo: [
+      {name: "wheatPlant3", weight: 100}
+    ]
+  },
+  "wheatPlant3":{
+    "x":272,"y":448,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    farming: true
+  },
+  "tomatoPlant0":{
+    "x":0,"y":512,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    regrowsTo:[
+      {name: "tomatoPlant1", weight: 100}
+    ]
+  },
+  "tomatoPlant1":{
+    "x":16,"y":512,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    regrowsTo:[
+      {name: "tomatoPlant2", weight: 100}
+    ]    
+  },
+  "tomatoPlant2":{
+    "x":32,"y":512,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    drops: "tomato",
+    xp: 10
+  },
+  "carrotPlant0":{
+    "x":0,"y":528,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    regrowsTo: [
+      {name: "carrotPlant1", weight: 100}
+    ]
+  },
+  "carrotPlant1":{
+    "x":0,"y":528,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    regrowsTo: [
+      {name: "carrotPlant2", weight: 100}
+    ]
+  },
+  "carrotPlant2":{
+    "x":304,"y":512,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    drops: "carrot",
+    xp: 10
+  },
+  "grapePlant0":{
+    "x":208,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant1", weight: 100}
+    ]
+  },
+  "grapePlant1":{
+    "x":208,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant2", weight: 100}
+    ]
+  },
+  "grapePlant2":{
+    "x":224,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant3", weight: 100}
+    ]
+  },
+  "grapePlant3":{
+    "x":224,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant4", weight: 100}
+    ]
+  },
+  "grapePlant4":{
+    "x":240,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    drops: "grape",
+    xp: 50
+  },
+  //last farm resource
   "tree0": {
     "x": 16,
     "y": 0,
@@ -1552,6 +1791,19 @@ base_tiles = {
   "F": { "x": 80, "y": 768 },
   "C": { "x": 32, "y": 768 },
   //end letters
+  "fenceHORIZ":{
+    "x":16,"y":160,
+    kind: "object",
+    container: "objects",
+    collision: true
+  },
+  "fenceVERT":{
+    "x":0,"y":160,
+    kind: "object",
+    container: "objects",
+    collision: true
+  },
+  "exclamation": {"x":48,"y":816},
   "hitOutlineLeft": { "x": 112, "y": 176 },
   "hitOutlineRight": { "x": 62, "y": 176 },
   "tunafish": { "x": 240, "y": 480 },
@@ -1606,6 +1858,8 @@ base_tiles = {
   "belethor": {"x":208,"y":1088},
   "merchant": {"x":304,"y":640},
   "chef": {"x":304,"y":640},
+  "farmer": {"x":32,"y":176},
+  "hermit": {"x":176,"y":384},
   "gnollR": { "x": 224, "y": 576 },
   "gnollL": { "x": 240, "y": 576 },
   "rangeGoblinR": { "x": 80, "y": 336 },

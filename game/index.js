@@ -1008,6 +1008,7 @@ socket.on('server message', (data) => {
 });
 
 socket.on('playerState', (data)=> {
+  playerData.name = data.name;
   playerData.x=data.x;
   playerData.y=data.y;
   playerData.z=data.z;
@@ -1036,6 +1037,8 @@ socket.on('playerState', (data)=> {
   playerData.mageLvl=data.mageLvl;
   playerData.cookingXpTotal = data.cookingXpTotal;
   playerData.cookingLvl = data.cookingLvl;
+  playerData.farmingXpTotal = data.farmingXpTotal;
+  playerData.farmingLvl = data.farmingLvl;
   playerData.mana=data.mana;
   playerData.activeInvItem=data.activeInvItem;
   playerData.obscured=data.obscured;
@@ -1745,7 +1748,8 @@ const statsConfig = [
   { key: "woodcuttingLvl", name: "Woodcutting", sx: base_tiles['axe'].x, sy: base_tiles['axe'].y, xpTotalKey: "woodcuttingXpTotal" },
   { key: "miningLvl", name: "Mining", sx: base_tiles['pickaxe'].x, sy: base_tiles['pickaxe'].y, xpTotalKey: "miningXpTotal" },
   { key: "fishingLvl", name: "Fishing", sx: base_tiles['fishingpole'].x, sy: base_tiles['fishingpole'].y, xpTotalKey: "fishingXpTotal" },
-  { key: "cookingLvl", name: "Cooking", sx: base_tiles['cookedRedfish'].x, sy: base_tiles['cookedRedfish'].y, xpTotalKey: "cookingXpTotal" }
+  { key: "cookingLvl", name: "Cooking", sx: base_tiles['cookedRedfish'].x, sy: base_tiles['cookedRedfish'].y, xpTotalKey: "cookingXpTotal" },
+  { key: "farmingLvl", name: "Farming", sx: base_tiles['carrot'].x, sy: base_tiles['carrot'].y, xpTotalKey: "farmingXpTotal" }
 ];
 
 function drawStats(mx, my) {
@@ -2019,6 +2023,19 @@ function drawObjects(chunk){
     if (Object.keys(chunk.objects)[0].startsWith('flower')){
       drawBees(chunk, i, j);
     }
+    if (Object.keys(chunk.objects)[0].includes('Plant')){
+      drawOwnedPlants(chunk, i, j);
+    }
+  }
+}
+
+function drawOwnedPlants(chunk, i, j){
+  let key = Object.keys(chunk.objects)[0];
+  if (chunk.objects[key]?.owner===playerData.name){
+    ctx.fillStyle = 'yellow';        // change to yellow
+    ctx.font = '18px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('*', j*32 + 30, i*32);
   }
 }
 
@@ -2789,6 +2806,9 @@ function updateView(data) {
         drawBaseTile(chunk);
         drawDepletedResources(chunk);
         drawFloor(chunk);
+        drawPixels(chunk);
+        drawMarks(chunk);
+        drawObjects(chunk);
         drawMobs(chunk);
         if (data?.[i - 1]) {
           if (data[i - 1]?.[j - 1]) {
@@ -2802,9 +2822,6 @@ function updateView(data) {
             }
           }
         }
-        drawPixels(chunk);
-        drawMarks(chunk);
-        drawObjects(chunk);
         drawPlayers(chunk);
         drawProjectiles(chunk);
         drawRoofs(chunk, i, j, z);
