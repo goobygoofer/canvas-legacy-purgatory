@@ -3453,7 +3453,10 @@ async function harvestPlant(player, tile, plantName){
     sendMessage('pk message', `You must clear some inventory space to harvest this!`, player);
     return;
   }
-  plant.amt-=1;
+  if (plant.amt!==null){
+    plant.amt-=1;
+  }
+  markTileChanged(player.x, player.y);
   sendMessage('server message', `You harvest the ${baseTiles[plantName].drops}.`);
   if (plant.owner===player.name){
     await giveXp(player.name, baseTiles[plantName].xp, "farming");
@@ -3470,7 +3473,7 @@ async function harvestPlant(player, tile, plantName){
     await setCriminal(player.name, true, 60*1000*10);
     sendMessage('pk message', `A passerby reported you for stealing crops!`, player);
   }
-  if (plant.amt<=0){
+  if (plant.amt<=0 || plant.amt===null){
     delete tile.objects;//should work lol
     markTileChanged(player.x, player.y);
   }
@@ -4361,7 +4364,7 @@ async function randomFishingSpot(tile) {
 
 replenishResources();//run at server start to add random ores n shit
 setInterval(replenishResources, 60000 * 180);//every 3 hours
-setInterval(() => replenishResources(true), 1000*30*60);//every 30 minutes plant stage
+setInterval(() => replenishResources(true), 10000);//1000*30*60);//every 30 minutes plant stage
 setInterval(mapUpdate, 200);
 setInterval(mapPersist, 60000);//save map every minute
 
