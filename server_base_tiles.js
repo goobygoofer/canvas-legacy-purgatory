@@ -1073,7 +1073,50 @@ module.exports = {
     owner: null,
     lvl: 30
   },
+  "eyeLightBlue":{
+    prettyName:"light blue eye",
+    kind: "item",
+    id: 108,
+    container: "objects",
+    collision: false
+  },
+  "eyeGreen":{
+    prettyName:"green eye",
+    kind: "item",
+    id: 109,
+    container: "objects",
+    collision: false
+  },
+  "eyeYellow":{
+    prettyName:"yellow eye",
+    kind: "item",
+    id: 110,
+    container: "objects",
+    collision: false
+  },
+  "eyeBlue":{
+    prettyName:"blue eye",
+    kind: "item",
+    id: 111,
+    container: "objects",
+    collision: false
+  },
+  "eyePink":{
+    prettyName:"pink eye",
+    kind: "item",
+    id: 112,
+    container: "objects",
+    collision: false
+  },
+  "eyeRed":{
+    prettyName:"red eye",
+    kind: "item",
+    id: 113,
+    container: "objects",
+    collision: false
+  },
   //LAST ADDED ITEM
+  
   "cookingRange":{
     prettyName: "cooking range",
     kind: "interactable",
@@ -1091,6 +1134,13 @@ module.exports = {
     ]
   },
 /*------------------npc shop items-------------------*/
+  "eyeGameShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 250},
+    amount: 1,
+    item: 'eyeGame'
+  },
   "redfishShop":{
     container: "objects",
     kind: "interactable",
@@ -2415,6 +2465,21 @@ module.exports = {
     container: "b-t",
     collision: false
   },
+  "stoneBT":{
+    kind: "b-t",
+    container: "b-t",
+    collision: false
+  },
+  "eyeSocket":{
+    kind: 'game',
+    container: 'floor',
+    collision:false
+  },
+  "eyeClue":{
+    kind: 'game',
+    container: 'floor',
+    collision:false
+  },
   "grass2": {},
   "snow": {
     kind: "b-t",
@@ -2485,6 +2550,13 @@ module.exports = {
     roof: false
   },
 /*---------------NPCS----------------*/
+  "theEye":{
+    kind: "npc",
+    container: "objects",
+    collision: true,
+    prettyName: "The Eye",
+    speech: "Welcome to the Eye Game...\nSlay the wandering eyes to gather their souls...\nWhen you are ready, put 250 coins into the coffer and pass the threshold to start...\nMake your guess by dropping eye souls into the eye sockets..."
+  },
   "shopkeep": {
     kind: "npc",
     container: "objects",

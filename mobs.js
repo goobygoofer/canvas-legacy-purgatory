@@ -82,7 +82,8 @@ const mobTypes = {
             { name: "hide", min: 1, max: 2, weight: 200 },
             { name: "flowercrown", min: 1, max: 2, weight: 100 },
             { name: "goblinsword", min: 1, max: 1, weight: 1 },
-            { name: "healthpotion", min: 1, max: 1, weight: 50 }
+            { name: "healthpotion", min: 1, max: 1, weight: 50 },
+            { name: "grapeSeed", min: 1, max: 1, weight: 100 }
         ]
     }),
     mushroom: (x, y) => ({
@@ -242,6 +243,31 @@ const mobTypes = {
             //{ name: "*log or stone", min: *determined by lvl, max: *determined by lvl, weight: 100 }
         ]
     }),
+    eye: (x, y) => ({
+        id: getNextMobId(),
+        type: "eye",//+color+L/R
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 50,
+        attack: 0,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 0,
+        leashRadius: 15,
+
+        nextThink: 0,
+        thinkSpeed: 750+Math.floor(Math.random()*100),
+        facing: "left",
+        passive: true,
+        drop: [
+            //determined by randomized eye color
+            //{ name: "<eye color>", min: 1, max: 5, weight: 100 }
+        ]
+    }),
     spider: (x, y) => ({
         id: getNextMobId(),
         type: "spider",
@@ -279,10 +305,6 @@ const mobTypes = {
         x, y,
         spawnX: x,
         spawnY: y,
-
-        spawnMinion: "spider",
-        spawnMax: 8,
-        spawnCount: 0,
 
         hp: 1000,
         maxHp: 1000,
@@ -357,7 +379,8 @@ const mobTypes = {
 
         drop: [
             { name: "hide", min: 1, max: 2, weight: 200 },
-            { name: "rawMeat", min:1, max:1, weight: 50 }
+            { name: "rawMeat", min:1, max:1, weight: 50 },
+            { name: "grapeSeed", min:1, max: 2, weight: 25 }
         ]
     }),
     troll: (x, y) => ({
@@ -404,6 +427,66 @@ function createMob(type, x, y) {
 }
 
 const mobSpawns = [
+  {
+    type: "eye",
+    x:524, y:361,
+    count: 1,
+    respawnTime: 5000
+  },
+  {
+    type: "eye",
+    x:524, y:358,
+    count: 1,
+    respawnTime: 5000
+  },
+  {
+    type: "eye",
+    x:524, y:355,
+    count: 1,
+    respawnTime: 5000
+  },
+  {
+    type: "eye",
+    x:520, y:361,
+    count: 1,
+    respawnTime: 5000
+  },
+  {
+    type: "eye",
+    x:520, y:358,
+    count: 1,
+    respawnTime: 5000
+  },
+  {
+    type: "eye",
+    x:520, y:355,
+    count: 1,
+    respawnTime: 5000
+  },
+  {
+    type: "eye",
+    x:528, y:361,
+    count: 1,
+    respawnTime: 5000
+  },
+  {
+    type: "eye",
+    x:528, y:358,
+    count: 1,
+    respawnTime: 5000
+  },
+  {
+    type: "eye",
+    x:528, y:355,
+    count: 1,
+    respawnTime: 5000
+  },
+  {
+    type: "spider",
+    x:515, y:312,
+    count: 5,
+    respawnTime: 5000
+  },
   {
     type: "domesticGoat",
     x:98, y:44,

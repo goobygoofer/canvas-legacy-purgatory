@@ -2715,7 +2715,7 @@ function drawHUD(){
   )
   //
   if (latestView){
-    if (latestView[5][10]?.safeTile){
+    if (latestView[5][10][0]?.safeTile){
       //cross out combat icon
       drawRedX(ctx, canvas.width-24, canvas.height-24);
     }
@@ -2806,6 +2806,7 @@ function updateView(data) {
         drawBaseTile(chunk);
         drawDepletedResources(chunk);
         drawFloor(chunk);
+        drawEyeClues(chunk);
         drawPixels(chunk);
         drawMarks(chunk);
         drawObjects(chunk);
@@ -2825,6 +2826,7 @@ function updateView(data) {
         drawPlayers(chunk);
         drawProjectiles(chunk);
         drawRoofs(chunk, i, j, z);
+        drawExclaims(chunk);
         drawSafeTiles(chunk);
         drawQuestTiles(chunk);
         drawChatBubbles(chunk);
@@ -2838,6 +2840,35 @@ function updateView(data) {
   //drawNightTime();
   drawVignette(ctx, canvas.width, canvas.height);
   drawHUD();
+}
+
+function drawEyeClues(chunk){
+  if (!chunk?.floor) return;
+  if (!chunk.floor?.clues) return;
+  for (let k = 0; k<4; k++){
+    if (chunk.floor.clues[k+1]!==null){
+      ctx.fillStyle = chunk.floor.clues[k+1];
+      let YoffSet = 1;
+      let XoffSet = -1;
+      if (k>1){
+        YoffSet = 14;
+        XoffSet = 22;
+      } 
+      ctx.fillRect(j*32+4+k*12-XoffSet, i*32+4+YoffSet, 10, 10);
+    }
+  }
+}
+
+function drawExclaims(chunk){
+  if (!chunk?.exclaim) return;
+  if (chunk.exclaim===false) return;
+  ctx.drawImage(
+    spriteSheet,
+    base_tiles['exclamation'].x, base_tiles['exclamation'].y,
+    16, 16,
+    j * 32, i * 32,
+    32, 32
+  )
 }
 
 function drawMarks(chunk){

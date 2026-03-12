@@ -36,7 +36,11 @@ for (let y = 0; y < map.Map.length; y++) {
       if (tile.objects && Object.keys(tile.objects).length === 0) {
         delete tile.objects;
       }
-
+      if (tile?.floor){
+        if (Object.keys(tile.floor)[0]==='lightning'){
+          delete tile.floor;
+        }
+      }
       if (tile?.typing) {
         delete tile.typing;
       }
@@ -389,7 +393,8 @@ async function initPlayer(name) {//try this with select * isntead
     trollQuest:result[0].trollQuest,
     chefQuest:result[0].chefQuest,
     farmerQuest:result[0].farmerQuest,
-    maze1:0//always this, just to set off quest tile
+    maze1:0,//always this, just to set off quest tile
+    eyeGame:0
   };
   let player = players[name];
   addPlayerToTile(name, player.x, player.y, player.z);
@@ -2017,7 +2022,12 @@ function slowPlayer(player){
   return false;
 }
 
-function cancelPendingChannels(name){
+function cancelPendingChannels(name, cancelGame=false){
+  if (cancelGame===true){
+    if (activeChannels[name]){
+      
+    }
+  }
   if (pendingTeleports[name]) {
     clearTimeout(pendingTeleports[name]);
     delete pendingTeleports[name];
@@ -2089,14 +2099,24 @@ function checkCollision(name, x, y, z) {
       return true;
     }
   }
-  if (tile?.questTile){//for entry into quest only areas
+  if (tile?.questTile) {//for entry into quest only areas
+    console.log("got here");
     let qName = tile.questTile.questName;
-    if (player[tile.questTile.questName]<tile.questTile.stagePass){
-      sendMessage('pk message', `You must complete ${tile.questTile.prettyName} to pass...`, player);
-      return true;
+    if (player[tile.questTile.questName] < tile.questTile.stagePass) {
+      console.log("got here");
+      if (tile.questTile.questName === 'eyeGame') {
+        sendMessage('pk message', `To play the Eye Game, put 250 coins in the coffer by standing on it and pressing shift!`, player);
+        return true;
+      } else {
+        sendMessage('pk message', `You must complete ${tile.questTile.prettyName} to pass...`, player);
+        return true;
+      }
     }
-    if (qName && qName.startsWith('maze')){
+    if (qName && qName.startsWith('maze')) {
       initMaze(player, qName);
+    }
+    if (qName && qName.includes('Game')){
+      initGame(player, qName);
     }
   }
   //player melee here??
@@ -2140,6 +2160,229 @@ function checkCollision(name, x, y, z) {
   }
   return false;
 }
+
+let eyeGame = {
+  currPlayer: null,//set when paid, can't pay if currPlayer not null
+  started: false,//set with initGame
+  tries: 0,//max 6, reset to 0
+  full: 4,
+  correctList: [],
+  slots:{
+    1:{x:523, y:350, color:null, correct:null},//color is players choice, set back to null each try or end game
+    2:{x:524, y:350, color:null, correct:null},
+    3:{x:525, y:350, color:null, correct:null},
+    4:{x:526, y:350, color:null, correct:null}
+  },
+  eyeClue: getTile(522, 350, 0),
+  doorTimer:null,//forfeit if doesn't enter after 30 seconds, delete if enter, otherwise set player.eyeGame to 0
+  gameTimer:null,//1 or 2 minutes of guessing time, delete
+  logicInterval:null,//a setInterval that checks eyeGame state, increments guesses, sets win/lose etc
+  prizeTimer:null,//30 seconds to get prize or get kicked out!
+}
+
+async function randomizeEyeGame(){
+  for (let i = 1; i<5; i++){
+    let randColor = "eye" + eyeTypes[Math.floor(Math.random()*eyeTypes.length)];
+    eyeGame.slots[i].correct = randColor;
+    eyeGame.correctList.push(randColor);
+  }
+}
+
+let eyeGameDrops = [
+  { name: "coin", min: 1, max: 10000, weight: 10000 },
+  { name: "silver", min: 1, max: 12, weight: 1000 },
+  { name: "gold", min: 1, max: 12, weight: 500 },
+  { name: "diamond", min: 1, max: 12, weight: 100 },
+  { name: "speedboots", min:1, max: 1, weight: 100 },
+  { name: "xpHat", min:1, max:1, weight: 25 }
+]
+
+
+async function startEyeGame(player){
+  //function to randomize eye game color order
+  await randomizeEyeGame();
+  eyeGame.eyeClue.floor.clues={
+    1:null,
+    2:null,
+    3:null,
+    4:null
+  }
+  for (let i = 1; i<5; i++){
+    console.log(eyeGame.slots[i].correct);
+  }
+  player.eyeGame=2;
+  eyeGame.logicInterval = setInterval(() => {
+    //actual game logic function
+    eyeGameLogic(player);//pulls everything from 
+  },100);
+  eyeGame.gameTimer = setTimeout(() =>{
+    //will get cancelled and there will be a treasure timer if win (logicInterval cancels this)
+    sendMessage('pk message', `Time's up!`, player);
+    let tile = getTile(player.x, player.y, player.z);
+    delete tile.players;
+    player.x=524; player.y=354; player.z=0;
+    addPlayerToTile(player.name, player.x, player.y, player.z);
+    markTileChanged(player.x, player.y);
+    player.eyeGame=0;
+    //reset eye game function
+    resetEyeGame();
+  }, 1000*60*2);//2 minutes of guessing, 10 guesses
+}
+
+function eyeGameLogic(player){
+  for (let i = 1; i<5; i++){
+    if (eyeGame.slots[i].color===null){
+      let x = eyeGame.slots[i].x; let y = eyeGame.slots[i].y;
+      let tile = getTile(x, y, 0);
+      if (tile?.objects){
+        if (Object.keys(tile.objects)[0].startsWith('eye')){
+          eyeGame.slots[i].color=Object.keys(tile.objects)[0];
+          eyeGame.full-=1;
+        } else {
+          //maybe give item back or tell player it went into a black hole!
+          delete tile.objects;
+        }
+      }
+    }
+  }
+  if (eyeGame.full===0){
+    checkEyeGameWin(player);
+  }
+}
+
+function checkEyeGameWin(player){
+  eyeGame.eyeClue.floor.clues={
+    1: null,
+    2: null,
+    3: null,
+    4: null
+  }
+  if(
+    eyeGame.slots[1].correct === eyeGame.slots[1].color &&
+    eyeGame.slots[2].correct === eyeGame.slots[2].color &&
+    eyeGame.slots[3].correct === eyeGame.slots[3].color &&
+    eyeGame.slots[4].correct === eyeGame.slots[4].color
+  ) {
+    sendMessage('server message', `You solved the puzzle! You have 30 seconds to claim your prize!`, player);
+    clearInterval(eyeGame.logicInterval);
+    clearTimeout(eyeGame.gameTimer);
+    //add win stairs and/or prize and eyeGame.prizeTimer set
+    dropMobLoot(eyeGameDrops, 522, 350);
+    eyeGame.prizeTimer = setTimeout(() => {
+      let prizeTile = getTile(522, 350, 0);
+      delete prizeTile.objects;
+      let tile = getTile(player.x, player.y, player.z);
+      delete tile.players;
+      player.x = 524; player.y = 354; player.z = 0;
+      addPlayerToTile(player.name, player.x, player.y, player.z);
+      markTileChanged(player.x, player.y);
+      player.eyeGame = 0;
+      resetEyeGame();
+    }, 30000);
+  } else{
+    sendMessage('pk message', `Nope!`, player);
+    //hilight correct tiles
+    let corrects = [];
+    for (let i = 1; i < 5; i++) {
+      eyeGame.eyeClue.floor.clues[i]=null;
+      if (eyeGame.slots[i].correct === eyeGame.slots[i].color){
+        corrects.push('white');
+        console.log(eyeGame.eyeClue.floor.clues[i]);
+      }
+      else if (eyeGame.correctList.includes(eyeGame.slots[i].color)){
+        corrects.push('black');
+        console.log(eyeGame.eyeClue.floor.clues[i]);
+      }
+    }
+    for (let c = 1; c<=corrects.length; c++){
+      eyeGame.eyeClue.floor.clues[c]=corrects[c-1];
+    }
+    eyeGame.full = 4;
+    eyeGame.tries += 1;
+    setTimeout(() => {
+      for (let i = 1; i < 5; i++) {
+        eyeGame.slots[i].color = null;
+        let x = eyeGame.slots[i].x; let y = eyeGame.slots[i].y;
+        let tile = getTile(x, y, 0);
+        delete tile?.objects;
+      }
+      if (eyeGame.tries >= 10) {
+        sendMessage('pk message', `You failed to solve the puzzle!`, player);
+        let tile = getTile(player.x, player.y, player.z);
+        delete tile.players;
+        player.x = 524; player.y = 354; player.z = 0;
+        addPlayerToTile(player.name, player.x, player.y, player.z);
+        markTileChanged(player.x, player.y);
+        player.eyeGame = 0;
+        resetEyeGame();
+      }
+    }, 2000);
+  }
+}
+
+function resetEyeGame(){
+  //clear map markers, set properties back to default
+  let prizeTile = getTile(522, 350, 0);
+  delete prizeTile.objects;
+  clearInterval(eyeGame.logicInterval);
+  clearTimeout(eyeGame.gameTimer);
+  for (let i = 1; i<5; i++){
+    let x = eyeGame.slots[i].x; let y = eyeGame.slots[i].y;//y+1 through 9 for actual mastermind
+    let tile = getTile(x, y, 0);
+    delete tile?.objects;
+  }
+  eyeGame.eyeClue.floor.clues={
+    1:null,
+    2:null,
+    3:null,
+    4:null
+  }
+  eyeGame = {
+    currPlayer: null,
+    started: false,
+    tries: 0,
+    full: 4,
+    correctList: [],
+    eyeClue: getTile(522, 350, 0),
+    slots: {
+      1: { x: 523, y: 350, color: null, correct: null },
+      2: { x: 524, y: 350, color: null, correct: null },
+      3: { x: 525, y: 350, color: null, correct: null },
+      4: { x: 526, y: 350, color: null, correct: null }
+    },
+    doorTimer: null,
+    gameTimer: null,
+    logicInterval: null,
+    prizeTimer: null,
+  }
+}
+
+async function initGame(player, gameName){
+  switch (gameName){
+    case "eyeGame":
+      if (eyeGame.currPlayer===player.name && player.eyeGame===2){
+        //forfeit game! tele player anyway
+        sendMessage('pk message', `By leaving the area you forfeit the game!`, player);
+        let prizeTile = getTile(522, 350, 0);
+        delete prizeTile.objects;
+        setTimeout(() => {
+          let tile = getTile(player.x, player.y, player.z);
+          delete tile.players;
+          player.x = 524; player.y = 354; player.z = 0;
+          addPlayerToTile(player.name, player.x, player.y, player.z);
+          markTileChanged(player.x, player.y);
+          player.eyeGame = 0;
+          resetEyeGame();
+        }, 500);
+      } else {
+        clearTimeout(eyeGame.doorTimer);
+        eyeGame.doorTimer = null;
+        startEyeGame(player);
+      }
+      break;
+  }
+}
+
 
 async function initMaze(player, maze){
   switch (maze){
@@ -2214,7 +2457,7 @@ async function waterTileInteract(player, tile){
   await syncInventory(player.name);
 }
 
-let npcs = ['shopkeep', 'belethor', 'merchant', 'chef', 'farmer', 'hermit'];
+let npcs = ['shopkeep', 'belethor', 'merchant', 'chef', 'farmer', 'hermit', 'theEye'];
 
 async function npcInteract(name, npcName){
   let player = players[name];
@@ -2879,7 +3122,11 @@ async function interactTile(playerName) {
   const player = players[playerName];
   const tile = getTile(player.x, player.y, player.z);
   const mapObjects = tile.objects ?? {};
-
+  if (tile?.floor){
+    if (tile.floor['eyeSocket']){
+      return;
+    }
+  }
   const objNames = Object.keys(mapObjects);
   if (objNames.length === 0) {
     let action = await playerAction(playerName);//not standin on nothin, see what action does
@@ -3134,7 +3381,27 @@ async function restUnownedBed(name){
   });
 }
 
-async function purchaseItem(playerName, objName) {
+async function purchaseGame(player, game){
+  switch (game){
+    case 'eyeGame':
+      if (eyeGame.currPlayer!==null){
+        sendMessage('pk message', 'Game has already started!', player);
+        return;
+      }
+      console.log("start eye game door timer!");
+      sendMessage('server message', `You have 30 seconds to pass through the threshold and start the game!`, player);
+      eyeGame.doorTimer = setTimeout(() => {
+        player.eyeGame=0;
+        eyeGame.currPlayer=null;
+        sendMessage('pk message', 'You waited too long to enter and forfeited the game!', player);
+      }, 10000);
+      player.eyeGame=1;//setTimeout sets it back to 0 unless player goes in and cancels it!
+      eyeGame.currPlayer=player.name;
+      break;
+  }
+}
+
+async function purchaseItem(playerName, objName){
     if (!objName) return false;
 
     const player = players[playerName];
@@ -3165,6 +3432,11 @@ async function purchaseItem(playerName, objName) {
     // ---------- deduct cost ----------
     await removeItem(playerName, costItemId, costAmount);
 
+    //-----------game check----------------//need to give back money if purchase doesn't go through!
+    if (itemDef.item.includes('Game')){
+      await purchaseGame(player, itemDef.item);
+      return;
+    }
     // ---------- add the purchased item safely ----------
     let added = 0;
     if (buyItemId){
@@ -3736,9 +4008,13 @@ async function dropItem(name, item) {
       return;
     }
   }
+  let questDrop=null;
   if (tile?.questTile){
-    sendMessage('pk message', "You cannot drop items here...", player);
-    return;
+    questDrop = await checkQuestDrop(player, item, tile.questTile.questName);
+    if (questDrop===false){
+      sendMessage('pk message', "You cannot drop items here...", player);
+      return;
+    }
   }
   if(!player.inventory[item]){
     return;
@@ -3753,8 +4029,6 @@ async function dropItem(name, item) {
   const baseName = itemById[invItem.id];  // normal name from ID
   const dropName = baseTiles[baseName]?.dropChange ?? baseName;
   const container = baseTiles[dropName]?.containerChange ?? baseTiles[dropName].container;//this might break?
-  //for farming, seed changes to resource with regrowsTo, owner/player.name added
-  //new interval for plant regrowth stages (hourly)
 
   if (isSafeActive(tile) && player.name!=='Admin'){
     switch (dropName){
@@ -3766,6 +4040,7 @@ async function dropItem(name, item) {
       case "stoneplate":
       case "stairsR":
       case "stairsL":
+      case "door":
         sendMessage('pk message', `You cannot drop this item in a safe zone.`, player);
         return;
     }
@@ -3855,6 +4130,18 @@ async function dropOwnedItem(player, baseName, tileItem) {
   if (baseName === 'door') {
     tileItem.locked = true;
   }
+}
+
+async function checkQuestDrop(player, item, quest){
+  if (!quest){
+    return false;
+  }
+  const invItem = player.inventory[item]; // current inventory slot
+  const baseName = itemById[invItem.id];  // normal name from ID
+  if (quest==="eyeGame" && baseName.startsWith('eye')){
+    return true;
+  }
+  return false;
 }
 
 async function ifEquippedRemove(name, itemId) {
@@ -4391,10 +4678,26 @@ function countMobsByType(type) {
   return count;
 }
 
+let eyeTypes = [
+  "LightBlue",
+  "Green",
+  "Yellow",
+  "Blue",
+  "Pink",
+  "Red",
+];
+
 function spawnMob(spawn) {
   const mob = createMob(spawn.type, spawn.x, spawn.y);
   mobs.set(mob.id, mob);
   let tile = getTile(mob.x, mob.y);
+  if (spawn.type==='eye'){
+    //randomize color, mob.type=mob.type+'Blue' etc
+    mob.type+=eyeTypes[Math.floor(Math.random()*eyeTypes.length)];//test
+    mob.drop=[
+      { name: mob.type, min: 1, max: 5, weight: 100 }
+    ]
+  }
   tile.mob = {
     id: mob.id,
     sprite: mob.type + "L"
@@ -4456,6 +4759,7 @@ function updateMob(mob, now) {
 }
 
 function spawnMinion(mob) {
+  
   if (mob.hp < mob.maxHp && mob.spawnCount < mob.spawnMax) {
     let testMinion = createMob(mob.spawnMinion, mob.x, mob.y);
     mobs.set(testMinion.id, testMinion);
@@ -4466,6 +4770,7 @@ function spawnMinion(mob) {
     }
     mob.spawnCount += 1;
   }
+  
 }
 
 function findPlayerInRange(mob) {

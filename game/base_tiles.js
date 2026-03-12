@@ -700,7 +700,55 @@ base_tiles = {
     containerChange: "resource",
     owner: null    
   },
-  //LAST ADDED ITEM 
+  "eyeLightBlue":{
+    "x":224,"y":688,
+    prettyName:"light blue eye",
+    id: 108,
+  },
+  "eyeGreen":{
+    "x":240,"y":688,
+    prettyName:"green eye",
+    id: 109,
+  },
+  "eyeYellow":{
+    "x":256,"y":688,
+    prettyName:"yellow eye",
+    id: 110,
+  },
+  "eyeBlue":{
+    "x":272,"y":688,
+    prettyName:"blue eye",
+    id: 111,
+  },
+  "eyePink":{
+    "x":288,"y":688,
+    prettyName:"pink eye",
+    id: 112,
+  },
+  "eyeRed":{
+    "x":304,"y":688,
+    prettyName:"red eye",
+    id: 113,
+  },
+  //LAST ADDED ITEM
+  "stoneBT":{
+    "x":128, "y":80
+  },
+  "eyeSocket":{
+    x:208,y:688
+  },
+  "eyeLightBlueL":{x:304,y:672},
+  "eyeLightBlueR":{x:224,y:656},
+  "eyeGreenL":{x:288,y:672},
+  "eyeGreenR":{x:240,y:656},
+  "eyeYellowL":{x:272,y:672},
+  "eyeYellowR":{x:256,y:656},
+  "eyeBlueL":{x:256,y:672},
+  "eyeBlueR":{x:272,y:656},
+  "eyePinkL":{x:240,y:672},
+  "eyePinkR":{x:288,y:656},
+  "eyeRedL":{x:224,y:672},
+  "eyeRedR":{x:304,y:656},
   "cookingRange":{
     "x":192,"y":992
   },
@@ -736,6 +784,14 @@ base_tiles = {
     "x":144,"y":96
   },
 /*-----------npc shop items-----------------*/
+  "eyeGameShop":{
+    "x":256,"y":816,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 250},
+    amount: 1,
+    item: null
+  },
   "redfishShop":{
     "x":208,"y":480,
     container: "objects",
@@ -1803,6 +1859,7 @@ base_tiles = {
     container: "objects",
     collision: true
   },
+  "eyeClue":{x:192,y:672},
   "exclamation": {"x":48,"y":816},
   "hitOutlineLeft": { "x": 112, "y": 176 },
   "hitOutlineRight": { "x": 62, "y": 176 },
@@ -1854,6 +1911,7 @@ base_tiles = {
   "ratR": { "x": 112, "y": 144 },
   "ratL": { "x": 192, "y": 128 },
   //NPCs
+  "theEye": {x:208,y:672},
   "shopkeep": { "x": 16, "y": 128 },//no shopkeepL "y"et
   "belethor": {"x":208,"y":1088},
   "merchant": {"x":304,"y":640},
