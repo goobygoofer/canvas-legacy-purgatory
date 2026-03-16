@@ -1911,6 +1911,11 @@ base_tiles = {
   "ratR": { "x": 112, "y": 144 },
   "ratL": { "x": 192, "y": 128 },
   //NPCs
+  "peasant":
+  {x:208,y:1088},
+  "gateGuard":{
+    x:0,y:240
+  },
   "theEye": {x:208,y:672},
   "shopkeep": { "x": 16, "y": 128 },//no shopkeepL "y"et
   "belethor": {"x":208,"y":1088},

@@ -49,7 +49,7 @@
     margin: 0;
     padding: 0;
     margin-bottom: 20px;
-    border: 1px solid #ddd;
+    border: 1px solid #000000;
     padding: 5px;
     height: 100px;
     width: 260px;
@@ -91,6 +91,22 @@
       cursor: pointer;
       margin-left: 10px;
       }
+    .chat-tab {
+      padding: 2px 8px;
+      font-size: 12px;
+      margin-left: 2px;
+      background: rgb(50,50,50);
+    }
+    .settings-tab {
+      padding: 2px 8px;
+      font-size: 12px;
+      margin-left: 2px;
+      background: rgb(50,50,50);
+    }
+    .chat-tab.active {
+      background: rgb(120,120,120);
+    }
+
     button:hover {
       background: rgb(133, 133, 133);
     }
@@ -135,9 +151,13 @@
 <body style="background-color:black">
   <div id="page">
 <canvas id="disp" width="640" height="320"></canvas>
-<div id="bottom-row" style="background-color:burlywood">
+<div id="bottom-row" style="background-color:rgb(0, 0, 0)">
   <div id="chat-column">
-    <ul id="messages"></ul>
+    <ul id="messages" style="color:white; font-family: Consolas, Courier New, monospace;"></ul>
+<button class="chat-tab" onclick="filterMessages('all')">all</button>
+<button class="chat-tab" onclick="filterMessages('chat')">chat</button>
+<button class="chat-tab" onclick="filterMessages('game')">game</button>
+<button class="chat-tab" onclick="filterMessages('trade')">trade</button>
     <form id="form" action="#">
       <input id="input" autocomplete="off" placeholder="Chat..." />
       <button>Send</button>
@@ -146,9 +166,11 @@
   <div id="side-column">
     <div>
       <canvas id="invDisp" width="256" height="128"></canvas>
-      <button type="button" id="logoutBtn" onclick="logout()">Logout</button>
-      <button type="button" id="settingsBtn" onclick="settings()">Settings</button>
-      <button type="button" id="stuckBtn" onclick="playerStuck()">Stuck?</button>
+      <div style="display:inline-flex; gap:4px;">
+      <button class="settings-tab" id="logoutBtn" onclick="logout()">Logout</button>
+      <button class="settings-tab" id="settingsBtn" onclick="settings()">Settings</button>
+      <button class="settings-tab" id="stuckBtn" onclick="playerStuck()">Stuck?</button>
+      </div>
     </div>
     </div>
   </div>
@@ -156,6 +178,28 @@
   <script src="/socket.io/socket.io.js"></script>
   <script src="base_tiles.js"></script>
   <script src="index.js"></script>
+  <script>
+document.querySelectorAll(".chat-tab").forEach(b => {
+  b.addEventListener("click", () => {
+    // remove active from all
+    document.querySelectorAll(".chat-tab").forEach(btn => btn.classList.remove("active"));
+    
+    // add active to the clicked one
+    b.classList.add("active");
+    
+  });
+});
+window.addEventListener("DOMContentLoaded", () => {
+  const line = document.createElement("div");
+  line.dataset.type = "game";                  // optional, for filtering
+  line.innerHTML = `<strong><span style='color: teal'>PSA</span>: Canvas Legacy: Purgatory is in early alpha and riddled with bugs :)
+> </strong> <span style='color: blue' class="chat-link" data-action="openWebsite" data-url="https://discord.com/channels/307205327659597856/1470686194240065648"><u>Discord</u></span>`;
+
+  const messages = document.getElementById("messages");
+  messages.append(line);
+  messages.scrollTop = messages.scrollHeight;    // scroll to bottom
+});
+  </script>
 </div>
 </body>
 </html>

@@ -2550,6 +2550,50 @@ module.exports = {
     roof: false
   },
 /*---------------NPCS----------------*/
+  "peasant": {
+    kind: "npc",
+    container: "objects",
+    collision: true,
+    prettyName: "Peasant",
+    quest:{
+      name: "trollQuest",
+      0:{
+        speech: `With that troll blocking the eastern bridge, I can't get the supplies I need to fix this bridge!`
+      },
+      1:{
+        speech: `Rumor has it some fool thinks he's going to defeat the troll...\nI'd do it myself but I -- er -- took an arrow to the knee...`
+      },
+      2:{
+        speech: `You're telling me /you/ defeated the troll? No way...\nNo matter, I can fix the bridge now!`
+      },
+      3:{
+        speech: `Got some flooring? I can fix this bridge up if you give me at least two pieces of wood flooring...`,
+        action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
+          const flooring = await getItemAmount(player.name, 12);
+          if (flooring<2){
+            sendMessage('pk message', `Retturn when you have enough flooring on you!`, player);
+            return;
+          }
+          await removeItem(player.name, 12, 2);
+          await query(
+            "UPDATE players SET trollQuest = 4 WHERE player_name = ?",
+            [player.name]
+          );
+          player.trollQuest = 4;
+        }
+      },
+      4:{
+        speech: `The western kingdom castle is south of here...\nTravel safe!`
+      }
+    }
+  },
+  "gateGuard":{
+    kind: "npc",
+    container: "objects",
+    collision: true,
+    prettyName: "Guard",
+    speech: "You can't go in there right now...\nIf you break in and get stuck, I can't help you..."
+  },
   "theEye":{
     kind: "npc",
     container: "objects",
@@ -2609,6 +2653,9 @@ module.exports = {
       },
       3:{
         speech: `Thank you so much! Trade will be much better without that nasty troll...\n`
+      },
+      4:{
+        speech: `I heard the southern bridge was fixed!\nThank you again...`
       }
     }
   },

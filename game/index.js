@@ -10,6 +10,7 @@ const ctx = canvas.getContext('2d');
 const invCtx = invCanvas.getContext('2d');
 ctx.imageSmoothingEnabled = false;
 
+
 const socket = io(window.location.origin, {
   reconnection: false
 });
@@ -17,6 +18,7 @@ const form = document.getElementById('form');
 const input = document.getElementById('input');
 const messages = document.getElementById('messages');
 
+/*
 messages.addEventListener("click", (e) => {
   // only handle clicks on elements with .chat-link
   const el = e.target.closest(".chat-link");
@@ -35,6 +37,34 @@ messages.addEventListener("click", (e) => {
       console.log("declined trade");
       // clicking "Decline" on incoming trade
       socket.emit("declineTrade", username);
+      break;
+    case "openWebsite":
+      window.open(url, "_blank"); // opens the link in a new tab
+      break;
+  }
+});
+*/
+messages.addEventListener("click", (e) => {
+  const el = e.target.closest(".chat-link");
+  if (!el) return;
+
+  const action = el.dataset.action;
+  const username = el.dataset.username;
+
+  switch (action) {
+    case "acceptTrade":
+      console.log("accepted trade");
+      socket.emit("acceptTrade", username);
+      break;
+
+    case "declineTrade":
+      console.log("declined trade");
+      socket.emit("declineTrade", username);
+      break;
+
+    case "openWebsite":
+      const url = el.dataset.url;       // access it here safely
+      if (url) window.open(url, "_blank");
       break;
   }
 });
@@ -963,6 +993,7 @@ function sendPaint(x, y, subX, subY, leftRight){
   socket.emit("paint", data);
 }
 
+/*
 function addTradeIncomingMessage(username) {
   const line = document.createElement("div");
 
@@ -986,6 +1017,35 @@ function addTradeIncomingMessage(username) {
   messages.append(line);
   messages.scrollTop = messages.scrollHeight;
 }
+*/
+function addTradeIncomingMessage(username) {
+  const line = document.createElement("div");
+  line.dataset.type = "trade";
+
+  const accept = document.createElement("span");
+  accept.textContent = "Accept";
+  accept.className = "chat-link";
+  accept.dataset.action = "acceptTrade";
+  accept.dataset.username = username;
+
+  const decline = document.createElement("span");
+  decline.textContent = " Decline";
+  decline.className = "chat-link";
+  decline.dataset.action = "declineTrade";
+  decline.dataset.username = username;
+
+  const nameSpan = document.createElement("span");
+  nameSpan.textContent = `${username} wants to trade — `;
+
+  nameSpan.style.color = "purple";
+  accept.style.color = "green";
+  decline.style.color = "red";
+
+  line.append(nameSpan, accept, " ", decline);
+
+  messages.append(line);
+  messages.scrollTop = messages.scrollHeight;
+}
 
 socket.on("chatEvent", (data) => {
   if (data.type === "tradeRequest") {
@@ -993,19 +1053,61 @@ socket.on("chatEvent", (data) => {
   }
 });
 
-
+/*
 socket.on('chat message', (data) => {
   const { user, message } = data;
-  messages.innerHTML += `<div><strong>${user}:</strong> ${message}</div>`;
+  messages.innerHTML += `<div><strong><span style="color:yellow">${user}</span>:</strong> ${message}</div>`;
+  messages.scrollTop = messages.scrollHeight;
+});
+*/
+socket.on('chat message', (data) => {
+  const { user, message } = data;
+
+  const line = document.createElement("div");
+  line.dataset.type = "chat";
+
+  //line.innerHTML = `<strong><span style="color:yellow">${user ?? ''}</span>:</strong> ${message}`;
+  line.innerHTML = `<strong><span style="color:yellow">${user ?? ''}</span>${user ? ':' : ''}</strong> ${message}`;
+
+  messages.append(line);
   messages.scrollTop = messages.scrollHeight;
 });
 
+socket.on('pk message', (data) => {
+  const { message } = data;
+  const line = document.createElement("div");
+  line.dataset.type = "game";
+  line.innerHTML = `<div><strong style="color: red;">${message}</strong></div>`;
+  messages.append(line);
+  messages.scrollTop = messages.scrollHeight;
+});
 
+/*
 socket.on('server message', (data) => {
   const { message } = data;
   messages.innerHTML += `<div><strong>${message}</strong></div>`;
   messages.scrollTop = messages.scrollHeight;
 });
+*/
+socket.on('server message', (data) => {
+  const { message } = data;
+
+  const line = document.createElement("div");
+  line.dataset.type = "game";
+
+  line.innerHTML = `<strong>${message}</strong>`;
+
+  messages.append(line);
+  messages.scrollTop = messages.scrollHeight;
+});
+
+socket.on('readSign', (data) => {
+  const line = document.createElement("div");
+  line.dataset.type = "game";
+  line.innerHTML = `<div style="color: white;">\n<strong>${data.message}\n</div>`;
+  messages.append(line);
+  messages.scrollTop = messages.scrollHeight;
+})
 
 socket.on('playerState', (data)=> {
   playerData.name = data.name;
@@ -1078,11 +1180,6 @@ socket.on('playSound', (data) => {
   playSound(data);
 });
 
-socket.on('readSign', (data) => {
-  messages.innerHTML += `<div style="color: brown;">\n<strong>${data.message}\n</div>`;
-  messages.scrollTop = messages.scrollHeight;
-})
-
 var leaderboardData = null;
 socket.on('leaderboardData', (data) => {
   leaderboardData = data;
@@ -1115,36 +1212,42 @@ socket.on('channelCancel', () => {
   isChanneling = false;
 });
 
-socket.on('pk message', (data) => {
-  const { message } = data;
-  messages.innerHTML += `<div><strong style="color: red;">${message}</strong></div>`;
-  messages.scrollTop = messages.scrollHeight;
-});
-
 let isTrading = false;
 socket.on("tradeStarted", data => {
   isTrading=true;
   openTradeWindow(data.with);
-  messages.innerHTML += `<div><strong style="color: green;">Trading with ${data.with}!</strong></div>`;
+  const line = document.createElement("div");
+  line.dataset.type = "trade";
+  line.innerHTML = `<div><strong style="color: green;">Trading with ${data.with}!</strong></div>`;
+  messages.append(line);
   messages.scrollTop = messages.scrollHeight;
 });
 
 socket.on("tradeStatus", data => {
   console.log(data.who, "accepted");
-  messages.innerHTML += `<div><strong style="color: green;">${data.who} agreed to trade!</strong></div>`;
+  const line = document.createElement("div");
+  line.dataset.type = "trade";
+  line.innerHTML += `<div><strong style="color: green;">${data.who} agreed to trade!</strong></div>`;
+  messages.append(line);
   messages.scrollTop = messages.scrollHeight;
 });
 
 socket.on("tradeComplete", () => {
   console.log("trade complete!");
-  messages.innerHTML += `<div><strong style="color: green;">Trade successful!!</strong></div>`;
+  const line = document.createElement("div");
+  line.dataset.type = "trade";
+  line.innerHTML += `<div><strong style="color: green;">Trade successful!!</strong></div>`;
+  messages.append(line);
   isTrading=false;
   closeTradeWindow();
 });
 
 socket.on("tradeCanceled", () => {
   console.log("They aint wanna trade with you");
-  messages.innerHTML += `<div><strong style="color: red;">Trade cancelled!</strong></div>`;
+  const line = document.createElement("div");
+  line.dataset.type = "trade";
+  line.innerHTML += `<div><strong style="color: red;">Trade cancelled!</strong></div>`;
+  messages.append(line);
   closeTradeWindow();
 });
 
@@ -1155,7 +1258,10 @@ socket.on('explosion', (data) => {
 function closeTradeWindow(){
   isTrading=false;
   document.getElementById("tradeWindow")?.remove();
-  messages.innerHTML += `<div><strong style="color: black;">Trade ended!</strong></div>`;
+  const line = document.createElement("div");
+  line.dataset.type = "trade";
+  line.innerHTML += `<div><strong style="color: black;">Trade ended!</strong></div>`;
+  messages.append(line);
   messages.scrollTop = messages.scrollHeight;
 }
 
@@ -1169,7 +1275,10 @@ socket.on("tradeSync", ({ myOffer, theirOffer, accepted }) => {
   tradeState.accepted = accepted;
   console.log(tradeState);
   renderTradeItems();
-  messages.innerHTML += `<div><strong style="color: green;">Trade updated!</strong></div>`;
+  const line = document.createElement("div");
+  line.dataset.type = "trade";
+  line.innerHTML += `<div><strong style="color: green;">Trade updated!</strong></div>`;
+  messages.append(line);
   messages.scrollTop = messages.scrollHeight;
 });
 
@@ -1369,6 +1478,18 @@ socket.on("tradeOfferUpdate", (data) => {
   tradeState.theirOffer[data.slot].name = data.name || tradeState.theirOffer[data.slot].name;
   renderTradeItems(); // now the other client updates correctly
 });
+
+function filterMessages(type) {
+  const lines = messages.children;
+
+  for (const line of lines) {
+    if (type === "all" || line.dataset.type === type) {
+      line.style.display = "";
+    } else {
+      line.style.display = "none";
+    }
+  }
+}
 
 const bankContainer = document.getElementById("bankContainer");
 const bankGrid = document.getElementById("bankGrid");
@@ -1623,10 +1744,10 @@ function drawInventory(mouseX, mouseY) {
       const x = col * slotSize;
       const y = TAB_HEIGHT + row * slotSize;
       const item = playerData.inventory[slotIndex];
-      invCtx.fillStyle = "#663d00ff";
+      invCtx.fillStyle = "rgb(66, 66, 66)";
       invCtx.fillRect(x, y, slotSize, slotSize);
 
-      invCtx.strokeStyle = "#442900ff";
+      invCtx.strokeStyle = "rgb(0, 0, 0)";
       invCtx.strokeRect(x, y, slotSize, slotSize);
       if (item) {
         //draw item
@@ -1650,7 +1771,7 @@ function drawInventory(mouseX, mouseY) {
         const t = document.createElement('div');
         t.id = 'inv-tooltip';
         t.style.position = 'absolute';
-        t.style.background = "#a0732fc2";
+        t.style.background = "#6b6b6bc2";
         t.style.border = '1px solid black';
         t.style.fontSize = '12px';
         t.style.padding = '2px 4px';

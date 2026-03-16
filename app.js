@@ -71,7 +71,6 @@ function getColumn(x, y) {//get entire column of z levels
 let pendingTradeRequests = {};
 
 //reset tile versions so they don't build up to ridiculous numbers
-
 setInterval(async () => {
   for (i in map.Map) {
     for (j in map.Map[i]) {
@@ -131,7 +130,6 @@ app.post('/login', async (req, res) => {
   }
   try {
     await queryPassword(name, pass);
-    await setActive(name, 1);
     req.session.user = name;
     res.redirect('/game/game.html');
 
@@ -145,7 +143,7 @@ app.use("/viewer", express.static(path.join(__dirname, "viewer")));
 
 async function queryPassword(name, pass) {
   if (name.length > 30 || pass.length > 99) return;
-  const sql = "SELECT * FROM players WHERE player_name = ?";
+  const sql = "SELECT player_name, pass FROM players WHERE player_name = ?";
   const result = await query(sql, [name]);
   if (!result || result.length === 0) {
     console.log("New player!");
@@ -153,7 +151,6 @@ async function queryPassword(name, pass) {
     await initPlayer(name);
     await addItem(name, 1, 1);
     await syncInventory(name);
-    await setActive(name, 1);
     return { created: true };
   }
   const actual_pass = result[0].pass;
@@ -164,14 +161,7 @@ async function queryPassword(name, pass) {
   return { created: false };
 }
 
-function setActive(name, active) {//this really aint doin anything
-  return query(
-    "UPDATE players SET active = ? WHERE player_name = ?",
-    [active, name]
-  );
-}
-
-async function getLeaderboard() {
+async function getLeaderboard() {//change limit for top 5 or 10/whatever
   const sql = `
     SELECT 'HP' AS skill, player_name, hpXp AS xp
     FROM (
@@ -287,45 +277,30 @@ async function getLeaderboard() {
   return rows; // array of { skill, player_name, xp }
 }
 
-async function initPlayer(name) {//try this with select * isntead
-  const sql = `
-    SELECT *
-    FROM players
-    WHERE player_name = ?
-  `;
+async function initPlayer(name) {
+  const sql = `SELECT * FROM players WHERE player_name = ?`;
   const params = [name];
   const result = await query(sql, params);
-  let currHp = result[0].hp;
-  let currMana = result[0].mana;
-  let hpXp = result[0].hpXp;
-  let swordXp = result[0].swordXp;
-  let mageXp = result[0].mageXp;
-  let fishingXp = result[0].fishingXp;
-  let cookingXp = result[0].cookingXp;
-  let cookingLvl = await levelFromXp(cookingXp);
-  let farmingXp = result[0].farmingXp;
-  let farmingLvl = await levelFromXp(farmingXp);
-  let archeryXp = result[0].archeryXp;
-  let craftXp = result[0].craftXp;
-  let miningXp = result[0].miningXp;
-  let woodcuttingXp = result[0].woodcuttingXp;
-  let murdererStatus = result[0].murderer;
-  let criminalStatus = result[0].criminal;
-  let hpLvl = await levelFromXp(hpXp);
-  let swordLvl = await levelFromXp(swordXp);
-  let mageLvl = await levelFromXp(mageXp);
-  let archeryLvl = await levelFromXp(archeryXp);
-  let craftLvl = await levelFromXp(craftXp);
-  let woodcuttingLvl = await levelFromXp(woodcuttingXp);
-  let miningLvl = await levelFromXp(miningXp);
-  let fishingLvl = await levelFromXp(fishingXp);
+
+  let cookingLvl = await levelFromXp(result[0].cookingXp);
+  let farmingLvl = await levelFromXp(result[0].farmingXp);
+  let hpLvl = await levelFromXp(result[0].hpXp);
+  let swordLvl = await levelFromXp(result[0].swordXp);
+  let mageLvl = await levelFromXp(result[0].mageXp);
+  let archeryLvl = await levelFromXp(result[0].archeryXp);
+  let craftLvl = await levelFromXp(result[0].craftXp);
+  let woodcuttingLvl = await levelFromXp(result[0].woodcuttingXp);
+  let miningLvl = await levelFromXp(result[0].miningXp);
+  let fishingLvl = await levelFromXp(result[0].fishingXp);
+
   players[name] = {// Initialize player object
+    name: name,    
     x: result[0].x,
     y: result[0].y,
     z: result[0].z,
     sock_id: null, //to be set in io.connection
     sprite: "ghostR",
-    murderSprite: null,//not murderer
+    murderSprite: null,
     criminalSprite: null,
     facing: 'right',
     lastInput: Date.now(),
@@ -333,63 +308,65 @@ async function initPlayer(name) {//try this with select * isntead
     baseMovementSpeed: 175,
     movementSpeed: 175,//speed boots>>115, back to normal >> baseMovementSpeed
     lastMove: Date.now(),
-    lastDir: "right",//not using yet
+    lastDir: "right",
     step: 'stepR',
     typing: { state: false, lastSpot: { x: 0, y: 0, z:0 } },
     lastChunk: null,
     lastChunkSum: null,
     lastChunkKey: null,
-    activeInventory: 0,
-    inventory: [],//activeInventory used for position here
-    hand: result[0].hand,
-    head: result[0].head,
-    body: result[0].body,
-    feet: result[0].feet,
-    quiver: result[0].quiver,//other stuff can go here than arrows
     lastGather: Date.now(),
-    hp: currHp,//change to null, get hp from db
-    maxHp: 100 + Math.floor(hpLvl * 2),//300hp at lvl 100
-    mana: currMana,
-    maxMana: 100 + Math.floor(mageLvl * 2),
-    lastMelee: Date.now(),
-    name: name,
-    swordXpTotal: swordXp,
-    mageXpTotal: mageXp,
-    mageLvl: mageLvl,
-    archeryXpTotal: archeryXp,
-    fishingXpTotal: fishingXp,
-    fishingLvl: fishingLvl,
-    hpXpTotal: hpXp,
-    swordXp: 0,//these get written to the db every so often
-    hpXp: 0,   //then set back to 0
-    craftXpTotal: craftXp,
-    woodcuttingXpTotal: woodcuttingXp,
-    miningXpTotal: miningXp,
-    swordLvl: swordLvl,
-    archeryLvl: archeryLvl,
-    hpLvl: hpLvl,
-    craftLvl: craftLvl,
-    woodcuttingLvl: woodcuttingLvl,
-    miningLvl: miningLvl,
-    cookingXpTotal: cookingXp,
-    cookingLvl: cookingLvl,
-    farmingXpTotal: farmingXp,
-    farmingLvl: farmingLvl,
+    lastMelee: Date.now(),    
     lastState: null,
     isCrafting: false,
     lastHitBy: null,
     lastPlayerHit: null,
-    murderer: murdererStatus,//by default
-    murderTimer: 0,
-    criminal: criminalStatus,
-    criminalTimer: 0,
     tradingWith: null,
     tradeOffer: {}, // itemId -> amount
     tradeAccepted: false,
     slow: false,//like when hit by web
     slowTime: 0,//set with proj.slowTime
     obscured: false,
-    //quests
+    activeInventory: 0,
+    inventory: [],
+
+    hand: result[0].hand,
+    head: result[0].head,
+    body: result[0].body,
+    feet: result[0].feet,
+    quiver: result[0].quiver,
+
+    hp: result[0].hp,//change to null, get hp from db
+    maxHp: 100 + Math.floor(hpLvl * 2),//300hp at lvl 100
+    mana: result[0].mana,
+    maxMana: 100 + Math.floor(mageLvl * 2),    
+    swordXpTotal: result[0].swordXp,
+    mageXpTotal: result[0].mageXp,
+    archeryXpTotal: result[0].archeryXp,
+    fishingXpTotal: result[0].fishingXp,
+    hpXpTotal: result[0].hpXp,
+    craftXpTotal: result[0].craftXp,
+    woodcuttingXpTotal: result[0].woodcuttingXp,
+    miningXpTotal: result[0].miningXp,
+    cookingXpTotal: result[0].cookingXp,
+    farmingXpTotal: result[0].farmingXp,
+
+    hpLvl: hpLvl,
+    swordLvl: swordLvl,
+    archeryLvl: archeryLvl,    
+    mageLvl: mageLvl,
+    woodcuttingLvl: woodcuttingLvl,
+    miningLvl: miningLvl,
+    craftLvl: craftLvl,    
+    fishingLvl: fishingLvl,
+    cookingLvl: cookingLvl,
+    farmingLvl: farmingLvl,
+
+    murderer: result[0].murderer,
+    criminal: result[0].criminal,  
+    murderTimer: 0,
+    criminalTimer: 0,
+
+    //quests and games
     trollQuest:result[0].trollQuest,
     chefQuest:result[0].chefQuest,
     farmerQuest:result[0].farmerQuest,
@@ -399,7 +376,10 @@ async function initPlayer(name) {//try this with select * isntead
   let player = players[name];
   addPlayerToTile(name, player.x, player.y, player.z);
   markTileChanged(player.x, player.y);
-  syncInventory(name);
+  await syncInventory(name);
+  if (player.socket!==null){
+    setTimeout(() => {emitPlayerState(player)}, 1000);
+  }
 }
 
 async function cleanupPlayer(name) {
@@ -605,22 +585,8 @@ async function syncInventory(playerName) {
 }
 
 async function addPlayerToDb(name, pass) {
-  const sql = `INSERT INTO players (
-    player_name, pass, x, y,
-    hp, hpXp, swordXp, craftXp, woodcuttingXp, miningXp,
-    murderer, murderTimer, criminal, criminalTimer, 
-    fishingXp, archeryXp,
-    hand, head, body, feet, quiver, mageXp, mana
-    ) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `;
-  const params = [
-    name, pass, 49, 49,
-    100, 0, 0, 0, 0, 0,
-    false, 0, false, 0,
-    0, 0,
-    1, null, null, null, null, 0, 100
-  ];
+  const sql = `INSERT INTO players (player_name, pass) VALUES (?, ?)`;
+  const params = [name, pass];
   await query(sql, params);
 }
 
@@ -769,9 +735,7 @@ function addToMap(name, x, y, z=0, admin=false) {//z safety since no create z ti
       tile = getTile(x, y, z);
     }
   }
-  if (!tile) {
-    return;
-  }
+  if (!tile) return;
 
   const tileData = baseTiles[name];
   if (!tileData || !tileData.container) {
@@ -799,7 +763,6 @@ function clearTile(x, y, z) {
   if (!tile) return;
   if (z === 0){
     tile['b-t'] = "grass";
-
   }
   delete tile.objects;
   delete tile.floor;
@@ -822,7 +785,7 @@ async function emitPlayerState(player) {
     await playerDeath(player);
   }
   if (player.sock_id !== null) {
-    io.to(player.sock_id).emit('playerState', {
+    io.to(player.sock_id).emit('playerState', {//emit only what has changed...
       x: player.x,
       y: player.y,
       z: player.z,
@@ -902,22 +865,7 @@ async function startCriminalTimer(name) {
     setCriminal(name, true, 60 * 15 * 1000);
   }
 }
-/*
-function getTilesInRadius(x, y, radius) {
-  const tiles = [];
-  for (let dy = -radius; dy <= radius; dy++) {
-    for (let dx = -radius; dx <= radius; dx++) {
-      const nx = x + dx;
-      const ny = y + dy;
-      const dist = Math.abs(dx) + Math.abs(dy); // Manhattan distance
-      tiles.push({ nx, ny, dist });
-    }
-  }
-  // Sort by distance so closest tiles come first
-  tiles.sort((a, b) => a.dist - b.dist);
-  return tiles;
-}
-*/
+
 function getTilesInRadius(x, y, radius) {
   const tiles = [];
 
@@ -997,16 +945,16 @@ async function respawnPlayer(name) {
     player.x = 102;
     player.y = 74;
     player.z = 1;
-    addPlayerToTile(name, 102, 74, 1);
+    addPlayerToTile(name, 102, 74, 1);//forest jail!
     markTileChanged(102, 74);
-    await addItem(name, idByItem("healthpotion"), 1);
+    await addItem(name, idByItem("healthpotion"), 1);//lockpick when thieving a skill
     await addItem(name, idByItem("stoneSword"), 1);
     await syncInventory(name);
   } else {
     player.x = 26;
     player.y = 54;
     player.z = 0;
-    addPlayerToTile(name, 26, 54, 0);
+    addPlayerToTile(name, 26, 54, 0);//hospital!
     markTileChanged(26, 54);
   }
   await addItem(name, 1, 1);
@@ -1059,7 +1007,7 @@ async function updatePlayerState(player) {
   );
 
   if (changed) {
-    emitPlayerState(player); // now player actually has new levels
+    emitPlayerState(player);
     player.lastState = { ...currState };
   }
 }
@@ -1354,7 +1302,6 @@ function disconnectPlayer(socket){
     //don't cleanup, keep active on server
   } else {
     console.log(`User logged out: ${socket.user}`);
-    setActive(socket.user, 0);
     cleanupPlayer(socket.user);
     socket.request.session.destroy();
     sendMessage('server message', `${socket.user} logged out...`);
@@ -1404,7 +1351,6 @@ async function bankDeposit(socket, data){
     // 3. Remove from inventory
     await removeItem(player.name, id, toDeposit);
 
-    console.log(`Successfully deposited ${toDeposit} of ID ${id}`);
     playerBank(player.name);
     syncInventory(player.name);
   } catch (err) {
@@ -1452,9 +1398,7 @@ function layTile(socket, data){
     console.log("not Admin or devmode");
     return;
   }
-  let x;
-  let y;
-  let z;
+  let x; let y; let z;
   if (data.x === null || data.y === null) {
     x = players[socket.user].x;
     y = players[socket.user].y;
@@ -1463,6 +1407,7 @@ function layTile(socket, data){
     y = data.y;
   }
   z = players[socket.user].z;
+  if (x<0 || x>799 || y<0 || y>599) return;//out of bounds!
   addToMap(data.tile, x, y, z, true);
 }
 
@@ -1611,6 +1556,7 @@ async function connectPlayer(socket){
     console.log(`User connected: ${socket.user}`);
     players[socket.user].sock_id = socket.id;
     console.log(`Added id: ${socket.user} : ${players[socket.user].sock_id}`);
+    await syncInventory(socket.user);
   }
 }
 
@@ -1837,15 +1783,6 @@ function handlePlayerInput(name, keystate) {
   }
 }
 
-function setDir(data){
-  const directions = ['up', 'down', 'left', 'right'];
-  directions.forEach(dir => {
-    if (data[dir]) {
-      return dir;
-    }
-  })
-}
-
 const dirOffsets = {
   up: [0, -1],
   down: [0, 1],
@@ -1875,11 +1812,9 @@ function movePlayer(name, data) {
 
   let player = players[name];
 
-  if (Date.now() < player.lastMove + player.movementSpeed) {
-    return;
-  }
-
+  if (Date.now() < player.lastMove + player.movementSpeed) return;
   if (slowPlayer(player)) return;
+
   player.lastMove = Date.now();
 
   let modCoords;
@@ -2084,12 +2019,7 @@ function checkCollision(name, x, y, z) {
   if (y < 0 || y > tileMaxY - 1) {
     return true;
   }
-  /*
-  if (noCollision || name === 'Admin') {
-    markTileChanged(x, y);
-    return false;
-  }
-  */
+
   let tile = getTile(x, y, z);
   if (tile===null || tile===undefined) return;
   if (tile?.['b-t']){
@@ -2100,10 +2030,8 @@ function checkCollision(name, x, y, z) {
     }
   }
   if (tile?.questTile) {//for entry into quest only areas
-    console.log("got here");
     let qName = tile.questTile.questName;
     if (player[tile.questTile.questName] < tile.questTile.stagePass) {
-      console.log("got here");
       if (tile.questTile.questName === 'eyeGame') {
         sendMessage('pk message', `To play the Eye Game, put 250 coins in the coffer by standing on it and pressing shift!`, player);
         return true;
@@ -2383,7 +2311,6 @@ async function initGame(player, gameName){
   }
 }
 
-
 async function initMaze(player, maze){
   switch (maze){
     case 'maze1':
@@ -2457,13 +2384,13 @@ async function waterTileInteract(player, tile){
   await syncInventory(player.name);
 }
 
-let npcs = ['shopkeep', 'belethor', 'merchant', 'chef', 'farmer', 'hermit', 'theEye'];
+let npcs = ['shopkeep', 'belethor', 'merchant', 'chef', 'farmer', 'hermit', 'theEye', 'gateGuard', 'peasant'];
 
 async function npcInteract(name, npcName){
   let player = players[name];
   let npcObject = baseTiles[npcName];
   if (npcObject?.speech){
-    sendMessage('server message', `\n${npcObject.prettyName}: ${npcObject.speech}`, player);
+    sendMessage('chat message', `\n<span style="color: green;">${npcObject.prettyName}</span>: ${npcObject.speech}`, player);
   }
   if (npcObject?.quest){
     await npcQuest(player, npcObject);
@@ -2474,7 +2401,7 @@ async function npcQuest(player, npcObj){
   let questName = npcObj.quest.name;
   let questStage = player[questName];
   let npcSpeech = npcObj.quest[questStage].speech;
-  sendMessage('server message', `\n${npcObj.prettyName}: ${npcSpeech}`, player);
+  sendMessage('chat message', `\n<span style="color: green;">${npcObj.prettyName}</span>: ${npcSpeech}`, player);
   if (npcObj.quest[questStage]?.action){
     npcObj.quest[questStage].action(player, query, addItem, removeItem, getItemAmount, sendMessage);//won't necessarily query, but fine this way
   }
@@ -2724,7 +2651,7 @@ async function damageMob(playerName, mobId, damage, type) {
   sendMessage('pk message', `You hit the ${targetMob.type} for ${damage} damage!`, players[playerName]);
 }
 
-async function giveXp(playerName, xp, type) {
+async function giveXp(playerName, xp, type) {//check player.*Lvl against lvlFromXp(*XpTotal) to send lvl up!
   let player = players[playerName];
   if (type===undefined) return;
   if (itemById[player.head]==="xpHat"){
@@ -2786,7 +2713,7 @@ async function killMob(mob) {
 async function dropMobLoot(drops, x, y) {
   if (!drops || !drops.length) return;
   const lootbag = {
-    name: "lootbag",
+    name: "lootbag",//remember .kind can be lootbag
     items: {},
     locked: false
   };
@@ -2943,10 +2870,7 @@ async function getHotCold(player) {
 async function playerTryFishing(player) {
   let fishTileCoords = checkOnNextTile(player.x, player.y, player.z, player.lastDir, "fishingspot");
   if (fishTileCoords === false) return;
-  //else it's coords!
   sendMessage('server message', 'You cast out your line.', player);
-  //add bobber to tile, only on front end?
-  //add fishing=true/false so others can see too
   let tile = getTile(fishTileCoords.x, fishTileCoords.y, fishTileCoords.z);
   tile.objects['fishingspot'].fishing = true;
   markTileChanged(fishTileCoords.x, fishTileCoords.y);
@@ -2959,7 +2883,6 @@ async function playerTryFishing(player) {
       tile.objects['fishingspot'].fishing = false;
       markTileChanged(fishTileCoords.x, fishTileCoords.y);
       sendMessage('server message', "You reel in your line.", player);
-      //random chance for fish
       await randomChanceForFish(player, fishTileCoords);
       setTimeout(() => {
         playerTryFishing(player, fishTileCoords);
@@ -2981,9 +2904,6 @@ let fish = [
 ]
 
 async function randomChanceForFish(player, spot) {
-  //random chance for fish, if get fish, fishTileCoords .amount-=1;
-  //if amount===0, delete fishingspot!
-  //change this to fishing level, list of fish, etc
   if (roll(player.fishingLvl)) {
     sendMessage('server message', 'You caught a fish!', player);
     let caughtFish = fish[Math.floor(Math.random() * fish.length)];
@@ -3091,6 +3011,7 @@ async function playerShootBow(player, mage = false) {
 
 async function floorRoofRemove(player, tile){
   //check tile for floor then ceiling, remove
+  //need choice on frontend!
   if (isSafeActive(tile)) return false;
   if (itemById[player.hand]!=="tools") return false;
   const floor = tile.floor ?? {};
@@ -3433,10 +3354,13 @@ async function purchaseItem(playerName, objName){
     await removeItem(playerName, costItemId, costAmount);
 
     //-----------game check----------------//need to give back money if purchase doesn't go through!
-    if (itemDef.item.includes('Game')){
-      await purchaseGame(player, itemDef.item);
-      return;
+    if (itemDef?.item){
+      if (itemDef.item.includes('Game')) {
+        await purchaseGame(player, itemDef.item);
+        return;
+      }
     }
+
     // ---------- add the purchased item safely ----------
     let added = 0;
     if (buyItemId){
@@ -3692,7 +3616,6 @@ async function playerDig(player){
   let tX = Treasure?.x;
   let tY = Treasure?.y;
   if (tX && tY){
-    console.log("checking for treasure");
     //return if on treasure, player gets it
     if (tX===player.x && tY===player.y){
       sendMessage('server message', `<span style="color: purple;">You found buried treasure!</span>`, player);
@@ -3745,7 +3668,7 @@ async function harvestPlant(player, tile, plantName){
     await setCriminal(player.name, true, 60*1000*10);
     sendMessage('pk message', `A passerby reported you for stealing crops!`, player);
   }
-  if (plant.amt<=0 || plant.amt===null){
+  if (plant.amt<=0 || plant.amt===null || plant.amt===undefined){//kludge fix, why plant.amt becoming undefined??
     delete tile.objects;//should work lol
     markTileChanged(player.x, player.y);
   }
@@ -3829,7 +3752,6 @@ async function eatDrinkTimed(name, itemObj) {
       }
       if (itemObj?.seed){
         //give player seed(s) from plant seed: {item: "tomatoSeed", amt: 5}
-        console.log(`item: ${itemObj.seed['item']}, amt: ${itemObj.seed['amt']}`);
         let seedId = idByItem(itemObj.seed['item']);
         let seedAmt = itemObj.seed['amt'];
         await addItem(player.name, seedId, seedAmt);//hmm other stuff, like key hidden in a cake or some shit lol
@@ -3987,7 +3909,7 @@ function startChannel({
   };
 }
 
-let zRaise = [
+let zRaise = [//put stairs in here?
   'woodblock0',
   'stoneblock0'
 ]
@@ -4019,7 +3941,7 @@ async function dropItem(name, item) {
   if(!player.inventory[item]){
     return;
   }
-  if (tile?.['b-t']){
+  if (tile?.['b-t']){//maybe let player drop certain things in water /if/ they can get in water lol
     if (tile['b-t']==='water'){
       return;
     }
@@ -4054,7 +3976,7 @@ async function dropItem(name, item) {
     sendMessage('pk message', `You can only plant seeds at ground level!`, player);
     return;
   }
-  if (baseTiles[dropName]?.farming){
+  if (baseTiles[dropName]?.farming){//should put this in another function
     if (player.farmerQuest<3){
       sendMessage('pk message', `You must help Olive the Farmer to plant seeds!`, player);
       return;
@@ -4087,7 +4009,6 @@ async function dropItem(name, item) {
     //this should be all the cases
   }
   if (baseTiles[dropName]?.farming){//fuck, there's .farm and .farming in baseTiles...
-    console.log("planting seed");
     if (dropName==='tomatoPlant0' && player.farmerQuest===3){
       console.log("tomatoPlant0!");
       sendMessage('server message', `The tomato seed germinated! While waiting for it to grow, go talk to Olive the Farmer!`, player);
@@ -4394,7 +4315,7 @@ const mobs = new Map();
 
 let treasureHidden = false;
 let Treasure = {};
-async function initTreasure(){
+async function initTreasure(){//favors north part of map, fix that
   treasureHidden = false;
   Treasure = {};//empty that shit
   for (let y = 0; y < 295; y++) {
@@ -4485,9 +4406,7 @@ async function replenishResources(farming=false) {
             if (farming){
               tile.objects[nextName].owner = owner;
             }
-            if (farming && players[owner]){
-              console.log("owner exists");
-              let player = players[owner];
+            if (farming && owner!==undefined){
               if (!baseTiles[nextName]?.regrowsTo){
                 console.log("setting plant amt");
                 //final stage, add amt depending on players level, always 4
@@ -5016,8 +4935,7 @@ setInterval(updateMobs, 250);
 async function initMurderers() {
   // Get all players who are murderers with a remaining timer
   const rows = await query(
-    `SELECT player_name, x, y, z, hp, hpXp, swordXp, archeryXp, craftXp, woodcuttingXp, miningXp, murderer, murderTimer, fishingXp,
-     head, hand, body, quiver, feet, mageXp, mana
+    `SELECT *
      FROM players
      WHERE murderer = 1 AND murderTimer > 0`
   );
@@ -5033,14 +4951,6 @@ async function initMurderers() {
     let x = result.x;
     let y = result.y;
     let z = result.z;
-    const hpLvl = await levelFromXp(result.hpXp);
-    const swordLvl = await levelFromXp(result.swordXp);
-    const fishingLvl = await levelFromXp(result.fishingXp);
-    const archeryLvl = await levelFromXp(result.archeryXp);
-    const craftLvl = await levelFromXp(result.craftXp);
-    const woodcuttingLvl = await levelFromXp(result.woodcuttingXp);
-    const miningLvl = await levelFromXp(result.miningXp);
-    const mageLvl = await levelFromXp(result.mageXp);
     // Initialize player object in memory
     await initPlayer(name);
     let player = players[name];

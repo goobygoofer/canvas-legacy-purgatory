@@ -183,12 +183,19 @@ function renderMap(){
 }
 
 function renderTile(x, y){
-  /*
+  
   const chunk = map[y][x];
+  /*
   drawBaseTile(chunk, y, x);
   drawPixels(chunk, y, x);
   drawObjects(chunk, y, x);
   */
+        for (let z in chunk){
+        let col = chunk[z];
+        drawBaseTile(col, y, x);
+        drawPixels(col, y, x);
+        drawObjects(col, y, x, z);
+      }
 }
 
 window.map = null;  // or {} if you prefer
