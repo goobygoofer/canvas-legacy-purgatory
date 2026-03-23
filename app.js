@@ -18,6 +18,8 @@ function exportMapForViewer(mapData) {
   console.log("Map exported to viewer/view_map.js");
 }
 
+let kWest = 0;
+let kEast = 0;
 for (let y = 0; y < map.Map.length; y++) {
   for (let x = 0; x < map.Map[y].length; x++) {
 
@@ -29,7 +31,10 @@ for (let y = 0; y < map.Map.length; y++) {
 
       const tile = column[z];
       if (!tile) continue;
-
+      if (tile?.kTile){
+        if (Object.keys(tile.kTile)[0]==='kWest') kWest+=1;
+        if (Object.keys(tile.kTile)[0]==='kEast') kEast+=1;
+      }
       // delete unwanted runtime data
       delete tile.mob;
       delete tile.players;
@@ -55,6 +60,7 @@ for (let y = 0; y < map.Map.length; y++) {
   }
 }
 
+console.log(`west: ${kWest}, east: ${kEast}`);
 
 function getTile(x, y, z = 0) {//get a single tile in a column of z levels
   if (!map.Map[y]) return null;
@@ -294,7 +300,9 @@ async function initPlayer(name) {
   let fishingLvl = await levelFromXp(result[0].fishingXp);
 
   players[name] = {// Initialize player object
-    name: name,    
+    name: name,
+    king: result[0].king,
+    takingThrone: false,
     x: result[0].x,
     y: result[0].y,
     z: result[0].z,
@@ -371,15 +379,49 @@ async function initPlayer(name) {
     chefQuest:result[0].chefQuest,
     farmerQuest:result[0].farmerQuest,
     maze1:0,//always this, just to set off quest tile
-    eyeGame:0
+    eyeGame:0,
+    //taxes
+    taxProgress: 0
   };
   let player = players[name];
+  if (player.king!==null){
+    player.head = idByItem(player.king+"Crown");//assures they are wearing crown
+  }
   addPlayerToTile(name, player.x, player.y, player.z);
   markTileChanged(player.x, player.y);
   await syncInventory(name);
   if (player.socket!==null){
-    setTimeout(() => {emitPlayerState(player)}, 1000);
+    setTimeout(() => {
+      emitPlayerState(player);
+      updateKingStatus(player);
+    }, 1000);
   }
+}
+
+function updateKingStatus(player=null){
+  if (player!==null){
+    io.to(player.sock_id).emit('currentKings', {
+      east: {
+        king: eastKingdom.king,
+        tax: eastKingdom.tax
+      },
+      west: {
+        king: westKingdom.king,
+        tax: westKingdom.tax
+      }
+    })    
+    return;
+  }
+  io.emit('currentKings', {
+    east: {
+      king: eastKingdom.king,
+      tax: eastKingdom.tax
+    },
+    west: {
+      king: westKingdom.king,
+      tax: westKingdom.tax
+    }
+  })
 }
 
 async function cleanupPlayer(name) {
@@ -679,8 +721,9 @@ function checkPassword(input, actual) {//replace with hashing
   return input === actual;
 }
 
-function mapPersist() {
+async function mapPersist() {
   map.Fxn.persist(map.Map);
+  await dbKingdoms();
   for (p in players) {
     if (!players[p]) continue;
     addPlayerToTile(p)//cause they got took off lol
@@ -758,9 +801,18 @@ function addToMap(name, x, y, z=0, admin=false) {//z safety since no create z ti
   markTileChanged(x, y);
 }
 
-function clearTile(x, y, z) {
+function clearTile(x, y, z, kOnly=false) {
+  console.log(`clearTile kOnly: ${kOnly}`);
   let tile = getTile(x, y, z);
   if (!tile) return;
+  if (kOnly===true){
+    console.log("clearing kTile");
+    if (tile?.['kTile']){
+      delete tile['kTile'];
+    }
+    markTileChanged(x, y);
+    return;
+  }
   if (z === 0){
     tile['b-t'] = "grass";
   }
@@ -1082,10 +1134,35 @@ viewerNamespace.on("connection", (socket) => {
 
   // send full map once
   socket.emit("mapInit", map.Map);
+
+  socket.on('editorAddRadiusTiles', (data) => {
+    console.log(`big editor >> click: ${data.click} x: ${data.x}, y: ${data.y}, z: ${data.z}, tile: ${data.tile}, radius: ${data.radius}, kOnly: ${data.k}`);
+    editorAddTiles(data);
+  })
 });
 
+async function editorAddTiles(data){
+  console.log(`click: ${data.click}`);
+  if (data.z<0 || data.z>4) return;
+  let affectedTiles = getTilesInRadius(data.x, data.y, data.radius);
+  if (!data.tile || !baseTiles[data.tile]) return;
+  //check for players and mobs on those tiles
+  for (tile in affectedTiles) {
+    const { nx, ny } = affectedTiles[tile];
+    let mapTile = getTile(nx, ny, data.z);
+    if (!mapTile) continue;
+    if (data.click==='left'){
+      addToMap(data.tile, nx, ny, data.z, true);
+    }
+    if (data.click==='right'){
+      clearTile(nx, ny, data.z, data.k);
+    }
+  }
+
+}
+
 function viewerUpdate(x, y) {
-  if (!players['Admin']) return;
+  //if (!players['Admin']) return;
   viewerNamespace.emit("mapUpdate", { x, y, tile: map.Map[y][x] });
 }
 
@@ -1654,7 +1731,17 @@ function chatMessage(socket, msg){
   } else {
     let senderName = socket.user;
     if (players[socket.user].murderer===true){
-      senderName = `<span style="color: red;">${socket.user}</span>`;
+      senderName = `<span style="color: red;">${senderName}</span>`;
+    }
+    if (players[socket.user].king!==null){
+      switch (players[socket.user].king){
+        case 'east':
+          senderName = `<span style="color: green;">King</span> ${senderName}`;
+          break;
+        case 'west':
+          senderName = `<span style="color: blue;">King</span> ${senderName}`;
+          break;
+      }
     }
     io.emit('chat message', {
       user: senderName,
@@ -1705,6 +1792,34 @@ async function parseCmdMsg(name, cmd) {
   if (words[0] === "who") {
     sendMessage('server message', `\n${Object.keys(players)}`, player);
   }
+  if (words[0] === "tax") {
+    await setTaxes(player, words[1]);
+  }
+}
+
+async function setTaxes(player, tax){
+  if (player.king === null) {
+    sendMessage('pk message', `You don't have the authority to do that!`, player); return;
+  }
+  const taxes = Number(tax);
+  if (isNaN(taxes)){
+    sendMessage('pk message', `Enter a valid number (0-50)...`, player);
+    return;
+  }
+  if (taxes < 0 || taxes > 50) {
+    sendMessage('pk message', `Taxes must be between 0 and 50.`, player);
+    return;
+  }
+  await query(`update kingdoms set tax = ? where kingdom = ?`, [taxes, player.king]);
+  switch (player.king){
+    case 'east':
+      eastKingdom.tax = taxes;
+      break;
+    case 'west':
+      westKingdom.tax = taxes;
+      break;
+  }
+  sendMessage('server message', `You set the ${player.king} kingdom's taxes to ${taxes}%`, player);
 }
 
 async function sendTradeRequest(fromName, toName) {
@@ -1775,11 +1890,11 @@ async function finalizeTrade(a, b) {
   await syncInventory(b);
 }
 
-function handlePlayerInput(name, keystate) {
+async function handlePlayerInput(name, keystate) {
   if (!players[name]) return;
   let player = players[name];
   if (keystate.up || keystate.down || keystate.left || keystate.right) {
-    movePlayer(name, keystate);
+    await movePlayer(name, keystate);
   }
 }
 
@@ -1807,7 +1922,7 @@ const crimSpriteMap = {
 
 const directions = ['up', 'down', 'left', 'right'];
 
-function movePlayer(name, data) {
+async function movePlayer(name, data) {
   cancelPendingChannels(name);
 
   let player = players[name];
@@ -1957,12 +2072,7 @@ function slowPlayer(player){
   return false;
 }
 
-function cancelPendingChannels(name, cancelGame=false){
-  if (cancelGame===true){
-    if (activeChannels[name]){
-      
-    }
-  }
+function cancelPendingChannels(name){
   if (pendingTeleports[name]) {
     clearTimeout(pendingTeleports[name]);
     delete pendingTeleports[name];
@@ -2384,7 +2494,7 @@ async function waterTileInteract(player, tile){
   await syncInventory(player.name);
 }
 
-let npcs = ['shopkeep', 'belethor', 'merchant', 'chef', 'farmer', 'hermit', 'theEye', 'gateGuard', 'peasant'];
+let npcs = ['shopkeep', 'belethor', 'merchant', 'chef', 'farmer', 'hermit', 'theEye', 'gateGuard', 'peasant', 'kingsaid'];
 
 async function npcInteract(name, npcName){
   let player = players[name];
@@ -2552,6 +2662,9 @@ async function areaStrike(mapTile, type){
 }
 
 function damagePlayer(player, targetPlayer, damage, type) {
+  if (targetPlayer.takingThrone===true){
+    cancelPendingChannels(targetPlayer.name);
+  }
   if (player !== null) {
     if (type!=="lightning"){
       if (targetPlayer.head !== null) {
@@ -2634,7 +2747,18 @@ function meleeAttackMob(playerName, mobId) {
 async function damageMob(playerName, mobId, damage, type) {
   let player = players[playerName];
   let targetMob = mobs.get(mobId);
+  if (targetMob?.guard){
+    if (player.king!==null){
+      if (targetMob?.kingdom){
+        if (targetMob.kingdom===player.king){
+          sendMessage('pk message', `The guard cowers before you... You sheath your sword...`, player);
+          return;
+        }
+      }
+    }
+  }
   targetMob.lastHitBy = playerName;
+  //if king/ally and guard of that kingdom, return (though may need to skip in collision?)
   let xp = Math.floor(damage / 10);
   if (targetMob.hp - damage < 0) {
     xp = Math.floor(Math.floor(targetMob.hp / 10));
@@ -2645,6 +2769,11 @@ async function damageMob(playerName, mobId, damage, type) {
   await giveXp(playerName, xp, type);
   if (damage < 0) {
     damage = 0;
+  }
+  if (targetMob?.guard){
+    if (!player.criminal && !player.murderer){
+      await setCriminal(playerName, true, 1000*60*10);
+    }
   }
   targetMob.hp -= damage;
   sendSound(players[playerName], ['hit']);
@@ -2695,6 +2824,22 @@ async function giveXp(playerName, xp, type) {//check player.*Lvl against lvlFrom
 async function killMob(mob) {
   if (mob?.quest){
     await mobQuestLogic(players[mob.lastHitBy], mob.quest.name, mob);  
+  }
+  if (mob?.kingdom){
+    switch(mob.kingdom){
+      case 'east':
+        eastKingdom.activeGuard-=1;
+        if (eastKingdom.activeGuard<0) eastKingdom.activeGuard=0;
+        eastKingdom.guards-=1;
+        if (eastKingdom.guards<0) eastKingdom.guards=0;
+        break;
+      case 'west':
+        westKingdom.activeGuard-=1;
+        if (westKingdom.activeGuard<0) westKingdom.activeGuard=0;
+        westKingdom.guards-=1;
+        if (westKingdom.guards<0) westKingdom.guards=0;
+        break;
+    }
   }
   const tile = getTile(mob.x, mob.y);
   delete tile.mob;
@@ -3160,6 +3305,10 @@ async function openLootbag(playerName, lootbagObject, x, y, z) {
           lootChat[name] = 0;
         }
         lootChat[name] += added;
+        if (name==='coin'){
+          //tax coins
+          await taxCoins(playerName, item.amt);
+        }
       }
       // ----------------------
 
@@ -3197,6 +3346,33 @@ async function openLootbag(playerName, lootbagObject, x, y, z) {
   } finally {
     lootbagObject.locked = false;
   }
+}
+
+async function taxCoins(name, amt){
+  let player = players[name];
+  if (!player) return;
+  let tile = getTile(player.x, player.y, 0);
+  if (!tile?.kTile) return;
+  let kName = Object.keys(tile.kTile)[0];
+  let kingName = null;
+  let coinTax = null;
+  switch (kName){
+    case 'kWest':
+      kingName=westKingdom.king;
+      coinTax=westKingdom.tax;
+      break;
+    case 'kEast':
+      kingName=eastKingdom.king;
+      coinTax=eastKingdom.tax;
+      break;
+  }
+  if (kingName===null) return;//no tax!
+  if (coinTax===0) return;//hmm, no tax!
+  let percentTaken = Math.floor(amt-(amt*(coinTax/100)));
+  if (percentTaken>=amt) return;//I guess this makes sense?
+  sendMessage('server message', `You pay ${percentTaken} coins in taxes to the kingdom.`, player);
+  await removeItem(name, 21, percentTaken);
+  await addBankItem(kingName, 21, percentTaken);
 }
 
 let exits = [
@@ -3248,6 +3424,16 @@ async function checkInteract(name, mapObjects) {
     readLeaderboard(name);
     return true;
   }
+  if (objName === 'westLeaderboard'){
+    console.log("west");
+    await getKingReigns('west', name);
+    return true;
+  }
+  if (objName === 'eastLeaderboard'){
+    console.log("east");
+    await getKingReigns('east', name);
+    return true;
+  }
   if (objName === 'bedShop'){
     restUnownedBed(name);
     return true;
@@ -3256,7 +3442,209 @@ async function checkInteract(name, mapObjects) {
     await purchaseItem(name, objName);
     return true;
   }
+  if (objName.startsWith('throne')){
+    await claimThrone(name, objName);
+  }
   return false;
+}
+
+let westKingdom = {
+  king: null,//pull from database
+  guards: 0,//pull from db
+  activeGuard: 0,
+  tax: 0//percent 0-50
+}
+
+let eastKingdom = {
+  king: null,
+  guards: 0,
+  activeGuard: 0,
+  tax: 0//percent 0-50
+}
+
+async function initKingdoms(){
+  //load eastKingdom and westKingdom king and guards
+  let west = await query(`select * from kingdoms where kingdom = 'west'`, []);
+  westKingdom.king=west[0].king;
+  westKingdom.guards=west[0].guards;
+  westKingdom.tax=west[0].tax;
+  let east = await query(`select * from kingdoms where kingdom = 'east'`, []);
+  eastKingdom.king=east[0].king;
+  eastKingdom.guards=east[0].guards;
+  eastKingdom.tax=east[0].tax;
+  console.log(`East\nKing: ${eastKingdom.king}, Guards: ${eastKingdom.guards}, Tax: ${eastKingdom.tax}`);
+  console.log(`West\nKing: ${westKingdom.king}, Guards: ${westKingdom.guards}, Tax: ${westKingdom.tax}`);
+  for (const spawn of mobSpawns) {//put this here cause initKingdoms took too fuckin long lol
+    for (let i = 0; i < spawn.count; i++) {
+      spawnMob(spawn);
+    }
+  }
+}
+
+initKingdoms();
+
+async function dbKingdoms(){
+  //save kingdom king and guards to db
+  await query(`update kingdoms set guards = ${westKingdom.guards} where kingdom = 'west'`,[]);
+  await query (`update kingdoms set guards = ${eastKingdom.guards} where kingdom = 'east'`,[])
+}
+
+async function claimThrone(name, throne){
+  console.log(`throne: ${throne}, player claiming: ${name}`);
+  let player = players[name];
+  if (!player) return;
+  if (player.king==='west' || player.king==='east'){
+    sendMessage('pk message', `You are already king of the ${player.king}!`, player);
+    return;//gets past here, player.king is null "Already King!"
+  } 
+  if (player.murderer === true){
+    sendMessage('pk message', `Murderers cannot take the throne!`, player);
+    //then broadcast that a murderer is in the throne room lmao
+    return;//murderers cannot take throne, sendMessage
+  }
+  //1 min timer to take throne, set crim timer, if move or get hit, delete timer
+  player.takingThrone = true;
+  await setCriminal(name, true, 10*60*1000);
+  startChannel({
+    playerName: name,
+    duration: 10000,//change to 60000, testing
+    cancelOnMove: true,
+
+    onComplete: async () => {
+      if (await setNewKing(name, throne)===false){
+        player.takingThrone=false;
+        return;
+      }
+      await clearCriminal(name);
+      player.takingThrone=false;
+      sendMessage('server message', 'You have taken the throne!', player);
+      let kColor;
+      switch(player.king){
+        case 'west':
+          kColor = "blue";
+          break;
+        case 'east':
+          kColor = "green"
+          break;
+      }
+      sendMessage('server message', `<span style="color: purple">Hail <span style="color: ${kColor}">King ${player.name}</span> of the ${player.king}!</span>`);
+      updateKingStatus();//should send to all players?
+    },
+
+    onCancel: () => {
+      player.takingThrone=false;
+      sendMessage('pk message', 'You fail to take the throne!', player);
+    }
+  });
+}
+
+async function setNewKing(name, throne){
+  console.log(`Setting ${name} as new king of ${throne}`);
+  let player = players[name];
+  let kingdom;
+  switch (throne){
+    case 'throneEast':
+      kingdom = 'east';
+      if (eastKingdom.guards>0){
+        sendMessage('pk message', `A guard thwarts your efforts to take the throne!`, player);
+        return;
+      }
+      break;
+    case 'throneWest':
+      kingdom = 'west';
+      if (westKingdom.guards>0){
+        sendMessage('pk message', `A guard thwarts your efforts to take the throne!`, player);
+        return;
+      }
+      break;
+  }
+  //check guards
+  const rows = await query(`select * from kingdoms where kingdom = ?`, [kingdom]);
+  const chkGuards = rows[0];
+  /*
+  if (chkGuards.guards>0) return false;
+  */
+  await query('update players set king = null where player_name = ?', [chkGuards.king]);//remove old king
+  let oldKing =  players[chkGuards.king];
+  if (oldKing){
+    oldKing.head = null;//remove in game if they online
+    oldKing.king = null;
+  }
+  await query(`update players set head = null where player_name = ?`, [chkGuards.king]);//remove crown
+  
+  if (player){
+    let crownId = baseTiles[kingdom+"Crown"].id;
+    //await equip(name, crownId);
+    if (player.head===null){//something wrong with this
+      player.head = crownId;
+    } else {
+      await equip(name, crownId);
+    }
+    player.king = kingdom;
+  }
+  await query(`UPDATE kingdoms SET king = ? WHERE kingdom = ?;`, [name, kingdom]);
+  await query(`update players set king = ? where player_name = ?;`, [kingdom, name]);
+  switch (kingdom){
+    case 'east':
+      eastKingdom.king = name;
+      break;
+    case 'west':
+      westKingdom.king = name;
+      break;
+  }
+  //then stuff about how long player has held king, king board etc
+  const now = Date.now();
+
+  // end previous king
+  await query(
+    `UPDATE king_history 
+    SET end = ? 
+    WHERE kingdom = ? AND end IS NULL`,
+    [now, kingdom]
+  );
+
+  // insert new king
+  await query(
+    `INSERT INTO king_history (name, kingdom, start)
+    VALUES (?, ?, ?)`,
+    [name, kingdom, now]
+  );
+  return true;
+}
+
+async function getKingReigns(kingdom, name) {
+  let player = players[name];
+  if (!player) return;
+  console.log("got to queries");
+  const rows = await query(
+    `SELECT 
+       name,
+       kingdom,
+       start,
+       end
+     FROM king_history
+     WHERE kingdom = ?
+     ORDER BY start DESC`,
+    [kingdom]
+  );
+  console.log("got past queries");
+  let reignData = rows.map(row => ({
+    name: row.name,
+    kingdom: row.kingdom,
+    start: row.start,
+    end: row.end,
+    isCurrent: row.end === null,
+    duration: (row.end ?? Date.now()) - row.start
+  }));
+  console.log("emitting to player");
+  if (reignData.length===0){
+    sendMessage('pk message', `The ${kingdom} has had no king since the apocalypse.`, player);
+    return;
+  }
+  io.to(players[name].sock_id).emit('kingReigns', {
+    kingdom,
+    reigns: reignData
+  });
 }
 
 function farmingCheck(playerName, plantObject, plantName){
@@ -3360,7 +3748,10 @@ async function purchaseItem(playerName, objName){
         return;
       }
     }
-
+    if (itemDef?.kingdom){
+      await kingPurchase(player, itemDef.item);
+      return;
+    }
     // ---------- add the purchased item safely ----------
     let added = 0;
     if (buyItemId){
@@ -3391,6 +3782,31 @@ async function purchaseItem(playerName, objName){
     }
     syncInventory(playerName);
     return true;
+}
+
+async function kingPurchase(player, item){
+  if (player.king===null){
+    sendMessage('pk message', `Only for use by the king!`, player);
+    return;
+  }
+  let currKingdom = player.king;
+  if (item==='guard'){
+    let hasCoin = await getItemAmount(player.name, 21);
+    if (hasCoin<1000){
+      sendMessage('pk message', `Guards salary is 1000 coins!`, player);
+      return;
+    }
+    await removeItem(player.name, 21, 1000);
+    sendMessage('server message', `You put 1000 coins into the coffer for a guard's salary.`, player);
+    switch (currKingdom){
+      case 'east':
+        eastKingdom.guards+=1;
+        break;
+      case 'west':
+        westKingdom.guards+=1;
+        break;
+    }
+  }
 }
 
 async function enterExit(name, exitObject){
@@ -3489,6 +3905,37 @@ async function useDoor(name) {
   markTileChanged(player.x, player.y);
 }
 
+async function taxPlayer(name, itemName, amt){
+  console.log("tax player function");
+  let player = players[name];
+  if (!player) return;
+  let tile = getTile(player.x, player.y, 0);//since kTile only on z 0
+  let kTile = null;
+  if (tile?.kTile){
+    kTile = Object.keys(tile.kTile)[0];
+  }
+  if (kTile===null) return;
+  let kingName = null;
+  switch (kTile){
+    case 'kWest':
+      player.taxProgress+=westKingdom.tax/100;
+      kingName = westKingdom.king;
+      break;
+    case 'kEast':
+      player.taxProgress+=eastKingdom.tax/100;
+      kingName = eastKingdom.king;
+      break;
+  }
+  if (kingName===null) return;//no king, no taxes! lel
+  if (player.taxProgress>=1){
+    player.taxProgress=0;
+    //tax player by removing 1 itemName from inventory and adding to current king bank db
+    await removeItem(name, idByItem(itemName), amt);
+    await addBankItem(kingName, idByItem(itemName), amt);
+    sendMessage('server message', `You pay taxes to the kingdom.`, player);
+  }
+}
+
 async function resourceInteract(playerName, x, y, z, objName) {
   const player = players[playerName];
   let timeBonus = 1000;
@@ -3511,7 +3958,10 @@ async function resourceInteract(playerName, x, y, z, objName) {
           sendMessage('pk message', "Your inventory is full!", player);
           return;
         }
-      } 
+        if (itemName==='rock' || itemName==='log'){
+          await taxPlayer(playerName, itemName);
+        }
+      }
     }
     await syncInventory(playerName);
   }
@@ -3641,7 +4091,6 @@ async function playerDig(player){
 }
 
 async function harvestPlant(player, tile, plantName){
-  console.log(plantName);
   let plant = tile.objects[plantName];
   let added = addItem(player.name, idByItem(baseTiles[plantName].drops), 1);
   if (added===0) {
@@ -3668,7 +4117,7 @@ async function harvestPlant(player, tile, plantName){
     await setCriminal(player.name, true, 60*1000*10);
     sendMessage('pk message', `A passerby reported you for stealing crops!`, player);
   }
-  if (plant.amt<=0 || plant.amt===null || plant.amt===undefined){//kludge fix, why plant.amt becoming undefined??
+  if (plant.amt<=0 || plant.amt===null || plant.amt===undefined){
     delete tile.objects;//should work lol
     markTileChanged(player.x, player.y);
   }
@@ -3689,9 +4138,14 @@ async function equip(playerName, id) {
   }
 
   const slot = itemDef.equip.slot;
+  if (slot==='head' && player.king!==null){
+    sendMessage('pk message', `As king of the ${player.king}, you must bear the crown!`, player);
+    return;
+  }
 
   const isEquipped = player[slot] === id;
   let tile = getTile(player.x, player.y, player.z);
+
   if (isEquipped) {
     player[slot] = null;
     tile.players[playerName][slot] = null;
@@ -4491,14 +4945,15 @@ async function randMobsAndPlants(tile, x, y){
     }
   }
   let randWolf = Math.floor(Math.random() * 10000);
-  if (randGoat < 3 && z === 0) {
+  if (randWolf < 3 && z === 0) {
     if (
       isEmpty(tile?.objects) &&
       isEmpty(tile?.floor) &&
       isEmpty(tile?.roof) &&
       isEmpty(tile?.depletedResources) &&
       tile['b-t'] === 'grass' &&
-      !isSafeActive(tile)
+      !isSafeActive(tile) &&
+      !tile?.kTile
     ) {
       let testWolf = createMob('wolf', x, y);
       mobs.set(testWolf.id, testWolf);
@@ -4607,12 +5062,30 @@ let eyeTypes = [
 ];
 
 function spawnMob(spawn) {
+  if (spawn?.kingdom){
+    switch (spawn.kingdom){
+      case 'east':
+        if (eastKingdom.activeGuard>=12) return;
+        if (eastKingdom.guards<=0) return;
+        if (eastKingdom.activeGuard===eastKingdom.guards) return;
+        eastKingdom.activeGuard+=1;
+        break;
+      case 'west':
+        if (westKingdom.activeGuard>=12) return;
+        if (westKingdom.guards<=0) return;
+        if (westKingdom.activeGuard===westKingdom.guards) return;
+        westKingdom.activeGuard+=1;
+        break;
+    }
+  }
   const mob = createMob(spawn.type, spawn.x, spawn.y);
+  if (spawn?.kingdom){
+    mob.kingdom = spawn.kingdom;//for if gets killed to decrement kingdom guards
+  }
   mobs.set(mob.id, mob);
   let tile = getTile(mob.x, mob.y);
   if (spawn.type==='eye'){
-    //randomize color, mob.type=mob.type+'Blue' etc
-    mob.type+=eyeTypes[Math.floor(Math.random()*eyeTypes.length)];//test
+    mob.type+=eyeTypes[Math.floor(Math.random()*eyeTypes.length)];
     mob.drop=[
       { name: mob.type, min: 1, max: 5, weight: 100 }
     ]
@@ -4631,65 +5104,49 @@ function spawnMob(spawn) {
   }
 }
 
-for (const spawn of mobSpawns) {
-  for (let i = 0; i < spawn.count; i++) {
-    spawnMob(spawn);
+setInterval(() => {
+  for (const spawn of mobSpawns) {//put this here cause initKingdoms took too fuckin long lol
+    for (let i = 0; i < spawn.count; i++) {
+      if (!spawn?.kingdom) return;
+      spawnMob(spawn);
+    }
   }
-}
+}, 5000);
 
 function updateMob(mob, now) {
-  if (mob.hp <= 0) {
-    killMob(mob);
-    return;
-  }
+  if (mob.hp <= 0) {killMob(mob); return;};
   if (now < mob.nextThink) return;
   mob.nextThink = now + mob.thinkSpeed;
-  if (mob?.spawnMinion) {
-    spawnMinion(mob);
-  }
+  if (mob?.spawnMinion) spawnMinion(mob);
   if (mob.state === "return") {
     if (mob.x === mob.spawnX && mob.y === mob.spawnY) {
+      //check if target comes back in range
       mob.state = "idle";
       return;
     }
     returnToSpawn(mob);
     return;
   }
-
   const player = findPlayerInRange(mob);
-
   if (player) {
-    // 🧷 leash check
     if (distFromSpawn(mob) > mob.leashRadius) {
       mob.state = "return";
       mob.target = null;
       return;
     }
-
     if (inAttackRange(mob, player)) {
+      mob.thinkSpeed=mob.baseSpeed;
       attackPlayer(mob, player);
       return;
     }
+    mob.thinkSpeed=mob.pursuitSpeed;
     moveToward(mob, player);
     return;
   }
+  //check for mobs here if kingsguard or mob that's aggressive to other mobs
+  //kingsguard attacks aggressive mobs only (mobs that don't have .passive)
+  mob.thinkSpeed = mob.baseSpeed;
   wander(mob);
-  
-}
-
-function spawnMinion(mob) {
-  
-  if (mob.hp < mob.maxHp && mob.spawnCount < mob.spawnMax) {
-    let testMinion = createMob(mob.spawnMinion, mob.x, mob.y);
-    mobs.set(testMinion.id, testMinion);
-    let tile = getTile(mob.x, mob.y);
-    tile.mob = {
-      id: testMinion.id,
-      sprite: mob.spawnMinion + "L"
-    }
-    mob.spawnCount += 1;
-  }
-  
 }
 
 function findPlayerInRange(mob) {
@@ -4697,6 +5154,9 @@ function findPlayerInRange(mob) {
   for (const name in players) {
     const player = players[name];
     if (!player) continue;
+    if (mob?.guard){//reg guards and kingsguards
+      if (!player.murderer && !player.criminal) continue;
+    }
     const px = player.x;
     const py = player.y;
     const dist = Math.abs(mob.x - px) + Math.abs(mob.y - py);
@@ -4707,12 +5167,11 @@ function findPlayerInRange(mob) {
   return null;
 }
 
-
 function tryMove(mob, newX, newY) {
   const oldTile = getTile(mob.x, mob.y);
   const newTile = getTile(newX, newY);
   if (newTile?.safeTile){
-    return false;
+    if (!mob?.guard) return false;
   }
   if (!newTile) return false;
   if (newTile.mob) return false;
@@ -4720,20 +5179,16 @@ function tryMove(mob, newX, newY) {
 
   // update facing
   mob.facing = newX > mob.x ? "right" : "left";
-
   // clear old tile
   if (oldTile) delete oldTile.mob;
-
   // update mob position
   mob.x = newX;
   mob.y = newY;
-
   // set new tile
   newTile.mob = {
     id: mob.id,
     sprite: mob.type + (mob.facing === "left" ? "L" : "R")
   };
-
   markTileChanged(mob.x, mob.y);
   return true;
 }
@@ -4752,10 +5207,8 @@ function mobCollision(tile) {
 function distance(a, b) {
   const ax = a.x;
   const ay = a.y;
-
   const bx = b.x;
   const by = b.y;
-
   return Math.abs(ax - bx) + Math.abs(ay - by);
 }
 
@@ -4768,20 +5221,17 @@ function distFromSpawn(mob) {
 }
 
 function wander(mob) {
-
   // 🚫 too far → go home instead
   if (distFromSpawn(mob) >= mob.leashRadius) {
     moveToward(mob, {x: mob.spawnX, y: mob.spawnY });
     return;
   }
-
   const dirs = [
     { x: 0, y: -1 },
     { x: 0, y: 1 },
     { x: -1, y: 0 },
     { x: 1, y: 0 }
   ];
-
   const choice = dirs[Math.floor(Math.random() * dirs.length)];
   tryMove(mob, mob.x + choice.x, mob.y + choice.y);
 }
@@ -4796,7 +5246,7 @@ function moveToward(mob, target) {
   const dy = Math.sign(py - mob.y);
 
   // try x first if farther away horizontally
-  if (mob.type==="spiderQueen" || mob.type==='troll') return;
+  if (mob.type==="spiderQueen" || mob.type==='troll') return;//just add a stationary property to certain mobs
   if (Math.abs(px - mob.x) > Math.abs(py - mob.y)) {
     if (dx !== 0 && tryMove(mob, mob.x + dx, mob.y)) return;
     if (dy !== 0 && tryMove(mob, mob.x, mob.y + dy)) return;
@@ -4806,32 +5256,7 @@ function moveToward(mob, target) {
     if (dy !== 0 && tryMove(mob, mob.x, mob.y + dy)) return;
     if (dx !== 0 && tryMove(mob, mob.x + dx, mob.y)) return;
   }
-
   // if blocked → do nothing (NO wandering here)
-}
-
-function mobRangeAttack(mob, target) {
-  if (Date.now() < mob.lastAttack + 1000) return;
-  mob.lastAttack = Date.now();
-  let projType = mob.rangeAttack.type;
-  const dir = getDirectionToward(mob.x, mob.y, target.x, target.y);
-  let decay = 10;
-  if (mob.type==='spiderQueen'){
-    decay = 0;
-  }
-  if (mob.type==='troll'){
-    if (dir==='right'){
-      return;
-    }
-  }
-  if (mob.rangeAttack?.slow === true) {
-    let slowTime = mob.rangeAttack.slowTime;
-    const mobProj = createProjectile(projType, dir, mob.x, mob.y, 0, mob.id, decay, true, slowTime);
-    addProjectileToTile(mobProj);
-  } else {
-    const mobProj = createProjectile(projType, dir, mob.x, mob.y, 0, mob.id, decay);
-    addProjectileToTile(mobProj);
-  }
 }
 
 function getDirectionToward(fromX, fromY, toX, toY) {
@@ -4862,6 +5287,9 @@ function inAttackRange(mob, player) {
 }
 
 function attackPlayer(mob, player) {
+  if (player.takingThrone===true){
+    cancelPendingChannels(player.name);
+  }
   if (player.z!==0) return;
   if (Date.now() > mob.lastAttack + mob.thinkSpeed) {
     mob.lastAttack = Date.now();
@@ -4886,6 +5314,43 @@ function attackPlayer(mob, player) {
     } else {
       sendSound(player, ['miss']);
     }
+  }
+}
+
+function mobRangeAttack(mob, target) {
+  if (Date.now() < mob.lastAttack + 1000) return;
+  mob.lastAttack = Date.now();
+  let projType = mob.rangeAttack.type;
+  const dir = getDirectionToward(mob.x, mob.y, target.x, target.y);
+  let decay = 10;
+  if (mob.type==='spiderQueen'){
+    decay = 0;
+  }
+  if (mob.type==='troll'){
+    if (dir==='right'){
+      return;
+    }
+  }
+  if (mob.rangeAttack?.slow === true) {
+    let slowTime = mob.rangeAttack.slowTime;
+    const mobProj = createProjectile(projType, dir, mob.x, mob.y, 0, mob.id, decay, true, slowTime);
+    addProjectileToTile(mobProj);
+  } else {
+    const mobProj = createProjectile(projType, dir, mob.x, mob.y, 0, mob.id, decay);
+    addProjectileToTile(mobProj);
+  }
+}
+
+function spawnMinion(mob) {
+  if (mob.hp < mob.maxHp && mob.spawnCount < mob.spawnMax) {
+    let testMinion = createMob(mob.spawnMinion, mob.x, mob.y);
+    mobs.set(testMinion.id, testMinion);
+    let tile = getTile(mob.x, mob.y);
+    tile.mob = {
+      id: testMinion.id,
+      sprite: mob.spawnMinion + "L"
+    }
+    mob.spawnCount += 1;
   }
 }
 
@@ -5071,7 +5536,7 @@ setInterval(async () => {
   for (const name in players) {
     const player = players[name];
     if (!player) continue;
-    handlePlayerInput(name, player.keystate);
+    await handlePlayerInput(name, player.keystate);
   }
 }, 20);
 
@@ -5223,6 +5688,9 @@ function rangeAttackPlayer(proj, targetName) {
 }
 
 function mobRangeDamagePlayer(proj, targetPlayer) {
+  if (targetPlayer.takingThrone===true){
+    cancelPendingChannels(targetPlayer.name);
+  }
   let damage = baseTiles[proj.type].attack;
   //other logic for combat triangle, armour etc
   targetPlayer.hp -= damage;

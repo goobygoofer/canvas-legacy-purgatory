@@ -22,6 +22,8 @@ const mobTypes = {
         leashRadius: 12,
 
         nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
         thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
@@ -48,6 +50,8 @@ const mobTypes = {
         leashRadius: 7,
 
         nextThink: 0,
+        baseSpeed: 1000+Math.floor(Math.random()*100),
+        pursuitSpeed: 800+Math.floor(Math.random()*100),
         thinkSpeed: 1000+Math.floor(Math.random()*100),
         facing: "left",
 
@@ -74,6 +78,8 @@ const mobTypes = {
         leashRadius: 7,
 
         nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 400+Math.floor(Math.random()*100),
         thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
@@ -105,6 +111,8 @@ const mobTypes = {
         nextThink: 10000,
         facing: "left",
         passive: true,
+        baseSpeed: 0,
+        pursuitSpeed: 0,
         thinkSpeed: 0,
         drop: [
             { name: "orangedust", min: 1, max: 10, weight: 100 },
@@ -129,6 +137,8 @@ const mobTypes = {
         leashRadius: 25,
 
         nextThink: 0,
+        baseSpeed: 2000+Math.floor(Math.random()*100),
+        pursuitSpeed: 2000+Math.floor(Math.random()*100),
         thinkSpeed: 2000+Math.floor(Math.random()*100),
         facing: "left",
         passive: true,
@@ -154,6 +164,8 @@ const mobTypes = {
         leashRadius: 25,
 
         nextThink: 0,
+        baseSpeed: 2000+Math.floor(Math.random()*100),
+        pursuitSpeed: 2000+Math.floor(Math.random()*100),
         thinkSpeed: 2000+Math.floor(Math.random()*100),
         facing: "left",
         passive: true,
@@ -184,6 +196,8 @@ const mobTypes = {
         leashRadius: 5,
 
         nextThink: 0,
+        baseSpeed: 1000+Math.floor(Math.random()*100),
+        pursuitSpeed: 800+Math.floor(Math.random()*100),
         thinkSpeed: 1000,
         facing: "left",
         drop: [
@@ -212,7 +226,9 @@ const mobTypes = {
         leashRadius: 10,
 
         nextThink: 0,
-        thinkSpeed: 500,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
         drop: [
             { name: "hide", min: 1, max: 1, weight: 100 },
@@ -235,6 +251,8 @@ const mobTypes = {
         leashRadius: 15,
 
         nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 400+Math.floor(Math.random()*100),
         thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
@@ -260,6 +278,8 @@ const mobTypes = {
         leashRadius: 15,
 
         nextThink: 0,
+        baseSpeed: 750+Math.floor(Math.random()*100),
+        pursuitSpeed: 750+Math.floor(Math.random()*100),
         thinkSpeed: 750+Math.floor(Math.random()*100),
         facing: "left",
         passive: true,
@@ -291,6 +311,8 @@ const mobTypes = {
         leashRadius: 7,
 
         nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
         thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
@@ -323,6 +345,8 @@ const mobTypes = {
         leashRadius: 0,
 
         nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
         thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
@@ -354,6 +378,8 @@ const mobTypes = {
         nextThink: 10000,
         facing: "left",
         passive: true,
+        baseSpeed: 0,
+        pursuitSpeed: 0,
         thinkSpeed: 0,
         collision: true
     }),
@@ -374,6 +400,8 @@ const mobTypes = {
         leashRadius: 40,
 
         nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 300+Math.floor(Math.random()*100),
         thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
 
@@ -400,6 +428,8 @@ const mobTypes = {
         leashRadius: 0,
 
         nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
         thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
         rangeAttack: {
@@ -418,6 +448,33 @@ const mobTypes = {
           passive: 2//when it won't appear to player
         }
     }),
+    guard: (x, y) => ({
+        id: getNextMobId(),
+        type: "guard",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 1000,
+        attack: 40,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+        guard: true,
+
+        aggroRadius: 6,
+        leashRadius: 12,
+
+        nextThink: 0,
+        baseSpeed: 600+Math.floor(Math.random()*100),
+        pursuitSpeed: 400+Math.floor(Math.random()*100),
+        thinkSpeed: 600+Math.floor(Math.random()*100),
+        facing: "left",
+
+        drop: [
+            { name: "coin", min: 100, max: 500, weight: 100 },
+        ]
+    }),
 };
 
 function createMob(type, x, y) {
@@ -427,6 +484,26 @@ function createMob(type, x, y) {
 }
 
 const mobSpawns = [
+  {
+    type: "guard",
+    x:769, y:275,
+    count: 12,
+    respawnTime: 5000,
+    kingdom: 'east'
+  },
+  {
+    type:"guard",
+    x:16, y:303,
+    count: 12,
+    respawnTime: 5000,
+    kingdom: 'west'
+  },
+  {
+    type: "guard",
+    x:49, y:52,
+    count: 1,
+    respawnTime: 5000
+  },
   {
     type: "eye",
     x:524, y:361,

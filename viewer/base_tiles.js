@@ -469,7 +469,370 @@ base_tiles = {
     id: 79,
     craft: { log: 1, diamondbar: 1 },
   },
-/*-----------shop items-----------------*/
+  "magebook":{
+    "x":304,"y":256,
+    prettyName: "mage book",
+    id: 80,
+    craft: { hide: 1 },
+  },
+  "manapotion":{
+    "x":0,"y":384,
+    prettyName: "mana potion",
+    id: 81,
+    craft: { waterbucket: 1, bluedust: 1 },
+  },
+  "waterbucket":{
+    "x":304,"y":32,
+    prettyName: "water bucket",
+    id: 82,
+  },
+  "tools":{
+    "x":64,"y":672,
+    id: 83,
+    craft: { ironbar: 2, log: 2 },
+  },
+  "stairsR":{
+    "x":16,"y":352,
+    id: 84,
+    craft: { rock: 10 }
+  },
+  "stairsL":{
+    "x":304,"y":720,
+    id: 85,
+    craft: { rock: 10 }
+  },
+  "orbFinder":{
+    prettyName: "locator orb",
+    "x":32,"y":1200,
+    id: 86,
+    craft: { amethystbar: 1 },//change to purple ore which will be rare af
+  },
+  "spade":{
+    "x":128,"y":352,
+    id: 87,
+    craft: { log:1, ironbar: 1 },
+  },
+  "xpHat":{
+    prettyName: "cap of experience",
+    "x":208,"y":432,
+    id: 88,
+  },
+  "amethyst":{
+    "x":112,"y":1136,
+    id: 89,
+  },
+  "amethystbar":{
+    "x":96,"y":1136,
+    prettyName: "amethyst bar",
+    id: 90,
+    smelt: { amethyst: 5 },
+  },
+  "cookedRedfish":{
+    "x":64,"y":496,
+    prettyName: "cooked redfish",
+    kind: "item",
+    id: 91,
+    container: "objects",
+    collision: false,
+    cook: { redfish: 1 }
+  },
+  "wheat":{//wheatPlant will have stages later
+    "x":240,"y":432,
+    kind: "item",
+    id: 92,
+    container: "objects",
+    collision: false
+  },
+  "bread":{
+    "x":256,"y":432,
+    kind: "item",
+    id: 93,
+    container: "objects",
+    collision: false,
+    hp: 5,
+    time: 2000,
+    consume: true,
+    cook: { wheat: 1, waterbucket: 1 }
+  },
+  "tomato":{
+    "x":256,"y":496,
+    kind: "item",
+    id: 94,
+    container: "objects",
+    collision: false,
+    hp: 10,
+    time: 2000,
+    consume: true
+  },
+  "fishSandwich":{
+    "x":288,"y":496,
+    kind: "item",
+    id: 95,
+    container: "objects",
+    collision: false,
+    hp: 40,
+    time: 2000,
+    consume: true,
+    cook: { bread: 1, cookedRedfish: 1, tomato: 1 }
+  },
+  "rawMeat":{
+    "x":288,"y":304,
+    kind: "item",
+    id: 96,
+    container: "objects",
+    collision: false,
+    hp: -20,
+    time: 2000,
+    consume: true
+  },
+  "cookedMeat":{
+    "x":304,"y":304,
+    kind: "item",
+    id: 97,
+    container: "objects",
+    collision: false,
+    hp: 20,
+    time: 2000,
+    consume: true,
+    cook: {rawMeat:1}
+  },
+  "meatSandwich":{
+    "x":272,"y":496,
+    kind: "item",
+    id: 98,
+    container: "objects",
+    collision: false,
+    hp: 45,
+    time: 2000,
+    consume: true,
+    cook: {cookedMeat:1, bread:1, tomato:1}
+  },
+  "carrot":{
+    "x":288,"y":512,
+    kind: "item",
+    id: 99,
+    container: "objects",
+    collision: false,
+    hp: 10,
+    time: 2000,
+    consume: true
+  },
+  "rawRatmeat":{//96, 144
+    "x":96,"y":144,
+    prettyName: "raw rat meat",
+    kind: "item",
+    id: 100,
+    container: "objects",
+    collision: false,
+    hp: -25,
+    time: 2000,
+    consume: true
+  },
+  "cookedRatmeat":{
+    "x":128,"y":672,
+    prettyName: "cooked rat meat",
+    kind: "item",
+    id: 101,
+    container: "objects",
+    collision: false,
+    hp: 5,
+    time: 2000,
+    consume: true,
+    cook: {rawRatmeat:1}
+  },
+  "ratStew":{
+    "x":112,"y":752,
+    prettyName: "rat stew",
+    kind: "item",
+    id: 102,
+    container: "objects",
+    collision: false,
+    hp: 100,
+    time: 1000,
+    consume: true,
+    cook: {cookedRatmeat: 1, carrot: 2, tomato: 2, waterbucket: 1}
+  },
+  "wheatSeed":{
+    "x":288,"y":448,
+    prettyName: "wheat seed",
+    kind: "item",
+    id: 103,
+    container: "objects",
+    collision: false//after this, needs some kind of drop attribute
+  },
+  "tomatoSeed":{
+    "x":192,"y":512,
+    prettyName: "tomato seed",
+    kind: "item",
+    id: 104,
+    container: "objects",
+    collision: false
+  },
+  "carrotSeed":{
+    "x":16,"y":528,
+    prettyName: "carrot seed",
+    kind: "item",
+    id: 105,
+    container: "objects",
+    collision: false
+  },
+  "grape":{
+    "x":192,"y":464,
+    prettyName: "grape",
+    kind: "item",
+    id: 106,
+    container: "objects",
+    collision: false,
+    mana: 10,
+    time: 500,
+    consume: true,
+    seed: {item:"grapeSeed", amt: 4}
+  },
+  "grapeSeed":{
+    "x":256,"y":464,
+    prettyName: "grape seed",
+    kind: "item",
+    id: 107,
+    container: "objects",
+    collision: false,
+    farm: true,
+    dropChange: "grapePlant0",
+    containerChange: "resource",
+    owner: null    
+  },
+  "eyeLightBlue":{
+    "x":224,"y":688,
+    prettyName:"light blue eye",
+    id: 108,
+  },
+  "eyeGreen":{
+    "x":240,"y":688,
+    prettyName:"green eye",
+    id: 109,
+  },
+  "eyeYellow":{
+    "x":256,"y":688,
+    prettyName:"yellow eye",
+    id: 110,
+  },
+  "eyeBlue":{
+    "x":272,"y":688,
+    prettyName:"blue eye",
+    id: 111,
+  },
+  "eyePink":{
+    "x":288,"y":688,
+    prettyName:"pink eye",
+    id: 112,
+  },
+  "eyeRed":{
+    "x":304,"y":688,
+    prettyName:"red eye",
+    id: 113,
+  },
+  //LAST ADDED ITEM
+  "stoneBT":{
+    "x":128, "y":80
+  },
+  "eyeSocket":{
+    x:208,y:688
+  },
+  "eyeLightBlueL":{x:304,y:672},
+  "eyeLightBlueR":{x:224,y:656},
+  "eyeGreenL":{x:288,y:672},
+  "eyeGreenR":{x:240,y:656},
+  "eyeYellowL":{x:272,y:672},
+  "eyeYellowR":{x:256,y:656},
+  "eyeBlueL":{x:256,y:672},
+  "eyeBlueR":{x:272,y:656},
+  "eyePinkL":{x:240,y:672},
+  "eyePinkR":{x:288,y:656},
+  "eyeRedL":{x:224,y:672},
+  "eyeRedR":{x:304,y:656},
+  "cookingRange":{
+    "x":192,"y":992
+  },
+  "pShadow":{
+    "x":256,"y":752
+  },
+  "xpHatR":{
+    "x":191,"y":432
+  },
+  "xpHatL":{
+    "x":177,"y":432
+  },
+ 
+  "orbFinderR":{
+    "x":48,"y":1200
+  },
+  "orbFinderL":{
+    "x":64,"y":1200,
+  },
+  "toolsR":{
+    "x":304,"y":432
+  },
+  "toolsL":{
+    "x":304,"y":464
+  },
+  "magebookL":{
+    "x":80,"y":272,
+  },
+  "magebookR":{
+    "x":64,"y":272,
+  },
+  "deathskull":{
+    "x":144,"y":96
+  },
+/*-----------npc shop items-----------------*/
+  "eyeGameShop":{
+    "x":256,"y":816,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 250},
+    amount: 1,
+    item: null
+  },
+  "redfishShop":{
+    "x":208,"y":480,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 50},
+    amount: 1,
+    item: "redfish"
+  },
+  "codShop":{
+    "x":256,"y":480,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 20},
+    amount: 1,
+    item: "cod"
+  },
+  "goldfishShop":{
+    "x":272, "y":480,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 25},
+    amount: 1,
+    item: "goldfish"
+  },
+  "wheatShop":{
+    "x":240,"y":432,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 25},
+    amount: 1,
+    item: "wheat",
+  },
+
+  "tomatoShop":{
+    "x":256,"y":496,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 25},
+    amount: 1,
+    item: "tomato"
+  },
   "healthpotionShop":{
     "x":256,"y":896,
     container: "objects",
@@ -718,6 +1081,24 @@ base_tiles = {
   "arrowDown": { "x": 224, "y": 240 },
   "arrowLeft": { "x": 240, "y": 240 },
   "arrowRight": { "x": 256, "y": 240 },
+  "orangedustUp": {"x":96,"y":256},
+  "orangedustDown": {"x":112,"y":256},
+  "orangedustLeft": {"x":128,"y":256},
+  "orangedustRight": {"x":144,"y":256},
+  "bluedustUp": {"x":160,"y":256},
+  "bluedustDown": {"x":176,"y":256},
+  "bluedustLeft": {"x":192,"y":256},
+  "bluedustRight": {"x":208,"y":256},
+
+  "yellowdustUp": {"x":80,"y":432},
+  "yellowdustDown": {"x":96,"y":432},
+  "yellowdustLeft": {"x":112,"y":432},
+  "yellowdustRight": {"x":128,"y":432},
+
+  "stoneUp": { "x": 256, "y": 0 },
+  "stoneDown": { "x": 256, "y": 0 },
+  "stoneLeft": { "x": 256, "y": 0 },
+  "stoneRight": { "x": 256, "y": 0 },
   "speedbootsL": {
     "x":161,"y":448
   },
@@ -738,6 +1119,18 @@ base_tiles = {
   },
   "goatL":{
     "x":208,"y":288
+  },
+  "domesticGoatR":{
+    "x":192,"y":288
+  },
+  "domesticGoatL":{
+    "x":208,"y":288
+  },
+  "wolfR":{
+    "x":112,"y":528
+  },
+  "wolfL": {
+    "x":96,"y":528
   },
   "zorgR":{
     "x":80,"y":144
@@ -768,6 +1161,26 @@ base_tiles = {
   },
   "spiderR":{
     "x":96,"y":240
+  },
+  "spiderQueenL":{
+    "x":176,"y":400,
+    spriteSize: 32,
+    drawSize: 64
+  },
+  "spiderQueenR":{
+    "x":176,"y":400,
+    spriteSize: 32,
+    drawSize: 64
+  },
+  "trollR":{
+    "x":208,"y":592,
+    spriteSize: 32,
+    drawSize: 64
+  },
+  "trollL":{
+    "x":240,"y":592,
+    spriteSize: 32,
+    drawSize: 64
   },
   "ironarmorL":{
     "x":145,"y":272
@@ -817,6 +1230,7 @@ base_tiles = {
     collision: false
   },
   "stoneblock0": {
+    collision:true,
     "x": 288, "y": 0,
     kind: "resource",
     container: "objects",
@@ -827,6 +1241,7 @@ base_tiles = {
     requiresTool: "pickaxe"
   },
   "stoneblock1": {
+    collision:true,
     "x": 112, "y": 64,
     kind: "resource",
     container: "objects",
@@ -837,6 +1252,7 @@ base_tiles = {
     requiresTool: "pickaxe"
   },
   "stoneblock2": {
+    collision:true,
     "x": 128, "y": 64,
     kind: "resource",
     container: "objects",
@@ -847,6 +1263,7 @@ base_tiles = {
     requiresTool: "pickaxe"
   },
   "stoneblock3": {
+    collision:true,
     "x": 144, "y": 64,
     kind: "resource",
     container: "objects",
@@ -868,6 +1285,19 @@ base_tiles = {
   "oak3": {
     "x": 176, "y": 1104
   },
+  "deadtree0": {
+    "x":48,"y":464
+  },
+  "deadtree1": {
+    "x": 80,
+    "y": 0
+  },
+  "lightning" :{
+    "x":0,"y":464
+  },
+  "fire": {
+    "x":16,"y":480
+  },
   //"stoneSword":{"x": 272, "y": 16, 'roof':false, 'type':'objects', 'collision':false},
   "stoneSwordL": { "x": 192, "y": 192 },
   "stoneSwordR": { "x": 80, "y": 192 },
@@ -877,6 +1307,24 @@ base_tiles = {
     kind: "safeTile",
     container: "safeTile",
     collision:false
+  },
+  "questTile":{
+    "x":240,"y":1072,
+    kind: "questTile",
+    container: "questTile",
+    collision:false,
+    questName:null,
+    stagePass:null
+  },
+  "kWest":{
+    kind: "kTile",
+    container: "kTile",
+    collision: false
+  },
+  "kEast":{
+    kind: "kTile",
+    container: "kTile",
+    collision: false
   },
   "craftTools":{
     "x":64, "y":672
@@ -890,7 +1338,7 @@ base_tiles = {
   "murderR":{
     "x":63, "y":176
   },
-  "spiderL": { "x": 112, "y": 240 },
+
   "heartContainer": { "x": 128, "y": 528 },
   "staminaPot": { "x": 64, "y": 1072 },
   "bridge": { "x": 0, "y": 80 },
@@ -924,6 +1372,167 @@ base_tiles = {
     "y": 0,
     "collision": true,
   },
+  "wheatPlant0":{
+    "x":0,"y":532,
+    kind: "resource",
+    container: "objects",
+    collision: false,
+    farming: true,
+    regrowsTo: [
+      {name: "wheatPlant1", weight: 100}
+    ]
+  },
+  "wheatPlant1":{
+    "x":240,"y":448,
+    kind: "resource",
+    container: "objects",
+    collision: false,
+    farming: true,
+    regrowsTo: [
+      {name: "wheatPlant2", weight: 100}
+    ]
+  },
+  "wheatPlant2":{
+    "x":224,"y":448,
+    kind: "resource",
+    container: "objects",
+    collision: false,
+    farming: true,
+    regrowsTo: [
+      {name: "wheatPlant3", weight: 100}
+    ]
+  },
+  "wheatPlant3":{
+    "x":272,"y":448,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    farming: true
+  },
+  "tomatoPlant0":{
+    "x":0,"y":512,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    regrowsTo:[
+      {name: "tomatoPlant1", weight: 100}
+    ]
+  },
+  "tomatoPlant1":{
+    "x":16,"y":512,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    regrowsTo:[
+      {name: "tomatoPlant2", weight: 100}
+    ]    
+  },
+  "tomatoPlant2":{
+    "x":32,"y":512,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    drops: "tomato",
+    xp: 10
+  },
+  "carrotPlant0":{
+    "x":0,"y":528,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    regrowsTo: [
+      {name: "carrotPlant1", weight: 100}
+    ]
+  },
+  "carrotPlant1":{
+    "x":0,"y":528,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    regrowsTo: [
+      {name: "carrotPlant2", weight: 100}
+    ]
+  },
+  "carrotPlant2":{
+    "x":304,"y":512,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    drops: "carrot",
+    xp: 10
+  },
+  "grapePlant0":{
+    "x":208,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant1", weight: 100}
+    ]
+  },
+  "grapePlant1":{
+    "x":208,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant2", weight: 100}
+    ]
+  },
+  "grapePlant2":{
+    "x":224,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant3", weight: 100}
+    ]
+  },
+  "grapePlant3":{
+    "x":224,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    regrowsTo: [
+      {name: "grapePlant4", weight: 100}
+    ]
+  },
+  "grapePlant4":{
+    "x":240,"y":464,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    owner: null,
+    farming: true,
+    prettyName: "grapevine",
+    drops: "grape",
+    xp: 50
+  },
+  //last farm resource
   "tree0": {
     "x": 16,
     "y": 0,
@@ -1002,79 +1611,119 @@ base_tiles = {
     regrowsTo: "rock0"
   },
   "coalrock0": {
+    collision:true,
     "x": 176, "y": 0,
   },
   "coalrock1": {
+    collision:true,
     "x": 192, "y": 32,
   },
   "coalrock2": {
+    collision:true,
     "x": 208, "y": 32,
   },
   "coalrock3": {
+    collision:true,
     "x": 224, "y": 32,
   },
   "coalrock4": {
     "x": 240, "y": 32,
   },
   "silverrock0": {
+    collision:true,
     "x":176,"y":0
   },
   "silverrock1": {
+    collision:true,
     "x":192,"y":160
   },
   "silverrock2": {
+    collision:true,
     "x":208,"y":160
   },
   "silverrock3": {
+    collision:true,
     "x":224,"y":160
   },
   "silverrock4": {
+    
     "x":240,"y":160
   },
   "copperrock0": {
+    collision:true,
     "x":176,"y":0
   },
   "copperrock1": {
+    collision:true,
     "x":192,"y":176
   },
   "copperrock2": {
+    collision:true,
     "x":208,"y":176
   },
   "copperrock3": {
+    collision:true,
     "x":224,"y":176
   },
   "copperrock4": {
     "x":240,"y":176
   },
   "goldrock0": {
+    collision:true,
     "x":176,"y":0
   },
   "goldrock1": {
+    collision:true,
     "x":192,"y":144
   },
   "goldrock2": {
+    collision:true,
     "x":208,"y":144
   },
   "goldrock3": {
+    collision:true,
     "x":224,"y":144
   },
   "goldrock4": {
     "x":240,"y":144
   },
   "diamondrock0": {
+    collision:true,
     "x":176,"y":0
   },
   "diamondrock1": {
+    collision:true,
     "x":48,"y":720
   },
   "diamondrock2": {
+    collision:true,
     "x":64,"y":720
   },
   "diamondrock3": {
+    collision:true,
     "x":80,"y":720
   },
   "diamondrock4": {
     "x":96,"y":720
+  },
+  "amethystrock0":{
+    collision:true,
+    "x":176,"y":0
+  },
+  "amethystrock1":{
+    collision:true,
+    "x":256,"y":1136
+  },
+  "amethystrock2":{
+    collision:true,
+    "x":272,"y":1136
+  },
+  "amethystrock3":{
+    collision:true,
+    "x":288,"y":1136
+  },
+  "amethystrock4":{
+    "x":304,"y":1136
   },
   "web": { "x": 208, "y": 400 },
   "webRight": { "x": 208, "y": 400 },
@@ -1088,7 +1737,6 @@ base_tiles = {
     "x": 208, "y": 400
   },
   "oak": { "x": 128, "y": 1104, "collision": true },//
-  "deadtree": { "x": 48, "y": 464 },//
   "snowtree": { "x": 176, "y": 544 },//
   "rock0": { "x": 176, "y": 0, "collision": true, 'roof': true, 'type': 'objects' },//
   "rock1": { "x": 192, "y": 0, "collision": true, 'roof': false, 'type': 'objects' },//
@@ -1122,18 +1770,22 @@ base_tiles = {
   },
   */
   "woodblock0": {
+    collision:true,
     "x": 112,
     "y": 0
   },
   "woodblock1": {
+    collision:true,
     "x": 128,
     "y": 0
   },
   "woodblock2": {
+    collision:true,
     "x": 144,
     "y": 0
   },
   "woodblock3": {
+    collision:true,
     "x": 160,
     "y": 0
   },
@@ -1205,6 +1857,20 @@ base_tiles = {
   "F": { "x": 80, "y": 768 },
   "C": { "x": 32, "y": 768 },
   //end letters
+  "fenceHORIZ":{
+    "x":16,"y":160,
+    kind: "object",
+    container: "objects",
+    collision: true
+  },
+  "fenceVERT":{
+    "x":0,"y":160,
+    kind: "object",
+    container: "objects",
+    collision: true
+  },
+  "eyeClue":{x:192,y:672},
+  "exclamation": {"x":48,"y":816},
   "hitOutlineLeft": { "x": 112, "y": 176 },
   "hitOutlineRight": { "x": 62, "y": 176 },
   "tunafish": { "x": 240, "y": 480 },
@@ -1227,10 +1893,10 @@ base_tiles = {
   "spikeout": { "x": 0, "y": 848 },
   "hitsplat": { "x": 256, "y": 1264 },
   //shadows
-  "leftShad": { "x": 288, "y": 320 },
-  "upShad": { "x": 304, "y": 320 },
-  "rightShad": { "x": 288, "y": 336 },
-  "downShad": { "x": 304, "y": 336 },
+  "shadLeft": { "x": 288, "y": 320 },
+  "shadUp": { "x": 304, "y": 320 },
+  "shadRight": { "x": 288, "y": 336 },
+  "shadDown": { "x": 304, "y": 336 },
   "ulShad": { "x": 288, "y": 352 },
   "urShad": { "x": 304, "y": 352 },
   "llShad": { "x": 288, "y": 369 },
@@ -1254,9 +1920,19 @@ base_tiles = {
   "ghostL": { "x": 64, "y": 96 },//ghost facing left coords
   "ratR": { "x": 112, "y": 144 },
   "ratL": { "x": 192, "y": 128 },
-  "spiderR": { "x": 96, "y": 240 },
-  "spiderL": { "x": 112, "y": 240 },
+  //NPCs
+  "peasant":
+  {x:208,y:1088},
+  "gateGuard":{
+    x:0,y:240
+  },
+  "theEye": {x:208,y:672},
   "shopkeep": { "x": 16, "y": 128 },//no shopkeepL "y"et
+  "belethor": {"x":208,"y":1088},
+  "merchant": {"x":304,"y":640},
+  "chef": {"x":304,"y":640},
+  "farmer": {"x":32,"y":176},
+  "hermit": {"x":176,"y":384},
   "gnollR": { "x": 224, "y": 576 },
   "gnollL": { "x": 240, "y": 576 },
   "rangeGoblinR": { "x": 80, "y": 336 },

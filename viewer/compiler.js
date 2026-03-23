@@ -5,6 +5,113 @@ spriteSheet.src = 'spritesheet-0.5.18.png';
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+const itemById = Object.fromEntries(
+  Object.entries(base_tiles)
+    .filter(([name, def]) => def.id != null)
+    .map(([name, def]) => [def.id, name])
+);
+
+// map object name → id
+const idByItem = name => base_tiles[name]?.id;
+
+devMode = false;
+function devModeActive(){
+  if (!devMode){
+    devMode=true;
+  } else {
+    devMode=false;
+  }
+  if (devMode) {
+    select = document.createElement('select');
+    document.getElementById('side-column').appendChild(select);
+
+    Object.keys(base_tiles).forEach(key => {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent = key;
+      select.appendChild(option);
+    });
+
+    radiusSelect = document.createElement('select');
+    document.getElementById('side-column').appendChild(radiusSelect);
+
+    for (i=1; i<10; i++){
+      let opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = i;
+      radiusSelect.appendChild(opt);
+    }
+  }
+  if (!devMode && select) {
+    select.remove();
+    select = null; // optional but tidy
+    radiusSelect.remove();
+    radiusSelect.remove();
+  }
+}
+
+let mouseDown = false;
+let currClick = 'left';
+canvas.addEventListener("mousedown", async (e) => {
+  e.preventDefault();
+  currClick = e.button === 2 ? "right" : "left"; // 0 = left, 2 = right
+  mouseDown = true;
+  const rect = canvas.getBoundingClientRect();
+
+  const pixelX = e.clientX - rect.left;
+  const pixelY = e.clientY - rect.top;
+
+  const tileX = Math.floor(pixelX / 4);
+  const tileY = Math.floor(pixelY / 4);
+
+  console.log(tileX, tileY);
+  await handleClick(tileX, tileY);
+});
+
+let lastMove = Date.now();
+canvas.addEventListener("mousemove", async (e) => {
+  e.preventDefault();
+  if (mouseDown===false) return;
+  if (Date.now()<lastMove+200) return;
+  lastMove = Date.now();
+  const rect = canvas.getBoundingClientRect();
+
+  const pixelX = e.clientX - rect.left;
+  const pixelY = e.clientY - rect.top;
+
+  const tileX = Math.floor(pixelX / 4);
+  const tileY = Math.floor(pixelY / 4);
+
+  console.log(tileX, tileY);
+  await handleClick(tileX, tileY);
+});
+
+canvas.addEventListener("mouseup", (e) => {
+  e.preventDefault();
+  mouseDown = false;
+});
+
+let noRightClick = true;
+canvas.addEventListener("contextmenu", (e) => {
+  if (noRightClick===false) return;
+  e.preventDefault()
+});
+
+let addZ = 0;
+let kOnly = false;//set to true to clear only kTiles
+async function handleClick(x, y){
+  console.log(`currClick: ${currClick}`);
+  if (currClick!=="left" && currClick!=="right") return;
+  console.log("sending to server");
+  socket.emit('editorAddRadiusTiles', {
+    x:x, y:y, z:addZ,//be careful with Z!!!
+    tile: select.value,
+    radius: radiusSelect.value,
+    click: currClick,
+    k: kOnly
+  });
+  console.log(`kOnly: ${kOnly}`);
+}
 
 
 const COLOR_PALETTE = {
@@ -144,6 +251,30 @@ function drawObjects(chunk, i, j, z) {
   }
 }
 
+let showK = true;
+function drawTerritory(chunk, i, j, z){
+  if (showK===false) return;
+  if (!chunk?.kTile) return;
+  if (Object.keys(chunk.kTile)[0]==='kWest') {
+    ctx.fillStyle = "#0400ff2d";
+    ctx.fillRect(
+      j * TILE_SIZE,           // dest X
+      i * TILE_SIZE,           // dest Y
+      TILE_SIZE,                         // width 4 px
+      TILE_SIZE
+    )
+  }
+  if (Object.keys(chunk.kTile)[0]==='kEast') {
+    ctx.fillStyle = "#33ff002d";
+    ctx.fillRect(
+      j * TILE_SIZE,           // dest X
+      i * TILE_SIZE,           // dest Y
+      TILE_SIZE,                         // width 4 px
+      TILE_SIZE
+    )
+  }
+}
+
 const CANVAS_SIZE = 3200;      // your canvas width/height
 const TILE_PIXELS = 16;        // your tile width/height in source spriteSheet
 const SUBPIXELS = 4;           // each tile has 4x4 subpixels
@@ -176,6 +307,7 @@ function renderMap(){
         drawBaseTile(col, i, j);
         drawPixels(col, i, j);
         drawObjects(col, i, j, z);
+        drawTerritory(col, i, j, z);
       }
       
     }
@@ -195,6 +327,7 @@ function renderTile(x, y){
         drawBaseTile(col, y, x);
         drawPixels(col, y, x);
         drawObjects(col, y, x, z);
+        drawTerritory(col, y, x, z);
       }
 }
 
@@ -219,3 +352,4 @@ socket.on("mapUpdate", (change) => {
   window.map[y][x] = tile;
   renderTile(x, y); // partial redraw
 });
+

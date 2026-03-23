@@ -993,31 +993,6 @@ function sendPaint(x, y, subX, subY, leftRight){
   socket.emit("paint", data);
 }
 
-/*
-function addTradeIncomingMessage(username) {
-  const line = document.createElement("div");
-
-  const accept = document.createElement("span");
-  accept.textContent = "Accept";
-  accept.className = "chat-link";
-  accept.dataset.action = "acceptTrade";
-  accept.dataset.username = username;
-
-  const decline = document.createElement("span");
-  decline.textContent = " Decline";
-  decline.className = "chat-link";
-  decline.dataset.action = "declineTrade";
-  decline.dataset.username = username;
-  const nameSpan = document.createElement("span");
-  nameSpan.textContent = `${username} wants to trade — `;
-  nameSpan.style.color = "purple";
-  accept.style.color = "green";
-  decline.style.color = "red";
-  line.append(nameSpan, accept, " ", decline);
-  messages.append(line);
-  messages.scrollTop = messages.scrollHeight;
-}
-*/
 function addTradeIncomingMessage(username) {
   const line = document.createElement("div");
   line.dataset.type = "trade";
@@ -1050,6 +1025,238 @@ function addTradeIncomingMessage(username) {
 socket.on("chatEvent", (data) => {
   if (data.type === "tradeRequest") {
     addTradeIncomingMessage(data.from);
+  }
+});
+
+let reignData = null;
+let kings = null;
+
+function toRoman(num) {
+  const map = [
+    [1000, 'M'], [900, 'CM'], [500, 'D'], [400, 'CD'],
+    [100, 'C'], [90, 'XC'], [50, 'L'], [40, 'XL'],
+    [10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']
+  ];
+
+  let result = '';
+  for (const [value, numeral] of map) {
+    while (num >= value) {
+      result += numeral;
+      num -= value;
+    }
+  }
+  return result;
+}
+
+socket.on('kingReigns', (data) => {
+  let existing = document.getElementById('kingPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'kingPopup';
+
+  // style
+  popup.style.position = 'fixed';
+  popup.style.top = '20px';
+  popup.style.left = '50%';
+  popup.style.transform = 'translateX(-50%)';
+  popup.style.background = '#222';
+  popup.style.color = '#fff';
+  popup.style.padding = '15px';
+  popup.style.border = '2px solid #555';
+  popup.style.zIndex = '9999';
+  popup.style.width = '260px';
+  popup.style.maxHeight = '30vh';
+  popup.style.overflowY = 'auto';
+  popup.style.fontFamily = 'monospace';
+  popup.style.boxShadow = '0 0 10px black';
+  popup.style.textAlign = 'center';
+  popup.style.fontSize = '14px';
+
+  function formatDuration(ms) {
+    let seconds = Math.floor(ms / 1000);
+
+    const days = Math.floor(seconds / 86400);
+    seconds %= 86400;
+
+    const hours = Math.floor(seconds / 3600);
+    seconds %= 3600;
+
+    const minutes = Math.floor(seconds / 60);
+    seconds %= 60;
+
+    const parts = [];
+
+    if (days > 0) parts.push(`${days} days`);
+    if (hours > 0) parts.push(`${hours} hours`);
+    if (minutes > 0) parts.push(`${minutes} minutes`);
+    if (seconds > 0) parts.push(`${seconds} seconds`);
+
+    return parts.join(' ') || '0s';
+  }
+
+  // ✅ count total reigns per player
+  const totalCounts = {};
+  data.reigns.forEach(r => {
+    totalCounts[r.name] = (totalCounts[r.name] || 0) + 1;
+  });
+
+  // ✅ copy so we can count down
+  const remainingCounts = { ...totalCounts };
+
+  let html = `
+    <div style="position:relative;">
+      <span id="closeKingPopup" style="
+        position:absolute;
+        right:0;
+        top:0;
+        cursor:pointer;
+        font-weight:bold;
+      ">✖</span>
+
+      <div style="font-size:18px; margin-bottom:8px;">
+        <b>${data.kingdom.toUpperCase()} Kingdom</b>
+      </div>
+      <hr>
+    </div>
+  `;
+
+  let kColor;
+  switch(data.kingdom){
+    case 'east':
+      kColor='green';
+      break;
+    case 'west':
+      kColor='blue';
+      break;
+  }
+
+  // ✅ newest → oldest, but numerals go highest → lowest
+  data.reigns.forEach(r => {
+    const roman = toRoman(remainingCounts[r.name]);
+    remainingCounts[r.name]--;
+
+    html += `
+      <div style="margin:6px 0;">
+        ${r.isCurrent ? '👑 ' : ''}
+        <span style="color: ${kColor}">
+          ${r.name} ${roman}
+        </span><br>
+        <span style="font-size:14px;">
+          ${formatDuration(r.duration)}
+        </span>
+      </div>
+    `;
+  });
+
+  popup.innerHTML = html;
+  document.body.appendChild(popup);
+
+  document.getElementById('closeKingPopup').onclick = () => {
+    popup.remove();
+  };
+});
+/*
+socket.on('kingReigns', (data) => {
+  let existing = document.getElementById('kingPopup');
+  if (existing) existing.remove();
+
+  const popup = document.createElement('div');
+  popup.id = 'kingPopup';
+
+  // style
+  popup.style.position = 'fixed';
+  popup.style.top = '20px';
+  popup.style.left = '50%';
+  popup.style.transform = 'translateX(-50%)';
+  popup.style.background = '#222';
+  popup.style.color = '#fff';
+  popup.style.padding = '15px';
+  popup.style.border = '2px solid #555';
+  popup.style.zIndex = '9999';
+  popup.style.width = '260px'; // 👈 skinnier
+  popup.style.maxHeight = '30vh';
+  popup.style.overflowY = 'auto';
+  popup.style.fontFamily = 'monospace';
+  popup.style.boxShadow = '0 0 10px black';
+  popup.style.textAlign = 'center'; // 👈 center everything
+  popup.style.fontSize = '14px'; // 👈 bigger text
+function formatDuration(ms) {
+  let seconds = Math.floor(ms / 1000);
+
+  const days = Math.floor(seconds / 86400);
+  seconds %= 86400;
+
+  const hours = Math.floor(seconds / 3600);
+  seconds %= 3600;
+
+  const minutes = Math.floor(seconds / 60);
+  seconds %= 60;
+
+  const parts = [];
+
+  if (days > 0) parts.push(`${days} days`);
+  if (hours > 0) parts.push(`${hours} hours`);
+  if (minutes > 0) parts.push(`${minutes} minutes`);
+  if (seconds > 0) parts.push(`${seconds} seconds`);
+
+  return parts.join(' ') || '0s';
+}
+
+  let html = `
+    <div style="position:relative;">
+      <span id="closeKingPopup" style="
+        position:absolute;
+        right:0;
+        top:0;
+        cursor:pointer;
+        font-weight:bold;
+      ">✖</span>
+
+      <div style="font-size:18px; margin-bottom:8px;">
+        <b>${data.kingdom.toUpperCase()} Kingdom</b>
+      </div>
+      <hr>
+    </div>
+  `;
+
+  let kColor;
+  switch(data.kingdom){
+    case 'east':
+      kColor='green';
+      break;
+    case 'west':
+      kColor='blue';
+      break;
+  }
+  data.reigns.forEach(r => {
+    html += `
+      <div style="margin:6px 0;">
+        ${r.isCurrent ? '👑 ' : ''}<span style="color: ${kColor}">${r.name}</span><br>
+        <span style="font-size:14px;">${formatDuration(r.duration)}</span>
+      </div>
+    `;
+  });
+
+  popup.innerHTML = html;
+  document.body.appendChild(popup);
+
+  document.getElementById('closeKingPopup').onclick = () => {
+    popup.remove();
+  };
+});
+*/
+
+socket.on('currentKings', (data) => {
+  kings = {
+    "east":{
+      king: data.east.king,
+      tax: data.east.tax
+    },
+    "west": {
+      king: data.west.king,
+      tax: data.west.tax
+    }
   }
 });
 
@@ -1898,6 +2105,8 @@ function drawStats(mx, my) {
     const x = col * columnWidth;
     const y = startY + row * rowHeight;
 
+    invCtx.fillStyle = "rgb(119, 119, 119)";
+    invCtx.fillRect(x, y, iconSize, iconSize);    
     // icon
     invCtx.drawImage(
       spriteSheet,
@@ -1905,8 +2114,10 @@ function drawStats(mx, my) {
       x, y, iconSize, iconSize
     );
 
+
+
     // level text
-    invCtx.fillStyle = "black";
+    invCtx.fillStyle = "white";
     invCtx.font = "12px Arial";
     invCtx.textBaseline = "middle";
     invCtx.fillText(
@@ -1929,7 +2140,7 @@ function drawStats(mx, my) {
         tooltipEl.id = 'stat-tooltip';
         tooltipEl.style.position = 'absolute';
         tooltipEl.style.pointerEvents = 'none';
-        tooltipEl.style.background = "#a0732fc2";
+        tooltipEl.style.background = "#818181c2";
         tooltipEl.style.border = '1px solid black';
         tooltipEl.style.padding = '2px 4px';
         tooltipEl.style.fontSize = '12px';
@@ -2840,8 +3051,36 @@ function drawHUD(){
       //cross out combat icon
       drawRedX(ctx, canvas.width-24, canvas.height-24);
     }
+    let kingdom = null;
+    let kColor;
+    if (latestView[5][10][0]?.kTile && kings!==null){
+      switch(Object.keys(latestView[5][10][0].kTile)[0]){
+        case 'kWest':
+          kingdom = 'west';
+          kColor = 'blue';
+          break;
+        case 'kEast':
+          kingdom = 'east';
+          kColor = 'green';
+          break;
+      }
+      if (kingdom!==null){
+        //king and taxes
+        ctx.fillStyle = 'yellow';
+        ctx.font = "12px Arial";
+        ctx.fillText(`King`, 0, 16);
+        ctx.fillStyle = kColor;
+        ctx.fillText(`${kings[kingdom].king}`, 32, 16);
+        ctx.fillStyle = 'yellow';
+        ctx.fillText(`Tax: ${kings[kingdom].tax}%`, 150, 16);
+      }
+    } else {
+      console.log("no mans land!");
+      ctx.fillStyle = 'red';
+      ctx.font = "12px Arial";
+      ctx.fillText("No man's land", 0, 16);
+    }
   }
-
 }
 
 function drawRedX(ctx, x, y, size = 16) {//wow this useful lmao

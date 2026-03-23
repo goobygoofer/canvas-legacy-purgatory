@@ -730,9 +730,37 @@ base_tiles = {
     prettyName:"red eye",
     id: 113,
   },
+  "eastCrown":{
+    prettyName: "eastern crown",
+    kind: "item",
+    id: 114,
+    container: "objects",//even though ya can't drop it?
+    collision: false,
+    equip: { slot: "head" },
+    defense: 50,
+  },
+  "westCrown":{
+    prettyName: "western crown",
+    kind: "item",
+    id: 115,
+    container: "objects",//even though ya can't drop it?
+    collision: false,
+    equip: { slot: "head" },
+    defense: 50,
+  },
   //LAST ADDED ITEM
+  "eastCrownL":{x:257,y:912},
+  "eastCrownR":{x:239,y:912},
+  "westCrownL":{x:17,y:32},
+  "westCrownR":{x:-1,y:32},
   "stoneBT":{
     "x":128, "y":80
+  },
+  "redcarpet":{
+    x:64,y:16
+  },
+  "redcarpetCapRight":{
+    x:192,y:576,
   },
   "eyeSocket":{
     x:208,y:688
@@ -784,6 +812,14 @@ base_tiles = {
     "x":144,"y":96
   },
 /*-----------npc shop items-----------------*/
+  "guardShop":{
+    "x":256,"y":816,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 1000},
+    amount: 1,
+    item: "kingsguard"
+  },
   "eyeGameShop":{
     "x":256,"y":816,
     container: "objects",
@@ -1316,11 +1352,49 @@ base_tiles = {
     questName:null,
     stagePass:null
   },
+  "kWest":{
+    kind: "kTile",
+    container: "kTile",
+    collision: false
+  },
+  "kEast":{
+    kind: "kTile",
+    container: "kTile",
+    collision: false
+  },
   "craftTools":{
     "x":64, "y":672
   },
   "leaderboard": {
     "x":144, "y":336
+  },
+  "eastLeaderboard":{
+    x:80,y:672,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
+  "westLeaderboard":{
+    x:80,y:672,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
+  "throneWest":{
+    x:0,y:16,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
+  "throneEast":{
+    x:176,y:576,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
   },
   "murderL":{
     "x":113,"y":176
@@ -1553,6 +1627,11 @@ base_tiles = {
     "collision": false,
     'type': 'depletedResource'
   },
+  "snowtree0":{x:176,y:544},
+  "snowtree1":{x:192,y:544},
+  "snowtree2":{x:208,y:544},
+  "snowtree3":{x:224,y:544},
+  "snowtree4":{x:80,y:0},
   "ironrock0": {
     "x": 176, "y": 0,
     kind: "resource",
@@ -1910,6 +1989,8 @@ base_tiles = {
   "ghostL": { "x": 64, "y": 96 },//ghost facing left coords
   "ratR": { "x": 112, "y": 144 },
   "ratL": { "x": 192, "y": 128 },
+  "guardR":{x:16, y:16},
+  "guardL":{x:32,y:16},
   //NPCs
   "peasant":
   {x:208,y:1088},
@@ -1923,6 +2004,7 @@ base_tiles = {
   "chef": {"x":304,"y":640},
   "farmer": {"x":32,"y":176},
   "hermit": {"x":176,"y":384},
+  "kingsaid":{x:16,y:256},
   "gnollR": { "x": 224, "y": 576 },
   "gnollL": { "x": 240, "y": 576 },
   "rangeGoblinR": { "x": 80, "y": 336 },

@@ -1115,8 +1115,39 @@ module.exports = {
     container: "objects",
     collision: false
   },
+  "eastCrown":{
+    prettyName: "eastern crown",
+    kind: "item",
+    id: 114,
+    container: "objects",//even though ya can't drop it?
+    collision: false,
+    equip: { slot: "head" },
+    defense: 50,
+  },
+  "westCrown":{
+    prettyName: "western crown",
+    kind: "item",
+    id: 115,
+    container: "objects",//even though ya can't drop it?
+    collision: false,
+    equip: { slot: "head" },
+    defense: 50,
+  },
   //LAST ADDED ITEM
-  
+  "redcarpet": {
+    prettyName: "carpet",
+    kind: 'item',
+    container:'floor',
+    collision: false,
+    roof:false,
+  },
+  "redcarpetCapRight":{
+    prettyName: "carpet",
+    kind: 'item',
+    container: 'floor',
+    collision: false,
+    roof: false
+  },
   "cookingRange":{
     prettyName: "cooking range",
     kind: "interactable",
@@ -1134,6 +1165,14 @@ module.exports = {
     ]
   },
 /*------------------npc shop items-------------------*/
+  "guardShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 1000},
+    amount: 1,
+    item: "guard",
+    kingdom: true
+  },
   "eyeGameShop":{
     container: "objects",
     kind: "interactable",
@@ -1489,6 +1528,75 @@ module.exports = {
       { name: "oak0", weight: 50 }
     ]
   },
+  //snowtree
+  "snowtree0": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { log: 1 },
+    rareDrop: { apple: 1 },//change to like glass or something!
+    rarity: 50,//every 50 trees by chance
+    depletesTo: "snowtree1",
+    requiresTool: "axe",
+    xp: 1,
+    regrowsTo: [
+      { name: "snowtree0", weight: 1000 }
+    ]
+  },
+
+  "snowtree1": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { log: 1 },
+    rareDrop: { apple: 1 },
+    rarity: 50,
+    depletesTo: "snowtree2",
+    requiresTool: "axe",
+    xp: 1,
+    regrowsTo: [
+      { name: "snowtree0", weight: 1000 },
+    ]
+  },
+  "snowtree2": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { log: 1 },
+    rareDrop: { apple: 1 },
+    rarity: 50,
+    depletesTo: "snowtree3",
+    requiresTool: "axe",
+    xp: 1,
+    regrowsTo: [
+      { name: "snowtree0", weight: 1000 }
+    ]
+
+  },
+  "snowtree3": {
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: { log: 1 },
+    rareDrop: { apple: 1 },
+    rarity: 50,
+    depletesTo: "snowtree4",
+    requiresTool: "axe",
+    xp: 1,
+    regrowsTo: [
+      { name: "snowtree0", weight: 1000 }
+    ]
+  },
+
+  "snowtree4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "snowtree0", weight: 1000 }
+    ]
+  },
+  //end snowtree
   "stoneblock0": {
     kind: "resource",
     container: "objects",
@@ -2543,6 +2651,30 @@ module.exports = {
     collision: false,
     roof: false
   },
+  "eastLeaderboard":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
+  "westLeaderboard":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
+  "throneWest":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
+  "throneEast":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
   "abyss": {
     kind: "b-t",
     container: "b-t",
@@ -2571,7 +2703,7 @@ module.exports = {
         action: async (player, query, addItem, removeItem, getItemAmount, sendMessage) => {
           const flooring = await getItemAmount(player.name, 12);
           if (flooring<2){
-            sendMessage('pk message', `Retturn when you have enough flooring on you!`, player);
+            sendMessage('pk message', `Return when you have enough flooring on you!`, player);
             return;
           }
           await removeItem(player.name, 12, 2);
@@ -2876,6 +3008,13 @@ module.exports = {
       }
     }
   },
+  "kingsaid":{
+    kind: "npc",
+    container: "objects",
+    collision: true,
+    prettyName: "King's Aid",
+    speech: `Stand on the coffer and press Shift to pay for guards to protect the throne! Salary for a guard is currently 1000 coins.`
+  },
   "void": {
     'roof': false,
     'type': 'b-t',
@@ -2959,6 +3098,16 @@ module.exports = {
     collision:false,
     questName:null,
     stagePass:null
+  },
+  "kWest":{
+    kind: "kTile",
+    container: "kTile",
+    collision: false
+  },
+  "kEast":{
+    kind: "kTile",
+    container: "kTile",
+    collision: false
   },
   "fenceHORIZ":{
     kind: "object",
