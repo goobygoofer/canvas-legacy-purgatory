@@ -184,6 +184,9 @@ function drawObjects(chunk, i, j, z) {
   for (let objKey in chunk.objects) {
     const obj = chunk.objects[objKey];
     const tile = base_tiles[obj.name];
+    if (tile==='palm0'){
+      console.log("palm tree!");
+    }
     if (!tile) continue;
     if (obj.name==='diamondrock0'){
       ctx.fillStyle='blue';

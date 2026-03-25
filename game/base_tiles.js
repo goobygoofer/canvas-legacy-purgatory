@@ -748,6 +748,54 @@ base_tiles = {
     equip: { slot: "head" },
     defense: 50,
   },
+  "flowerPurple":{
+    x:0,y:1280,
+    prettyName: "purple flower",
+    kind: 'item',
+    id: 116,
+    container: 'objects',
+    collision: false
+  },
+  "flowerPink":{
+    x:16,y:1280,
+    prettyName: "pink flower",
+    kind: 'item',
+    id: 117,
+    container: 'objects',
+    collision: false
+  },
+  "flowerBlue":{
+    x:32,y:1280,
+    prettyName: "blue flower",
+    kind: 'item',
+    id: 118,
+    container: 'objects',
+    collision: false
+  },
+  "reddust":{
+    x:144,y:1280,
+    prettyName: "red dust",
+    kind: 'item',
+    id: 119,
+    container: 'objects',
+    collision: false
+  },
+  "purpledust":{
+    x:160,y:1280,
+    prettyName: "purple dust",
+    kind: 'item',
+    id: 120,
+    container: 'objects',
+    collision: false
+  },
+  "greendust":{
+    x:176,y:1280,
+    prettyName: "green dust",
+    kind: 'item',
+    id: 121,
+    container: 'objects',
+    collision: false
+  },
   //LAST ADDED ITEM
   "eastCrownL":{x:257,y:912},
   "eastCrownR":{x:239,y:912},
@@ -1198,6 +1246,16 @@ base_tiles = {
   "spiderR":{
     "x":96,"y":240
   },
+  "bigSlimeL":{
+    x:96,y:400,
+    spriteSize: 32,
+    drawSize: 64
+  },
+  "bigSlimeR":{
+    x:64,y:400,
+    spriteSize: 32,
+    drawSize: 64
+  },
   "spiderQueenL":{
     "x":176,"y":400,
     spriteSize: 32,
@@ -1597,6 +1655,21 @@ base_tiles = {
     xp: 50
   },
   //last farm resource
+  "palm0":{
+    x:48,y:1280
+  },
+  "palm1":{
+    x:64,y:1280
+  },
+  "palm2":{
+    x:80,y:1280
+  },
+  "palm3":{
+    x:96,y:1280
+  },
+  "palm4":{
+    x:112,y:1280
+  },
   "tree0": {
     "x": 16,
     "y": 0,
@@ -1816,6 +1889,8 @@ base_tiles = {
   "water": { "x": 0, "y": 48, "collision": true, 'roof': false, 'type': 'b-t' },//
   "mushroomL": { "x": 80, "y": 256 },//
   "mushroomR": { "x": 80, "y": 256 },//
+  "poisonMushroomL":{x:128, y:1280},
+  "poisonMushroomR":{x:128, y:1280},
   "rupee": { "x": 64, "y": 800 },//need to change this sprite to look more like a rupee
   //paths
   "pathHORIZ": { "x": 0, "y": 544 },//
@@ -1872,6 +1947,7 @@ base_tiles = {
   "cactus": { "x": 160, "y": 48 },
   "ankh": { "x": 128, "y": 96 },
   "bankchest": { "x": 32, "y": 128 },
+  "kingchest": {x:48,y:848},
   "door2": { "x": 192, "y": 816 },
   "door3": { "x": 32, "y": 848 },
   "skull": { "x": 304, "y": 1024 },

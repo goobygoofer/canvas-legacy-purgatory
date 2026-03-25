@@ -1133,6 +1133,48 @@ module.exports = {
     equip: { slot: "head" },
     defense: 50,
   },
+  "flowerPurple":{
+    prettyName: "purple flower",
+    kind: 'item',
+    id: 116,
+    container: 'objects',
+    collision: false
+  },
+  "flowerPink":{
+    prettyName: "pink flower",
+    kind: 'item',
+    id: 117,
+    container: 'objects',
+    collision: false
+  },
+  "flowerBlue":{
+    prettyName: "blue flower",
+    kind: 'item',
+    id: 118,
+    container: 'objects',
+    collision: false
+  },
+  "reddust":{
+    prettyName: "red dust",
+    kind: 'item',
+    id: 119,
+    container: 'objects',
+    collision: false
+  },
+  "purpledust":{
+    prettyName: "purple dust",
+    kind: 'item',
+    id: 120,
+    container: 'objects',
+    collision: false
+  },
+  "greendust":{
+    prettyName: "green dust",
+    kind: 'item',
+    id: 121,
+    container: 'objects',
+    collision: false
+  },
   //LAST ADDED ITEM
   "redcarpet": {
     prettyName: "carpet",
@@ -1456,6 +1498,79 @@ module.exports = {
     xp: 50
   },
   //last farming resource
+  "palm0":{
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: {log: 1},
+    depletesTo: "palm1",
+    requiresTool: "axe",
+    xp: 5,
+    reqLvl: 5,
+    regrowsTo: [
+      {name: "palm0", weight: 100}
+    ]
+  },
+  "palm0":{
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: {log: 1},
+    depletesTo: "palm1",
+    requiresTool: "axe",
+    xp: 5,
+    reqLvl: 5,
+    regrowsTo: [
+      {name: "palm0", weight: 100}
+    ]
+  },
+  "palm1":{
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: {log: 1},
+    depletesTo: "palm2",
+    requiresTool: "axe",
+    xp: 5,
+    reqLvl: 5,
+    regrowsTo: [
+      {name: "palm0", weight: 100}
+    ]
+  },
+  "palm2":{
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: {log: 1},
+    depletesTo: "palm3",
+    requiresTool: "axe",
+    xp: 5,
+    reqLvl: 5,
+    regrowsTo: [
+      {name: "palm0", weight: 100}
+    ]
+  },
+  "palm3":{
+    kind: "resource",
+    container: "objects",
+    collision: true,
+    drops: {log: 1},
+    depletesTo: "palm4",
+    requiresTool: "axe",
+    xp: 5,
+    reqLvl: 5,
+    regrowsTo: [
+      {name: "palm0", weight: 100}
+    ]
+  },
+  "palm4": {
+    kind: "depletedResource",
+    container: "depletedResource",
+    collision: false,
+    regrowsTo: [
+      { name: "palm0", weight: 100 }
+    ]
+  },
   "tree0": {
     kind: "resource",
     container: "objects",
@@ -2645,6 +2760,12 @@ module.exports = {
     collision: false,
     roof: false
   },
+  "kingchest":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    roof: false
+  },
   "leaderboard": {
     kind: "interactable",
     container: "objects",
@@ -2724,7 +2845,7 @@ module.exports = {
     container: "objects",
     collision: true,
     prettyName: "Guard",
-    speech: "You can't go in there right now...\nIf you break in and get stuck, I can't help you..."
+    speech: "What's the matter? Someone steal your fish sandwich?"
   },
   "theEye":{
     kind: "npc",
@@ -3013,7 +3134,13 @@ module.exports = {
     container: "objects",
     collision: true,
     prettyName: "King's Aid",
-    speech: `Stand on the coffer and press Shift to pay for guards to protect the throne! Salary for a guard is currently 1000 coins.`
+    speech: `Stand on the coffer and press Shift to pay for guards to protect the throne! Salary for a guard is currently 1000 coins.`,
+    action: async (player, sendMessage, kingdoms) => {
+          sendMessage(
+            'server message',
+            `You currently have ${kingdoms[player.king].guards} guards on standby, ${kingdoms[player.king].activeGuard} are active.`,
+            player);
+        } 
   },
   "void": {
     'roof': false,

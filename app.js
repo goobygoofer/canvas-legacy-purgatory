@@ -402,25 +402,25 @@ function updateKingStatus(player=null){
   if (player!==null){
     io.to(player.sock_id).emit('currentKings', {
       east: {
-        king: eastKingdom.king,
-        tax: eastKingdom.tax
+        king: kingdoms['east'].king,
+        tax: kingdoms['east'].tax
       },
       west: {
-        king: westKingdom.king,
-        tax: westKingdom.tax
+        king: kingdoms['west'].king,
+        tax: kingdoms['west'].tax
       }
     })    
     return;
   }
   io.emit('currentKings', {
-    east: {
-      king: eastKingdom.king,
-      tax: eastKingdom.tax
-    },
-    west: {
-      king: westKingdom.king,
-      tax: westKingdom.tax
-    }
+      east: {
+        king: kingdoms['east'].king,
+        tax: kingdoms['east'].tax
+      },
+      west: {
+        king: kingdoms['west'].king,
+        tax: kingdoms['west'].tax
+      }
   })
 }
 
@@ -1404,17 +1404,23 @@ async function bankDeposit(socket, data){
     sendMessage('pk message', `DON'T`, player);
     return;
   }
+  //check if king, if kings chest, etc
   let tile = getTile(player.x, player.y, player.z);
-  if (!tile.objects['bankchest']) return;
+  if (!tile.objects['bankchest'] && !tile.objects['kingchest']) return;
+  console.log("got past which chest type check");
   try {
     const { id, amt } = data;
-
+    let bankName = player.name;
     // 1. Check how much is in inventory
     const invItems = await query(
       `SELECT amount FROM inventories WHERE player_name = ? AND id = ?`,
-      [player.name, id]
+      [bankName, id]
     );
-
+    let king = false;
+    if (tile.objects?.['kingchest'] && player.king!==null){
+      bankName = player.king;
+      king = true;
+    }
     if (invItems.length === 0) return; // nothing to deposit
 
     const invAmount = invItems[0].amount;
@@ -1423,12 +1429,12 @@ async function bankDeposit(socket, data){
     if (toDeposit <= 0) return;
 
     // 2. Add to bank
-    await addBankItem(player.name, id, toDeposit);
+    await addBankItem(bankName, id, toDeposit);
 
     // 3. Remove from inventory
     await removeItem(player.name, id, toDeposit);
 
-    playerBank(player.name);
+    playerBank(player.name, king);
     syncInventory(player.name);
   } catch (err) {
     console.error('Error handling bankDeposit:', err);
@@ -1436,16 +1442,23 @@ async function bankDeposit(socket, data){
 }
 
 async function bankWithdraw(socket, data){
+  //check if king, kings chest, etc
   let player = players[socket.user];
   let tile = getTile(player.x, player.y, player.z);
-  if (!tile.objects?.bankchest) return;
+  if (!tile.objects?.bankchest && !tile.objects?.kingchest) return;
   try {
     const { id, amt } = data;
 
     // 1. Check how much is in the bank
+    let bankName = player.name;
+    let king = false;
+    if (tile.objects?.kingchest && player.king!==null){
+      bankName = player.king;
+      king = true;
+    }
     const bankItems = await query(
       `SELECT amount FROM bank WHERE player_name = ? AND id = ?`,
-      [player.name, id]
+      [bankName, id]
     );
 
     if (bankItems.length === 0) return; // nothing to withdraw
@@ -1460,8 +1473,8 @@ async function bankWithdraw(socket, data){
 
     if (added > 0) {
       // 3. Remove from bank only the amount actually added
-      await removeBankItem(player.name, id, added);
-      playerBank(player.name);
+      await removeBankItem(bankName, id, added);
+      playerBank(player.name, king);
       syncInventory(player.name);
     } else {
     }
@@ -1811,15 +1824,11 @@ async function setTaxes(player, tax){
     return;
   }
   await query(`update kingdoms set tax = ? where kingdom = ?`, [taxes, player.king]);
-  switch (player.king){
-    case 'east':
-      eastKingdom.tax = taxes;
-      break;
-    case 'west':
-      westKingdom.tax = taxes;
-      break;
-  }
+  kingdoms[player.king].tax = taxes;
+
+  await dbKingdoms();
   sendMessage('server message', `You set the ${player.king} kingdom's taxes to ${taxes}%`, player);
+  updateKingStatus();
 }
 
 async function sendTradeRequest(fromName, toName) {
@@ -2505,6 +2514,9 @@ async function npcInteract(name, npcName){
   if (npcObject?.quest){
     await npcQuest(player, npcObject);
   }
+  if (npcObject?.action){//action that is not in quest
+    await npcAction(player, npcObject);
+  }
 }
 
 async function npcQuest(player, npcObj){
@@ -2515,6 +2527,10 @@ async function npcQuest(player, npcObj){
   if (npcObj.quest[questStage]?.action){
     npcObj.quest[questStage].action(player, query, addItem, removeItem, getItemAmount, sendMessage);//won't necessarily query, but fine this way
   }
+}
+
+async function npcAction(player, npcObj){
+  npcObj.action(player, sendMessage, kingdoms);
 }
 
 async function mobQuestLogic(player, questName, mob){
@@ -2826,23 +2842,16 @@ async function killMob(mob) {
     await mobQuestLogic(players[mob.lastHitBy], mob.quest.name, mob);  
   }
   if (mob?.kingdom){
-    switch(mob.kingdom){
-      case 'east':
-        eastKingdom.activeGuard-=1;
-        if (eastKingdom.activeGuard<0) eastKingdom.activeGuard=0;
-        eastKingdom.guards-=1;
-        if (eastKingdom.guards<0) eastKingdom.guards=0;
-        break;
-      case 'west':
-        westKingdom.activeGuard-=1;
-        if (westKingdom.activeGuard<0) westKingdom.activeGuard=0;
-        westKingdom.guards-=1;
-        if (westKingdom.guards<0) westKingdom.guards=0;
-        break;
-    }
+    kingdoms[mob.kingdom].activeGuard-=1;
+    if (kingdoms[mob.kingdom].activeGuard<0) kingdoms[mob.kingdom].activeGuard=0;
+    kingdoms[mob.kingdom].guards-=1;
+    if (kingdoms[mob.kingdom].guards<0) kingdoms[mob.kingdom].guards=0;
   }
-  const tile = getTile(mob.x, mob.y);
-  delete tile.mob;
+  const oldTile = getTile(mob.x, mob.y);
+  delete oldTile.mob;
+  if (mob?.multiTile) {
+    //come back to this
+  }
   await dropMobLoot(mob.drop, mob.x, mob.y);
   mobs.delete(mob.id);
   markTileChanged(mob.x, mob.y);
@@ -3356,23 +3365,24 @@ async function taxCoins(name, amt){
   let kName = Object.keys(tile.kTile)[0];
   let kingName = null;
   let coinTax = null;
+  let kingdom;
   switch (kName){
     case 'kWest':
-      kingName=westKingdom.king;
-      coinTax=westKingdom.tax;
+      kingdom='west'
       break;
     case 'kEast':
-      kingName=eastKingdom.king;
-      coinTax=eastKingdom.tax;
+      kingdom='east';
       break;
   }
+  kingName = kingdoms[kingdom].king;
+  coinTax = kingdoms[kingdom].tax;
   if (kingName===null) return;//no tax!
   if (coinTax===0) return;//hmm, no tax!
   let percentTaken = Math.floor(amt-(amt*(coinTax/100)));
   if (percentTaken>=amt) return;//I guess this makes sense?
-  sendMessage('server message', `You pay ${percentTaken} coins in taxes to the kingdom.`, player);
+  sendMessage('server message', `You pay ${percentTaken} coins in taxes to the ${kingdom} kingdom.`, player);
   await removeItem(name, 21, percentTaken);
-  await addBankItem(kingName, 21, percentTaken);
+  await addBankItem(kingdom, 21, percentTaken);
 }
 
 let exits = [
@@ -3412,6 +3422,9 @@ async function checkInteract(name, mapObjects) {
     playerBank(name);
     return true;
   }
+  if (objName === 'kingchest'){
+    playerBank(name, true);
+  }
   if (objName === 'door') {
     useDoor(name);
     return true;
@@ -3448,32 +3461,33 @@ async function checkInteract(name, mapObjects) {
   return false;
 }
 
-let westKingdom = {
-  king: null,//pull from database
-  guards: 0,//pull from db
-  activeGuard: 0,
-  tax: 0//percent 0-50
-}
-
-let eastKingdom = {
-  king: null,
-  guards: 0,
-  activeGuard: 0,
-  tax: 0//percent 0-50
+let kingdoms = {
+  'east':{
+    king: null,//pull from database
+    guards: 0,//pull from db
+    activeGuard: 0,
+    tax: 0//percent 0-50
+  },
+  'west':{
+    king: null,//pull from database
+    guards: 0,//pull from db
+    activeGuard: 0,
+    tax: 0//percent 0-50
+  }
 }
 
 async function initKingdoms(){
-  //load eastKingdom and westKingdom king and guards
+  //load east Kingdom and west Kingdom king and guards
   let west = await query(`select * from kingdoms where kingdom = 'west'`, []);
-  westKingdom.king=west[0].king;
-  westKingdom.guards=west[0].guards;
-  westKingdom.tax=west[0].tax;
+  kingdoms['west'].king=west[0].king;
+  kingdoms['west'].guards=west[0].guards;
+  kingdoms['west'].tax=west[0].tax;
   let east = await query(`select * from kingdoms where kingdom = 'east'`, []);
-  eastKingdom.king=east[0].king;
-  eastKingdom.guards=east[0].guards;
-  eastKingdom.tax=east[0].tax;
-  console.log(`East\nKing: ${eastKingdom.king}, Guards: ${eastKingdom.guards}, Tax: ${eastKingdom.tax}`);
-  console.log(`West\nKing: ${westKingdom.king}, Guards: ${westKingdom.guards}, Tax: ${westKingdom.tax}`);
+  kingdoms['east'].king=east[0].king;
+  kingdoms['east'].guards=east[0].guards;
+  kingdoms['east'].tax=east[0].tax;
+  console.log(`East\nKing: ${kingdoms['east'].king}, Guards: ${kingdoms['east'].guards}, Tax: ${kingdoms['east'].tax}`);
+  console.log(`West\nKing: ${kingdoms['west'].king}, Guards: ${kingdoms['west'].guards}, Tax: ${kingdoms['west'].tax}`);
   for (const spawn of mobSpawns) {//put this here cause initKingdoms took too fuckin long lol
     for (let i = 0; i < spawn.count; i++) {
       spawnMob(spawn);
@@ -3485,8 +3499,10 @@ initKingdoms();
 
 async function dbKingdoms(){
   //save kingdom king and guards to db
-  await query(`update kingdoms set guards = ${westKingdom.guards} where kingdom = 'west'`,[]);
-  await query (`update kingdoms set guards = ${eastKingdom.guards} where kingdom = 'east'`,[])
+  await query(`update kingdoms set guards = ${kingdoms['west'].guards} where kingdom = 'west'`,[]);
+  await query (`update kingdoms set guards = ${kingdoms['east'].guards} where kingdom = 'east'`,[]);
+  await query(`update kingdoms set tax = ${kingdoms['west'].tax} where kingdom = 'west'`,[]);
+  await query (`update kingdoms set tax = ${kingdoms['east'].tax} where kingdom = 'east'`,[]);
 }
 
 async function claimThrone(name, throne){
@@ -3542,21 +3558,18 @@ async function setNewKing(name, throne){
   console.log(`Setting ${name} as new king of ${throne}`);
   let player = players[name];
   let kingdom;
+
   switch (throne){
     case 'throneEast':
       kingdom = 'east';
-      if (eastKingdom.guards>0){
-        sendMessage('pk message', `A guard thwarts your efforts to take the throne!`, player);
-        return;
-      }
       break;
     case 'throneWest':
       kingdom = 'west';
-      if (westKingdom.guards>0){
-        sendMessage('pk message', `A guard thwarts your efforts to take the throne!`, player);
-        return;
-      }
       break;
+  }
+  if (kingdoms[kingdom].guards>0){
+    sendMessage('pk message', `A guard thwarts your efforts to take the throne!`, player);
+    return;   
   }
   //check guards
   const rows = await query(`select * from kingdoms where kingdom = ?`, [kingdom]);
@@ -3584,14 +3597,7 @@ async function setNewKing(name, throne){
   }
   await query(`UPDATE kingdoms SET king = ? WHERE kingdom = ?;`, [name, kingdom]);
   await query(`update players set king = ? where player_name = ?;`, [kingdom, name]);
-  switch (kingdom){
-    case 'east':
-      eastKingdom.king = name;
-      break;
-    case 'west':
-      westKingdom.king = name;
-      break;
-  }
+  kingdoms[kingdom].king = name;
   //then stuff about how long player has held king, king board etc
   const now = Date.now();
 
@@ -3798,14 +3804,8 @@ async function kingPurchase(player, item){
     }
     await removeItem(player.name, 21, 1000);
     sendMessage('server message', `You put 1000 coins into the coffer for a guard's salary.`, player);
-    switch (currKingdom){
-      case 'east':
-        eastKingdom.guards+=1;
-        break;
-      case 'west':
-        westKingdom.guards+=1;
-        break;
-    }
+    kingdoms[player.king].guards+=1;
+    await query (`update kingdoms set guards = guards + ? where kingdom = ?`, [1, player.king]);
   }
 }
 
@@ -3905,7 +3905,7 @@ async function useDoor(name) {
   markTileChanged(player.x, player.y);
 }
 
-async function taxPlayer(name, itemName, amt){
+async function taxPlayer(name, itemName, amt=1){
   console.log("tax player function");
   let player = players[name];
   if (!player) return;
@@ -3916,23 +3916,26 @@ async function taxPlayer(name, itemName, amt){
   }
   if (kTile===null) return;
   let kingName = null;
+  let kingdom;
   switch (kTile){
     case 'kWest':
-      player.taxProgress+=westKingdom.tax/100;
-      kingName = westKingdom.king;
+      kingdom='west';
       break;
     case 'kEast':
-      player.taxProgress+=eastKingdom.tax/100;
-      kingName = eastKingdom.king;
+      kingdom='east';
       break;
   }
+  kingName=kingdoms[kingdom].king;
+  player.taxProgress+=kingdoms[kingdom].tax/100;
   if (kingName===null) return;//no king, no taxes! lel
   if (player.taxProgress>=1){
     player.taxProgress=0;
     //tax player by removing 1 itemName from inventory and adding to current king bank db
     await removeItem(name, idByItem(itemName), amt);
-    await addBankItem(kingName, idByItem(itemName), amt);
-    sendMessage('server message', `You pay taxes to the kingdom.`, player);
+    //need to have a queue to minimize queries
+    //players owe taxes? optional?
+    await addBankItem(kingdom, idByItem(itemName), amt);
+    sendMessage('server message', `You pay taxes to the ${kingdom} kingdom.`, player);
   }
 }
 
@@ -4092,6 +4095,10 @@ async function playerDig(player){
 
 async function harvestPlant(player, tile, plantName){
   let plant = tile.objects[plantName];
+  if (!idByItem(baseTiles[plantName]?.drops)){
+    sendMessage('pk message', `This is not yet ready to harvest.`, player);
+    return;
+  }
   let added = addItem(player.name, idByItem(baseTiles[plantName].drops), 1);
   if (added===0) {
     sendMessage('pk message', `You must clear some inventory space to harvest this!`, player);
@@ -4101,7 +4108,7 @@ async function harvestPlant(player, tile, plantName){
     plant.amt-=1;
   }
   markTileChanged(player.x, player.y);
-  sendMessage('server message', `You harvest the ${baseTiles[plantName].drops}.`);
+  sendMessage('server message', `You harvest the ${baseTiles[plantName].drops}.`, player);
   if (plant.owner===player.name){
     await giveXp(player.name, baseTiles[plantName].xp, "farming");
     if (baseTiles[plantName].drops==='tomato' && player.farmerQuest===4){
@@ -4747,12 +4754,21 @@ function pickWeighted(list) {
   }
 }
 
-async function playerBank(playerName) {
+async function playerBank(playerName, king=false) {
+  //check if king and if kings chest?
+  let bankName = playerName;
+  if (king===true){
+    if (players[playerName].king===null){
+      sendMessage('pk message', `Only for use by the king!`, players[playerName]);
+      return;
+    }
+    bankName = players[playerName].king;//implies player_name = 'east' or 'west' in db
+  }
   const rows = await query(`
     SELECT id, amount
     FROM bank
     WHERE player_name = ? AND amount > 0
-  `, [playerName]);
+  `, [bankName]);
 
   const bankItems = {};
   for (const row of rows) {
@@ -4803,6 +4819,7 @@ async function replenishResources(farming=false) {
     await removeMobType("mushroom");
     await removeMobType("goat");
     await removeMobType("wolf");
+    await removeMobType("poisonMushroom");
   }
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
@@ -4906,6 +4923,13 @@ async function randMobsAndPlants(tile, x, y){
     if (randFlower < flowers.length) {
       addToMap(flowers[randFlower], x, y);
     }
+    const wildFlowers = ['flowerPurple', 'flowerPink', 'flowerBlue'];
+    let randWild = Math.floor(Math.random()*1000);
+    if (randWild < wildFlowers.length){
+      if (!tile?.kTile && isEmpty(tile?.objects)){
+        addToMap(wildFlowers[randWild], x, y);
+      }
+    }
   }
   if (
     isEmpty(tile?.objects) &&
@@ -4925,7 +4949,25 @@ async function randMobsAndPlants(tile, x, y){
       }
     }
   }
-
+  if (
+    isEmpty(tile?.objects) &&
+    isEmpty(tile?.floor) &&
+    isEmpty(tile?.depletedResources) &&
+    tile['b-t'] === 'grass' &&
+    !tile?.kTile//no mans land only
+  ) {
+    //random chance place a mushroom mob!
+    let randMushroom = Math.floor(Math.random() * 2000);
+    if (randMushroom < 3 && z === 0) {
+      //add mushroom
+      let mushroom1 = createMob('poisonMushroom', x, y);
+      mobs.set(mushroom1.id, mushroom1);
+      tile.mob = {
+        id: mushroom1.id,
+        sprite: "poisonMushroomL"
+      }
+    }
+  }
   //random chance for roaming goat!
   let randGoat = Math.floor(Math.random() * 3000);
   if (randGoat < 3 && z === 0) {//1/1000
@@ -5063,20 +5105,10 @@ let eyeTypes = [
 
 function spawnMob(spawn) {
   if (spawn?.kingdom){
-    switch (spawn.kingdom){
-      case 'east':
-        if (eastKingdom.activeGuard>=12) return;
-        if (eastKingdom.guards<=0) return;
-        if (eastKingdom.activeGuard===eastKingdom.guards) return;
-        eastKingdom.activeGuard+=1;
-        break;
-      case 'west':
-        if (westKingdom.activeGuard>=12) return;
-        if (westKingdom.guards<=0) return;
-        if (westKingdom.activeGuard===westKingdom.guards) return;
-        westKingdom.activeGuard+=1;
-        break;
-    }
+    if (kingdoms[spawn.kingdom].activeGuard>=12) return;
+    if (kingdoms[spawn.kingdom].guards<=0) return;
+    if (kingdoms[spawn.kingdom].activeGuard===kingdoms[spawn.kingdom].guards) return;
+    kingdoms[spawn.kingdom].activeGuard+=1;
   }
   const mob = createMob(spawn.type, spawn.x, spawn.y);
   if (spawn?.kingdom){
@@ -5094,6 +5126,11 @@ function spawnMob(spawn) {
     id: mob.id,
     sprite: mob.type + "L"
   };
+  if (mob?.multiTile){
+
+    //come back to this...
+
+  }
   if (mob?.collision === true) {
     tile.mob.collision = true;//is this necessary?
   }
@@ -5180,15 +5217,24 @@ function tryMove(mob, newX, newY) {
   // update facing
   mob.facing = newX > mob.x ? "right" : "left";
   // clear old tile
-  if (oldTile) delete oldTile.mob;
+  delete oldTile.mob;
+  if (mob?.multiTile) {
+    //come back to this
+  }
   // update mob position
   mob.x = newX;
   mob.y = newY;
   // set new tile
+  //if big mob, put un-drawn mob/collision/id etc on all tiles the sprite appears on!
   newTile.mob = {
     id: mob.id,
     sprite: mob.type + (mob.facing === "left" ? "L" : "R")
   };
+  if (mob?.multiTile){
+
+    //come back to this
+
+  }
   markTileChanged(mob.x, mob.y);
   return true;
 }
@@ -5459,6 +5505,10 @@ setInterval(async () => {
   if (players['Admin']) {
     clearCriminal('Admin');//tee
     setMurdererStatus('Admin', false, 0);//hee
+    if (players['Admin']){
+      players['Admin'].hp=2000;
+      players['Admin'].mana=1000;
+    }
   }
   // =============================
   // MURDERERS

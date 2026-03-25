@@ -2731,6 +2731,7 @@ function drawMobs(chunk){
     spriteSize = base_tiles[chunk.mob.sprite].spriteSize;
   }
   */
+  if (!chunk.mob?.sprite) return;
   ctx.drawImage(
     spriteSheet,
     base_tiles[chunk.mob.sprite].x, base_tiles[chunk.mob.sprite].y,

@@ -120,6 +120,33 @@ const mobTypes = {
             { name: "yellowdust", min: 1, max: 10, weight: 25 },
         ]
     }),
+    poisonMushroom: (x, y) => ({
+        id: getNextMobId(),
+        type: "poisonMushroom",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 200,
+        attack: 25,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 1,
+        leashRadius: 0,
+
+        nextThink: 0,
+        facing: "left",
+        baseSpeed: 1000,
+        pursuitSpeed: 0,
+        thinkSpeed: 1000,
+        drop: [
+            { name: "reddust", min: 1, max: 10, weight: 100 },
+            { name: "purpledust", min: 1, max: 10, weight: 50 },
+            { name: "greendust", min: 1, max: 10, weight: 25 },
+        ]
+    }),
     goat: (x, y) => ({
         id: getNextMobId(),
         type: "goat",
@@ -417,6 +444,7 @@ const mobTypes = {
         x, y,
         spawnX: x,
         spawnY: y,
+        multiTile: 4,//square tiles covered by mob
 
         hp: 2000,
         attack: 20,
@@ -447,6 +475,34 @@ const mobTypes = {
           active: 1,//when player can attack it
           passive: 2//when it won't appear to player
         }
+    }),
+    bigSlime: (x, y) => ({
+        id: getNextMobId(),
+        type: "bigSlime",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+        multiTile: 4,//square tiles covered by mob
+
+        hp: 1000,
+        attack: 20,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 10,
+        leashRadius: 10,
+
+        nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
+        facing: "left",
+        drop: [
+            { name: "hide", min: 1, max: 10, weight: 100 },
+            { name: "coin", min: 100, max: 500, weight: 50 },
+            { name: "rock", min: 100, max: 500, weight: 10 }
+        ],
     }),
     guard: (x, y) => ({
         id: getNextMobId(),
@@ -561,8 +617,8 @@ const mobSpawns = [
   {
     type: "spider",
     x:515, y:312,
-    count: 5,
-    respawnTime: 5000
+    count: 3,
+    respawnTime: 10000
   },
   {
     type: "domesticGoat",
