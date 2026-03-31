@@ -1486,6 +1486,7 @@ base_tiles = {
   "ghostR": { "x": 48, "y": 80 },//
   "ghostL": { "x": 64, "y": 96 },
   "grass": { "x": 0, "y": 0, 'roof': false, 'type': 'b-t', 'collision': false },//plain, "y":green grass
+  "swamp":{x:192,y:1280},
   "grass2": { "x": 160, "y": 608 },
   "cutGrass": { "x": 128, "y": 48 },//when grass2 gets cut
   "snow": { "x": 208, "y": 528, 'roof': false, 'type': 'b-t', 'collision': false },//

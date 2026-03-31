@@ -3076,7 +3076,6 @@ function drawHUD(){
         ctx.fillText(`Tax: ${kings[kingdom].tax}%`, 150, 16);
       }
     } else {
-      console.log("no mans land!");
       ctx.fillStyle = 'red';
       ctx.font = "12px Arial";
       ctx.fillText("No man's land", 0, 16);

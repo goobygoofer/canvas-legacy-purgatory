@@ -1175,6 +1175,64 @@ module.exports = {
     container: 'objects',
     collision: false
   },
+  "swampGrass":{
+    prettyName: "swamp grass",
+    kind: 'item',
+    id: 122,
+    container: 'objects',
+    collision: false
+  },
+/*
+  "cod":{
+    kind: "item",
+    id: 40,
+    container: "objects",
+    collision: false,
+    xp: 5
+  },
+*/
+  "bluefish":{
+    kind: "item",
+    id: 123,
+    container: "objects",
+    collision: false,
+    xp: 25
+  },
+  "greenfish":{
+    kind: "item",
+    id:124,
+    container: "objects",
+    collision: false,
+    xp: 30
+  },
+  "yellowfish":{
+    kind: "item",
+    id: 125,
+    container: "objects",
+    collision: false,
+    xp: 35
+  },
+ "rainbowfish":{
+   kind: "item",
+   id: 126,
+   container: "objects",
+   collision: false,
+   xp: 40
+ },
+ "tealfish":{
+  kind: "item",
+  id: 127,
+  container: "objects",
+  collision: false,
+  xp: 45
+ },
+ "shark":{
+  kind: "item",
+  id: 128,
+  container: "objects",
+  collision: false,
+  xp: 50
+ },
   //LAST ADDED ITEM
   "redcarpet": {
     prettyName: "carpet",
@@ -2688,6 +2746,11 @@ module.exports = {
     container: "b-t",
     collision: false
   },
+  "swamp":{
+    kind: "b-t",
+    container: "b-t",
+    collision: false
+  },
   "stoneBT":{
     kind: "b-t",
     container: "b-t",
@@ -2703,7 +2766,6 @@ module.exports = {
     container: 'floor',
     collision:false
   },
-  "grass2": {},
   "snow": {
     kind: "b-t",
     container: "b-t",

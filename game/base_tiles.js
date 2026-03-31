@@ -796,6 +796,62 @@ base_tiles = {
     container: 'objects',
     collision: false
   },
+  "swampGrass":{
+    x:160,y:608,
+    prettyName: "swamp grass",
+    kind: 'item',
+    id: 122,
+    container: 'objects',
+    collision: false
+  },
+  "bluefish":{
+    x:144,y:480,
+    kind: "item",
+    id: 123,
+    container: "objects",
+    collision: false,
+    xp: 25
+  },
+  "greenfish":{
+    x:160,y:480,
+    kind: "item",
+    id:124,
+    container: "objects",
+    collision: false,
+    xp: 30
+  },
+  "yellowfish":{
+    x:176,y:480,
+    kind: "item",
+    id: 125,
+    container: "objects",
+    collision: false,
+    xp: 35
+  },
+  "rainbowfish": {
+    x:192,y:480,
+    kind: "item",
+    id: 126,
+    container: "objects",
+    collision: false,
+    xp: 40
+  },
+  "tealfish": {
+    x:224,y:480,
+    kind: "item",
+    id: 127,
+    container: "objects",
+    collision: false,
+    xp: 45
+  },
+  "shark": {
+    x:240,y:480,
+    kind: "item",
+    id: 128,
+    container: "objects",
+    collision: false,
+    xp: 50
+  },
   //LAST ADDED ITEM
   "eastCrownL":{x:257,y:912},
   "eastCrownR":{x:239,y:912},
@@ -810,6 +866,12 @@ base_tiles = {
   "redcarpetCapRight":{
     x:192,y:576,
   },
+  "rabbitR":{x:32,y:528},
+  "rabbitL":{x:48,y:528},
+  "ghastR":{x:64,y:112},
+  "ghastL":{x:176,y:128},
+  "scorpionR":{x:256,y:144},
+  "scorpionL":{x:272,y:144},
   "eyeSocket":{
     x:208,y:688
   },
@@ -1486,7 +1548,7 @@ base_tiles = {
   "ghostR": { "x": 48, "y": 80 },//
   "ghostL": { "x": 64, "y": 96 },
   "grass": { "x": 0, "y": 0, 'roof': false, 'type': 'b-t', 'collision': false },//plain, "y":green grass
-  "grass2": { "x": 160, "y": 608 },
+  "swamp":{x:192,y:1280},
   "cutGrass": { "x": 128, "y": 48 },//when grass2 gets cut
   "snow": { "x": 208, "y": 528, 'roof': false, 'type': 'b-t', 'collision': false },//
   "tree": {//deprecated

@@ -41,6 +41,11 @@ for (let y = 0; y < map.Map.length; y++) {
       if (tile.objects && Object.keys(tile.objects).length === 0) {
         delete tile.objects;
       }
+      if (tile?.['b-t']){
+        if (tile['b-t']==='water'){
+          delete tile.objects;
+        }
+      }
       if (tile?.floor){
         if (Object.keys(tile.floor)[0]==='lightning'){
           delete tile.floor;
@@ -387,6 +392,11 @@ async function initPlayer(name) {
   if (player.king!==null){
     player.head = idByItem(player.king+"Crown");//assures they are wearing crown
   }
+  if (player.x===0){
+    player.x=49;
+    player.y=49;
+    player.z=0;
+  } //kludge, works for now
   addPlayerToTile(name, player.x, player.y, player.z);
   markTileChanged(player.x, player.y);
   await syncInventory(name);
@@ -1502,8 +1512,16 @@ function layTile(socket, data){
 }
 
 function playerPaint(name, data){//change this later
-  if (data.y < 0 || data.y > 499 || data.x < 0 || data.x > 499) return;
+  if (data.y < 0 || data.y > 599 || data.x < 0 || data.x > 799) return;
   let player = players[name];
+  if (data.y > player.y+6 || player.y < player.y-6){
+    console.log("paint out of bounds!");
+    return;
+  }
+  if (data.x > player.x+10 || player.x < player.x-10){
+    console.log("paint out of bounds!");
+    return;
+  }
   if (!player) return;
   let tile = getTile(data.x, data.y, player.z);
   let below = null;
@@ -1782,6 +1800,9 @@ async function parseCmdMsg(name, cmd) {
       sendMessage('pk message', `${words[1]} is not online...`, player);
     }
   }
+  if (words[0]==='help'){
+    helpChat(player, words);
+  }
   if (words[0] === "trade") {
     let targetName = words[1];
     if (targetName === name) {
@@ -1808,6 +1829,54 @@ async function parseCmdMsg(name, cmd) {
   if (words[0] === "tax") {
     await setTaxes(player, words[1]);
   }
+}
+
+function helpChat(player, words){
+  //words[0] is 'chat', if only words[0] send basic help, otherwise parse help words
+  if (words.length===1){
+    //send basic help
+    sendMessage(
+      'server message',
+      `<span style="color:green;">WASD or arrow keys to move around, Shift to interact with most things while standing on or next to thing.\nLeft click inventory item to select it, Right click to drop it, space to use or equip it.\nType '/help all' to see a list of /help commands to help you with stuff in the game! Stand on signs and press Shift for info!</span>`,
+      player
+    )
+    return;
+  }
+  switch (words[1]){
+    case 'trade':
+      sendMessage(
+        'server message',
+        `type '/trade playername123' (insert a real name, ding dong) to trade with another player if they are online. A message will appear in the chat log, click Accept to initiate trade or Decline to deny it.`,
+        player
+      )
+      return;
+    case 'controls':
+      sendMessage(
+        'server message',
+        `WASD/Arrow keys to move around. Left click an item in inventory to select it, Right click to drop it. Spacebar to use or equip selected inventory item. For range and mage, equip bow or mage book and arrows or dust, then Shift to shoot arrow or cast spell.`,
+        player
+      );
+      return;
+    case 'paint':
+      sendMessage(
+        'server message',
+        `Click the 'paint' tab, select a color (black by default), then left click/drag to paint on the map! Right click to erase pixels.`,
+        player
+      );
+      return;
+    case 'all':
+      sendMessage(
+        'server message',
+        `/help commands: 'all', 'trade', 'controls', paint`,
+        player
+      );
+      return;
+  }
+  sendMessage(
+    'server message',
+    `Syntax for /help is '/help <thing>', e.g. '/help trade' or '/help controls'. Type '/help all' for a list of help commands.`,
+    player
+  )
 }
 
 async function setTaxes(player, tax){
@@ -3057,11 +3126,44 @@ let fish = [
   'redfish'
 ]
 
+let swampFish = [
+  'bluefish',
+  'greenfish',
+  'yellowfish'
+]
+
+let sandFish = [
+  'rainbowfish',
+  'tealfish',
+  'shark'
+]
+
 async function randomChanceForFish(player, spot) {
   if (roll(player.fishingLvl)) {
     sendMessage('server message', 'You caught a fish!', player);
-    let caughtFish = fish[Math.floor(Math.random() * fish.length)];
-    await addItem(player.name, idByItem(caughtFish), 1);
+    //check what kinda b-t player is on
+    //if grass, regular fish
+    //if swamp, swamp fish
+    //if sand, desert fish
+    //if snow, snow fish
+    //catch fish first, if not level to catch fish, "it got off the hook!", still deplete spot!
+    let fishType = fish;//default to regular fish just in case
+    let pTile = getTile(player.x, player.y, 0);
+    switch (pTile['b-t']){
+      case 'grass':
+        fishType = fish;
+        break;
+      case 'swamp':
+        fishType = swampFish;
+      case 'sand':
+        fishType = sandFish;
+    }
+    let caughtFish = fishType[Math.floor(Math.random() * fishType.length)];
+    let addFish = await addItem(player.name, idByItem(caughtFish), 1);
+    if (addFish===0){
+      sendMessage('pk message', `You don't have room in your inventory for the fish so you throw it back into the water.`, player);
+      return;
+    }
     await syncInventory(player.name);
     let xp = baseTiles[caughtFish].xp;
     giveXp(player.name, xp, 'fishing');
@@ -4820,6 +4922,9 @@ async function replenishResources(farming=false) {
     await removeMobType("goat");
     await removeMobType("wolf");
     await removeMobType("poisonMushroom");
+    await removeMobType("rabbit");
+    await removeMobType("scorpion");
+    await removeMobType("ghast");
   }
   for (let y = 0; y < map.Map.length; y++) {
     for (let x = 0; x < map.Map[y].length; x++) {
@@ -4905,11 +5010,37 @@ async function replenishResources(farming=false) {
   `);
 }
 
+async function blob(cx, cy, size) {
+  const out = [{ x: cx, y: cy }];
+  const used = new Set([`${cx},${cy}`]);
+
+  const dirs = [
+    [1,0], [-1,0], [0,1], [0,-1]
+  ];
+
+  while (out.length < size) {
+    const base = out[Math.floor(Math.random() * out.length)];
+    const [dx, dy] = dirs[Math.floor(Math.random() * dirs.length)];
+
+    const x = base.x + dx;
+    const y = base.y + dy;
+    const k = `${x},${y}`;
+
+    if (!used.has(k)) {
+      used.add(k);
+      out.push({ x, y });
+    }
+  }
+
+  return out;
+}
+
 async function randMobsAndPlants(tile, x, y){
   const isEmpty = obj => !obj || Object.keys(obj).length === 0;
   //delete all flowers first
   //plant regens like this need separate fxns
   Object.keys(tile?.objects ?? {}).forEach(k => k.startsWith("flower") && delete tile.objects[k]);
+  Object.keys(tile?.objects ?? {}).forEach(k => k.startsWith("swamp") && delete tile.objects[k]);
   if (
     //will need to change this not to go on player plots and shit lol
     isEmpty(tile?.objects) &&
@@ -4953,7 +5084,30 @@ async function randMobsAndPlants(tile, x, y){
     isEmpty(tile?.objects) &&
     isEmpty(tile?.floor) &&
     isEmpty(tile?.depletedResources) &&
-    tile['b-t'] === 'grass' &&
+    tile['b-t'] === 'swamp' &&
+    !tile?.kTile//no mans land only
+  ) {
+    if (Math.random()*100<2){
+      const tiles = await blob(x, y, 10);
+      for (const { x: sx, y: sy } of tiles) {
+        let sTile = getTile(sx, sy, 0);
+        if (sTile?.['b-t']==='swamp'){
+            if (sTile?.objects){
+              if (Object.keys(sTile.objects).length>0){
+                continue;
+              }
+            }
+            addToMap('swampGrass', sx, sy);
+        }
+      }      
+    }
+
+  }
+  if (
+    isEmpty(tile?.objects) &&
+    isEmpty(tile?.floor) &&
+    isEmpty(tile?.depletedResources) &&
+    tile['b-t'] === 'swamp' &&
     !tile?.kTile//no mans land only
   ) {
     //random chance place a mushroom mob!
@@ -4986,6 +5140,25 @@ async function randMobsAndPlants(tile, x, y){
       }
     }
   }
+  let randRabbit = Math.floor(Math.random() * 3000);
+  if (randRabbit < 3 && z === 0) {//1/1000
+    if (
+      isEmpty(tile?.objects) &&
+      isEmpty(tile?.floor) &&
+      isEmpty(tile?.roof) &&
+      isEmpty(tile?.depletedResources) &&
+      tile['b-t'] === 'grass' &&
+      !isSafeActive(tile) &&
+      !tile?.kTile
+    ) {
+      let testRabbit = createMob('rabbit', x, y);
+      mobs.set(testRabbit.id, testRabbit);
+      tile.mob = {
+        id: testRabbit.id,
+        sprite: "rabbitL"
+      }
+    }
+  }
   let randWolf = Math.floor(Math.random() * 10000);
   if (randWolf < 3 && z === 0) {
     if (
@@ -5002,6 +5175,46 @@ async function randMobsAndPlants(tile, x, y){
       tile.mob = {
         id: testWolf.id,
         sprite: "wolfL"
+      }
+    }
+  }
+  let randScorp = Math.floor(Math.random() * 1000);
+  if (randScorp < 3 && z === 0) {
+    if (
+      isEmpty(tile?.objects) &&
+      isEmpty(tile?.floor) &&
+      isEmpty(tile?.roof) &&
+      isEmpty(tile?.depletedResources) &&
+      tile['b-t'] === 'sand' &&
+      !isSafeActive(tile) &&
+      !tile?.kTile
+    ) {
+      console.log("scorp!");
+      let testScorp = createMob('scorpion', x, y);
+      mobs.set(testScorp.id, testScorp);
+      tile.mob = {
+        id: testScorp.id,
+        sprite: "scorpionL"
+      }
+    }
+  }
+  let randGhast = Math.floor(Math.random() * 1000);
+  if (randGhast < 3 && z === 0) {
+    if (
+      isEmpty(tile?.objects) &&
+      isEmpty(tile?.floor) &&
+      isEmpty(tile?.roof) &&
+      isEmpty(tile?.depletedResources) &&
+      tile['b-t'] === 'swamp' &&
+      !isSafeActive(tile) &&
+      !tile?.kTile
+    ) {
+      console.log("ghast!");
+      let testGhast = createMob('ghast', x, y);
+      mobs.set(testGhast.id, testGhast);
+      tile.mob = {
+        id: testGhast.id,
+        sprite: "ghastL"
       }
     }
   }

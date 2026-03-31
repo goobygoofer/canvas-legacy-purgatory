@@ -198,6 +198,11 @@ window.addEventListener("DOMContentLoaded", () => {
   const messages = document.getElementById("messages");
   messages.append(line);
   messages.scrollTop = messages.scrollHeight;    // scroll to bottom
+let helpLine = document.createElement('div');
+helpLine.dataset.type = "game";
+helpLine.innerHTML = `Type /help if you are confused about anything!`;
+messages.append(helpLine);
+messages.scrollTop = messages.scrollHeight;
 });
   </script>
 </div>

@@ -33,6 +33,54 @@ const mobTypes = {
             { name: "rawRatmeat", min:1, max:1, weight: 1}
         ]
     }),
+    scorpion: (x, y) => ({
+        id: getNextMobId(),
+        type: "scorpion",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 100,
+        attack: 25,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 6,
+        leashRadius: 12,
+
+        nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
+        facing: "left",
+
+        drop: [
+            { name: "coin", min: 25, max: 50, weight: 100 },
+        ]
+    }),
+    ghast: (x, y) => ({
+        id: getNextMobId(),
+        type: "ghast",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 100,
+        attack: 25,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 6,
+        leashRadius: 12,
+
+        nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
+        facing: "left",
+    }),
     skeleton: (x, y) => ({
         id: getNextMobId(),
         type: "skeleton",
@@ -58,7 +106,6 @@ const mobTypes = {
         drop: [
             { name: "coin", min: 1, max: 10, weight: 100 },
             { name: "ironbar", min: 1, max: 2, weight: 20 },
-            { name: "healthpotion", min: 1, max: 1, weight: 1}
         ]
     }),
     goblin: (x, y) => ({
@@ -85,8 +132,6 @@ const mobTypes = {
 
         drop: [
             { name: "coin", min: 5, max: 25, weight: 1000 },
-            { name: "hide", min: 1, max: 2, weight: 200 },
-            { name: "flowercrown", min: 1, max: 2, weight: 100 },
             { name: "goblinsword", min: 1, max: 1, weight: 1 },
             { name: "healthpotion", min: 1, max: 1, weight: 50 },
             { name: "grapeSeed", min: 1, max: 1, weight: 100 }
@@ -201,6 +246,34 @@ const mobTypes = {
             { name: "rawMeat", min:1, max:1, weight: 50 }
         ]
     }),
+    rabbit: (x, y) => ({
+        id: getNextMobId(),
+        type: "rabbit",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 10,
+        attack: 0,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        aggroRadius: 0,
+        leashRadius: 25,
+
+        nextThink: 0,
+        baseSpeed: 2000+Math.floor(Math.random()*100),
+        pursuitSpeed: 2000+Math.floor(Math.random()*100),
+        thinkSpeed: 2000+Math.floor(Math.random()*100),
+        facing: "left",
+        passive: true,
+        drop: [
+            { name: "hide", min: 1, max: 2, weight: 100 },
+            { name: "carrotSeed", min: 1, max: 2, weight: 100 },
+            { name: "rawMeat", min:1, max:1, weight: 1 }
+        ]
+    }),
     zorg: (x, y) => ({
         id: getNextMobId(),
         type: "zorg",
@@ -229,8 +302,6 @@ const mobTypes = {
         facing: "left",
         drop: [
             { name: "coin", min: 100, max: 250, weight: 10000 },
-            { name: "orangedust", min: 25, max: 50, weight: 1000 },
-            { name: "bluedust", min: 25, max: 50, weight: 500 },
             { name: "yellowdust", min:25, max: 50, weight: 250 },
             { name: "speedboots", min:1, max: 1, weight: 1}
         ]
@@ -257,9 +328,6 @@ const mobTypes = {
         pursuitSpeed: 500+Math.floor(Math.random()*100),
         thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
-        drop: [
-            { name: "hide", min: 1, max: 1, weight: 100 },
-        ]
     }),
     resourceMob: (x, y) => ({
         id: getNextMobId(),
@@ -344,8 +412,7 @@ const mobTypes = {
         facing: "left",
 
         drop: [
-            { name: "coin", min: 5, max: 50, weight: 1000 },
-            { name: "string", min:1, max: 1, weight: 1000 }
+            { name: "string", min:1, max: 1, weight: 100 }
         ]
     }),
     spiderQueen: (x, y) => ({
@@ -380,10 +447,9 @@ const mobTypes = {
         drop: [
             { name: "coin", min: 200, max: 1000, weight: 10000 },
             { name: "string", min:1, max: 10, weight: 10000 },
-            { name: "speedboots", min:1, max:10, weight: 1},
+            { name: "speedboots", min:1, max:1, weight: 1 },
             { name: "manapotion", min:1, max: 5, weight: 500 },
-            { name: "diamondbar", min:1, max: 5, weight: 100},
-            { name: "goldbar", min:1, max: 10, weight: 500}
+            { name: "gold", min:1, max: 10, weight: 500 }
         ]
     }),
     spiderweb: (x, y) => ({
@@ -466,7 +532,6 @@ const mobTypes = {
           slowTime: 1000
         },
         drop: [
-            { name: "hide", min: 1, max: 10, weight: 100 },
             { name: "coin", min: 100, max: 500, weight: 50 },
             { name: "rock", min: 100, max: 500, weight: 10 }
         ],
