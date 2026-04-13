@@ -2,6 +2,7 @@ var devMode = false;//or if Admin in code
 var noCollision = false;
 
 const baseTiles = require('./server_base_tiles.js');
+const books = require('./books.js');
 const fs = require('fs');
 var map = {
   Map: require('./blank_map.json'),
@@ -307,6 +308,7 @@ async function initPlayer(name) {
   players[name] = {// Initialize player object
     name: name,
     king: result[0].king,
+    pledge: result[0].pledge,
     takingThrone: false,
     x: result[0].x,
     y: result[0].y,
@@ -881,7 +883,8 @@ async function emitPlayerState(player) {
       farmingLvl: player.farmingLvl,
       activeInvItem: player.activeInventory,
       obscured: player.obscured,
-      name: player.name
+      name: player.name,
+      pledge: player.pledge
     });
   }
 }
@@ -889,6 +892,9 @@ async function emitPlayerState(player) {
 async function playerDeath(player) {
   if (player.lastHitBy !== null && player.lastHitBy !== player.name) {
     sendMessage('pk message', `${player.name} was defeated by ${player.lastHitBy}!`);
+    //bounty stuff here, prevent murderer if applicable
+    //check if player.lastHitBy is bounty hunter && if player has a bounty
+    //if bounty hunter and player bounty, payout bounty to bounty hunters bank
     if (!player.murderer && !player.criminal) {
       sendMessage('pk message', `${player.lastHitBy} is now a murderer!`);
       await startMurdererTimer(player.lastHitBy);
@@ -1032,6 +1038,7 @@ async function updatePlayerState(player) {
   player.miningLvl = await levelFromXp(player.miningXpTotal);
   player.fishingLvl = await levelFromXp(player.fishingXpTotal);
   player.mageLvl = await levelFromXp(player.mageXpTotal);
+  player.farmingLvl = await levelFromXp(player.farmingXpTotal);
 
   const currState = {
     x: player.x,
@@ -1059,7 +1066,9 @@ async function updatePlayerState(player) {
     woodcuttingLvl: player.woodcuttingLvl,
     woodcuttingXpTotal: player.woodcuttingXpTotal,
     miningLvl: player.miningLvl,
-    miningXpTotal: player.miningXpTotal
+    miningXpTotal: player.miningXpTotal,
+    farmingLvl: player.farmingLvl,
+    farmingXpTotal: player.farmingXpTotal
   };
 
   const last = player.lastState || {};
@@ -1080,6 +1089,7 @@ function mapUpdate() {
   for (const p in players) {
     const player = players[p];
     if (!player) continue;
+    environmentCheck(player);
     updatePlayerState(player);
     const chunk = map.Fxn.chunk(player.x, player.y);//coordinates only
     let newSum = 0;
@@ -1098,6 +1108,23 @@ function mapUpdate() {
     player.lastChunkSum = newSum;
     player.lastChunkKey = chunkKey;
     io.to(player.sock_id).emit('updateChunk', generateLiveChunk(p, chunk));
+  }
+}
+
+function environmentCheck(player){
+  //right now just check lava tiles to damage player
+  let tile = getTile(player.x, player.y, player.z);
+  if (!tile) return;//?
+  if (tile?.['b-t']){
+    if (tile['b-t']==='lava'){
+      //damage player if no fire boots (tba)
+      if (Date.now()>player.lastGather+500){
+        player.lastGather=Date.now();
+        damagePlayer(null, player, 25, 'fire');
+        sendMessage('pk message', `The lava burns you severely!`, player);        
+      }
+
+    }
   }
 }
 
@@ -1280,7 +1307,9 @@ io.on('connection', async (socket) => {
     if (!devMode && socket.user !== 'Admin') return;
     let player = players[socket.user];
     let tile = getTile(player.x, player.y, player.z);
-    tile.objects['sign'].text = data;
+    let signType = 'sign';
+    if (!tile.objects?.['sign']) signType = 'signPost';
+    tile.objects[signType].text = data;
   });
 
   socket.on('setOwner', (data) => {
@@ -1519,7 +1548,6 @@ function playerPaint(name, data){//change this later
     return;
   }
   if (data.x > player.x+10 || player.x < player.x-10){
-    console.log("paint out of bounds!");
     return;
   }
   if (!player) return;
@@ -1803,6 +1831,10 @@ async function parseCmdMsg(name, cmd) {
   if (words[0]==='help'){
     helpChat(player, words);
   }
+  if (words[0]==='bounty'){
+    //await setBounty(player, words);
+    sendMessage('pk message', `This feature is in development!`, player);
+  }
   if (words[0] === "trade") {
     let targetName = words[1];
     if (targetName === name) {
@@ -1829,6 +1861,76 @@ async function parseCmdMsg(name, cmd) {
   if (words[0] === "tax") {
     await setTaxes(player, words[1]);
   }
+}
+
+async function setBounty(player, words){
+  //words[0] bounty, words[1] name, words[2] amount of coin
+  if (player.king===null){
+    sendMessage('pk message', `Only the king may set bounties!`, player);
+    return;
+  }
+  if (player.name===words[1]){
+    sendMessage('pk message', `You can't set a bounty on yourself!`, player);
+    return;
+  }
+  if (words[1]==='Admin'){
+    sendMessage('pk message', `Lightning strikes the turrets of your castle!`, player);
+    return;
+  }
+  let targetPlayer = words[1];
+  const [row] = await query(
+    `SELECT 1 FROM players WHERE player_name = ? LIMIT 1`,
+    [targetPlayer]
+  );
+  if (!row){
+    sendMessage('pk message', `${targetPlayer} does not exist, or check that you spelled the player's name correctly.`, player);
+    return;
+  }
+  const bounty = Number(words[2]);
+  if (isNaN(bounty) || bounty <= 0){
+    sendMessage('pk message', `Enter a valid number of coins for bounty. ex: '/bounty playerName 12345'`, player);
+    return;
+  }
+  let hasCoin = await getItemAmount(player.name, 21);
+  if (hasCoin < bounty) {
+    sendMessage('pk message', `You only have ${hasCoin} coins, bounty cannot be set!`, player);
+    return;
+  }
+  await removeItem(player.name, 21, bounty);
+  //check if bounty exists/is compounding
+  let existingBounty = false;
+  let bountyQuery = [targetPlayer, player.king];
+  let [hasBounty] = await query(`select * from bounties where player_name = ? and kingdom = ?`, bountyQuery);
+  if (hasBounty){
+    //exists, hasBounty.amount is the existing amount of bounty
+    existingBounty = true;
+  }
+  await query(
+    `INSERT INTO bounties (player_name, kingdom, amount)
+    VALUES (?, ?, ?)
+    ON DUPLICATE KEY UPDATE amount = amount + VALUES(amount)`,
+    [targetPlayer, player.king, bounty]
+  );
+  sendMessage('server message', `You set a bounty of ${bounty} coins on ${words[1]}!`, player);
+  if (existingBounty===true){
+    sendMessage('server message', `Total bounty for ${targetPlayer} is now ${hasBounty.amount + bounty} coins!`, player);
+  }
+  let targetSide = await query(`select pledge from players where player_name = ?`, [targetPlayer]);
+  if (targetSide[0] && targetSide[0]?.pledge === player.king){
+    await query(`update players set pledge = NULL where player_name = ?`, [targetPlayer]);
+    sendMessage('server message', `${targetPlayer} was unpledged from the kingdom!`, player);
+  }
+  if (players[targetPlayer]){
+    sendMessage('pk message', `King ${player.name} of the ${player.king} kingdom has put a bounty of ${bounty} coins on your head!`, players[targetPlayer]);
+    if (existingBounty===true){
+      sendMessage('pk message', `You now have a bounty of ${hasBounty.amount + bounty} coins on your head!`, players[targetPlayer]);
+    }
+    if (players[targetPlayer].pledge===player.king){
+      players[targetPlayer].pledge = null;
+      sendMessage('pk message', `You have lost your citizenship of the ${player.king} kingdom!`, players[targetPlayer]);
+    }
+  }
+  sendMessage('pk message', `King ${player.name} of the ${player.king} kingdom has set the bounty on ${targetPlayer} to ${hasBounty?.amount || 0 + bounty} coins!`);
 }
 
 function helpChat(player, words){
@@ -2042,7 +2144,7 @@ async function movePlayer(name, data) {
   let checkTile = getTile(modCoords.x, modCoords.y, player.z);
   let checkCol = getColumn(modCoords.x, modCoords.y);
 
-  // ===== Z LOGIC =====
+ // ===== Z LOGIC =====
 
   let targetZ = player.z;
 
@@ -2775,6 +2877,8 @@ function damagePlayer(player, targetPlayer, damage, type) {
   if (player !== null) {
     if (!targetPlayer.criminal && !targetPlayer.murderer && targetPlayer.name !== player.name) {
       if (!player.criminal && !player.murderer) {
+        //bounty stuff here, prevent criminal if applicable
+        //check if player is a bounty hunter AND if targetPlayer has a bounty
         startCriminalTimer(player.name);//15 min criminal!
         sendMessage('pk message', 'You are now wanted!', player);
       }
@@ -3480,7 +3584,7 @@ async function taxCoins(name, amt){
   coinTax = kingdoms[kingdom].tax;
   if (kingName===null) return;//no tax!
   if (coinTax===0) return;//hmm, no tax!
-  let percentTaken = Math.floor(amt-(amt*(coinTax/100)));
+  let percentTaken = Math.floor(amt*(coinTax/100));
   if (percentTaken>=amt) return;//I guess this makes sense?
   sendMessage('server message', `You pay ${percentTaken} coins in taxes to the ${kingdom} kingdom.`, player);
   await removeItem(name, 21, percentTaken);
@@ -3531,8 +3635,8 @@ async function checkInteract(name, mapObjects) {
     useDoor(name);
     return true;
   }
-  if (objName === 'sign') {
-    readSign(name);
+  if (objName === 'sign' || objName === 'signPost') {
+    readSign(name, objName);
     return true;
   }
   if (objName === 'leaderboard') {
@@ -3560,7 +3664,82 @@ async function checkInteract(name, mapObjects) {
   if (objName.startsWith('throne')){
     await claimThrone(name, objName);
   }
+  if (objName.startsWith('pledgeFlag')){
+    await pledgeKingdom(name, objName);
+  }
+  if (objName.startsWith('book')){
+    await readBook(name, objName);
+  }
   return false;
+}
+
+async function readBook(name, objName){
+  //send book text to player, gets stored in book obj on frontend
+  //readBook popup on front end that lets you flip through pages
+  //if book has attributes, do action (give xp, teleport, etc)
+  //needs kind, container, collision in server_base_tiles. objName same as name in ./books
+  let player = players[name];
+  if (!player) return;
+  console.log(`objName: ${objName}`);
+  let bookName = baseTiles[objName].bookName;
+  console.log(`bookName: ${bookName}`);
+  let text = books[bookName].text;
+
+  io.to(player.sock_id).emit('readBook', {
+    name: bookName,
+    text: text
+  });
+}
+
+async function pledgeKingdom(name, flag){
+  console.log(`Pledged to ${flag} kingdom`);
+  let player = players[name];
+  if (player.king!==null){
+    sendMessage('pk message', `You are the king, you cannot pledge or unpledge!`, player);
+    return;
+  }
+  let side;
+  switch (flag){
+    case 'pledgeFlagEast':
+      side='east';
+      break;
+    case 'pledgeFlagWest':
+      side='west';
+      break;
+  }
+  let [hasBounty] = await query(`select * from bounties where player_name = ? and kingdom = ?`, [name, side]);
+  if (hasBounty){
+    if (hasBounty.kingdom === side){
+      sendMessage('pk message', `You are wanted in the ${side}, the recruiter denies your request to pledge!`, player);
+      return;
+    }
+  }
+  let playerPledge = await query(`select pledge, pledgeDate from players where player_name = ?`,[name]);
+  if (playerPledge[0].pledge===side){
+    if (Date.now() - playerPledge[0].pledgeDate < 86400000){
+      sendMessage('pk message', `You must wait 24 hours before unpledging!`, player);
+    } else {
+      await query(`update players set pledge = null, pledgeDate = ? where player_name = ?`, [Date.now(), name]);
+      sendMessage('server message', `You cease to be a constituent of the ${side} kingdom.`, player);
+    }
+    return;
+  }
+  if (playerPledge[0].pledge===null){
+    //set pledge and pledgeDate
+    await query(`update players set pledge = ?, pledgeDate = ? where player_name = ?`, [side, Date.now(), name]);
+    sendMessage('server message', `You pledge allegiance to the ${side} kingdom!`, player);
+    return;
+  }
+  if (playerPledge[0].pledge!==side){
+    //one or other side, check time, set if good
+    if (Date.now() - playerPledge[0].pledgeDate < 86400000){
+      sendMessage('pk message', `You must wait 24 hours before unpledging!`, player);
+    } else {
+      await query(`update players set pledge = ?, pledgeDate = ? where player_name = ?`, [side, Date.now(), name]);
+      sendMessage('server message', `You pledge allegiance to the ${side} kingdom!`, player);
+    }
+    return;
+  }
 }
 
 let kingdoms = {
@@ -3568,13 +3747,15 @@ let kingdoms = {
     king: null,//pull from database
     guards: 0,//pull from db
     activeGuard: 0,
-    tax: 0//percent 0-50
+    tax: 0,//percent 0-50
+    beds: 0
   },
   'west':{
     king: null,//pull from database
     guards: 0,//pull from db
     activeGuard: 0,
-    tax: 0//percent 0-50
+    tax: 0,//percent 0-50
+    beds: 0
   }
 }
 
@@ -3584,12 +3765,14 @@ async function initKingdoms(){
   kingdoms['west'].king=west[0].king;
   kingdoms['west'].guards=west[0].guards;
   kingdoms['west'].tax=west[0].tax;
+  kingdoms['west'].beds=west[0].beds;
   let east = await query(`select * from kingdoms where kingdom = 'east'`, []);
   kingdoms['east'].king=east[0].king;
   kingdoms['east'].guards=east[0].guards;
   kingdoms['east'].tax=east[0].tax;
-  console.log(`East\nKing: ${kingdoms['east'].king}, Guards: ${kingdoms['east'].guards}, Tax: ${kingdoms['east'].tax}`);
-  console.log(`West\nKing: ${kingdoms['west'].king}, Guards: ${kingdoms['west'].guards}, Tax: ${kingdoms['west'].tax}`);
+  kingdoms['east'].beds=east[0].beds;
+  console.log(`East\nKing: ${kingdoms['east'].king}, Guards: ${kingdoms['east'].guards}, Tax: ${kingdoms['east'].tax}, Beds: ${kingdoms['east'].beds}`);
+  console.log(`West\nKing: ${kingdoms['west'].king}, Guards: ${kingdoms['west'].guards}, Tax: ${kingdoms['west'].tax}, Beds: ${kingdoms['west'].beds}`);
   for (const spawn of mobSpawns) {//put this here cause initKingdoms took too fuckin long lol
     for (let i = 0; i < spawn.count; i++) {
       spawnMob(spawn);
@@ -3603,6 +3786,7 @@ async function dbKingdoms(){
   //save kingdom king and guards to db
   await query(`update kingdoms set guards = ${kingdoms['west'].guards} where kingdom = 'west'`,[]);
   await query (`update kingdoms set guards = ${kingdoms['east'].guards} where kingdom = 'east'`,[]);
+
   await query(`update kingdoms set tax = ${kingdoms['west'].tax} where kingdom = 'west'`,[]);
   await query (`update kingdoms set tax = ${kingdoms['east'].tax} where kingdom = 'east'`,[]);
 }
@@ -3699,6 +3883,7 @@ async function setNewKing(name, throne){
   }
   await query(`UPDATE kingdoms SET king = ? WHERE kingdom = ?;`, [name, kingdom]);
   await query(`update players set king = ? where player_name = ?;`, [kingdom, name]);
+  await query(`update players set pledge = ?, pledgeDate = ? where player_name = ?`, [kingdom, Date.now(), name]);
   kingdoms[kingdom].king = name;
   //then stuff about how long player has held king, king board etc
   const now = Date.now();
@@ -3735,7 +3920,6 @@ async function getKingReigns(kingdom, name) {
      ORDER BY start DESC`,
     [kingdom]
   );
-  console.log("got past queries");
   let reignData = rows.map(row => ({
     name: row.name,
     kingdom: row.kingdom,
@@ -3774,12 +3958,42 @@ function farmingCheck(playerName, plantObject, plantName){
 
 async function restUnownedBed(name){
   let player = players[name];
+  if (player.criminal===true || player.murderer===true){
+    sendMessage('pk message', `Ain't no rest for the wicked!`, player);
+    return;
+  }
   let purchased = false;
-  purchased = await purchaseItem(name, 'bedShop');
+  //only purchase if bed not paid for by respective kingdom (if even in a kingdom)
+  let checkTile = getTile(player.x, player.y, 0);//checking kingdom so z0
+  let kingdom = null;
+  if (checkTile?.kTile){
+    if (Object.keys(checkTile.kTile)[0]==='kWest') kingdom='west';
+    if (Object.keys(checkTile.kTile)[0]==='kEast') kingdom='east';
+  }
+  let sleepMsg;
+  if (kingdom!==null){
+    if (kingdoms[kingdom].beds>0 && player.pledge===kingdom){
+      purchased=true;
+      sleepMsg = `The kingdom has made accomodations for you, the bed is free.`;
+      await query(`update kingdoms set beds = beds - 1 where kingdom = ?`, [kingdom]);
+      kingdoms[kingdom].beds-=1;
+    } else {
+      purchased = await purchaseItem(name, 'bedShop');
+      if (player.pledge===kingdom){
+        sleepMsg = `The kingdom has no free beds, so you pay out of pocket for a bed.`;
+      } else {
+        sleepMsg = `You are not pledged to this kingdom, the innkeeper reluctantly lets you pay for a bed.`;
+      }
+    }
+  } else {
+    purchased = await purchaseItem(name, 'bedShop');
+    sleepMsg = `You pay to get some rest...`;
+  }
+
   if (purchased === false){
     return;
   }
-  sendMessage('server message', 'You pay to get some rest...', player);
+  sendMessage('server message', sleepMsg, player);
   startChannel({
     playerName: name,
     duration: 5000,
@@ -3787,13 +4001,14 @@ async function restUnownedBed(name){
 
     onComplete: () => {
       player.hp = player.maxHp;
+      player.mana = player.maxMana;
       emitPlayerState(player);
       sendMessage('server message', 'You feel well rested!', player);
     },
 
     onCancel: () => {
       damagePlayer(null, player, 5, "insomnia");
-      sendMessage('pk message', 'You wake up groggy and had to pay for the bed anyway!', player);
+      sendMessage('pk message', 'You wake up groggy and hit your head on a bedpost!', player);
     }
   });
 }
@@ -3845,7 +4060,10 @@ async function purchaseItem(playerName, objName){
         sendMessage('pk message', `You need ${costAmount} ${costItemName} to purchase this.`, player);
         return false;
     }
-
+    if (itemDef?.kingdom) {
+      await kingPurchase(player, itemDef.item);
+      return;
+    }
     // ---------- deduct cost ----------
     await removeItem(playerName, costItemId, costAmount);
 
@@ -3855,10 +4073,6 @@ async function purchaseItem(playerName, objName){
         await purchaseGame(player, itemDef.item);
         return;
       }
-    }
-    if (itemDef?.kingdom){
-      await kingPurchase(player, itemDef.item);
-      return;
     }
     // ---------- add the purchased item safely ----------
     let added = 0;
@@ -3905,9 +4119,20 @@ async function kingPurchase(player, item){
       return;
     }
     await removeItem(player.name, 21, 1000);
-    sendMessage('server message', `You put 1000 coins into the coffer for a guard's salary.`, player);
     kingdoms[player.king].guards+=1;
     await query (`update kingdoms set guards = guards + ? where kingdom = ?`, [1, player.king]);
+    sendMessage('server message', `You put 1000 coins into the coffer for a guard's salary.`, player);
+  }
+  if (item==='bed'){
+    let hasCoin = await getItemAmount(player.name, 21);
+    if (hasCoin<100){
+      sendMessage('pk message', `100 coins are required to pay inn keepers for 20 free beds!`, player);
+      return;
+    }
+    await removeItem(player.name, 21, 100);
+    kingdoms[player.king].beds+=20;
+    await query (`update kingdoms set beds = beds + ? where kingdom = ?`, [20, player.king]);
+    sendMessage('server message', `You put 100 coins into the coffer and free up 20 beds at inns across the kingdom. There are currently ${kingdoms[player.king].beds} available.`, player);
   }
 }
 
@@ -3960,10 +4185,10 @@ async function readLeaderboard(name) {
   io.to(players[name].sock_id).emit('leaderboardData', leaderboard);
 }
 
-function readSign(name) {
+function readSign(name, signType) {
   let player = players[name];
   let tile = getTile(player.x, player.y, player.z);
-  let text = String(tile.objects['sign'].text);
+  let text = String(tile.objects[signType].text);
   sendMessage('readSign', text, player);
 }
 
@@ -4294,13 +4519,13 @@ async function consume(playerName, id) {
 }
 
 async function eatDrinkTimed(name, itemObj) {
+  let player = players[name];
   startChannel({
     playerName: name,
     duration: itemObj.time,
-    cancelOnMove: true,
+    cancelOnMove: itemObj?.cancelOnMove ?? false,
 
     onComplete: async () => {
-      const player = players[name];
       if (itemObj?.hp){
         player.hp += itemObj.hp;
         if (player.hp > player.maxHp) {

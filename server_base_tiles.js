@@ -198,7 +198,8 @@ module.exports = {
       collision: false,
       hp: 5,
       time: 2000,
-      consume: true
+      consume: true,
+      cancelOnMove: true
   },
   "hide": {
     kind: "item",
@@ -910,6 +911,7 @@ module.exports = {
     hp: 5,
     time: 1000,
     consume: true,
+    cancelOnMove: true,
     seed: {item:"wheatSeed", amt: 4},
   },
   "bread":{
@@ -920,6 +922,7 @@ module.exports = {
     hp: 15,
     time: 1000,
     consume: true,
+    cancelOnMove: true,
     cook: { wheat: 1, waterbucket: 1 }
   },
   "tomato":{
@@ -930,6 +933,7 @@ module.exports = {
     hp: 10,
     time: 2000,
     consume: true,
+    cancelOnMove: true,
     seed: {item:'tomatoSeed', amt:4}
   },
   "fishSandwich":{
@@ -941,6 +945,7 @@ module.exports = {
     hp: 40,
     time: 2000,
     consume: true,
+    cancelOnMove: true,
     cook: { bread: 1, cookedRedfish: 1, tomato: 1 }
   },
   "rawMeat":{
@@ -951,7 +956,8 @@ module.exports = {
     collision: false,
     hp: -20,
     time: 2000,
-    consume: true
+    consume: true,
+    cancelOnMove: true,
   },
   "cookedMeat":{
     prettyName: "cooked meat",
@@ -962,6 +968,7 @@ module.exports = {
     hp: 20,
     time: 2000,
     consume: true,
+    cancelOnMove: true,
     cook: {rawMeat: 1}
   },
   "meatSandwich":{
@@ -973,6 +980,7 @@ module.exports = {
     hp: 45,
     time: 2000,
     consume: true,
+    cancelOnMove: true,
     cook: {cookedMeat:1, bread:1, tomato:1}
   },
   "carrot":{
@@ -983,6 +991,7 @@ module.exports = {
     hp: 10,
     time: 2000,
     consume: true,
+    cancelOnMove: true,
     seed: {item:"carrotSeed", amt: 4}
   },
   "rawRatmeat":{//96, 144
@@ -993,7 +1002,8 @@ module.exports = {
     collision: false,
     hp: -25,
     time: 2000,
-    consume: true
+    consume: true,
+    cancelOnMove: true,
   },
   "cookedRatmeat":{
     prettyName: "cooked rat meat",
@@ -1004,6 +1014,7 @@ module.exports = {
     hp: 5,
     time: 2000,
     consume: true,
+    cancelOnMove: true,
     cook: {rawRatmeat:1}
   },
   "ratStew":{
@@ -1015,6 +1026,7 @@ module.exports = {
     hp: 100,
     time: 1000,
     consume: true,
+    cancelOnMove: true,
     cook: {cookedRatmeat: 1, carrot: 2, tomato: 2, waterbucket: 1}
   },
   "wheatSeed":{
@@ -1059,6 +1071,7 @@ module.exports = {
     mana: 10,
     time: 500,
     consume: true,
+    cancelOnMove: true,
     seed: {item:"grapeSeed", amt: 4}
   },
   "grapeSeed":{
@@ -1233,7 +1246,20 @@ module.exports = {
   collision: false,
   xp: 50
  },
+ "ectoplasm":{
+  kind: "item",
+  id: 129,
+  container: "objects",
+  collision: false
+ },
   //LAST ADDED ITEM
+  //BOOKS
+  "bookTheunorg's Diary":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    bookName: "Theunorg's Diary"//for ./books
+  },
   "redcarpet": {
     prettyName: "carpet",
     kind: 'item',
@@ -1250,6 +1276,18 @@ module.exports = {
   },
   "cookingRange":{
     prettyName: "cooking range",
+    kind: "interactable",
+    container: "objects",
+    collision: false
+  },
+  "pledgeFlagEast":{//check kTile, pledge to that kingdom
+    prettyName: "pledge flag",
+    kind: "interactable",
+    container: "objects",
+    collision: false
+  },
+  "pledgeFlagWest":{//check kTile, pledge to that kingdom
+    prettyName: "pledge flag",
     kind: "interactable",
     container: "objects",
     collision: false
@@ -1271,6 +1309,14 @@ module.exports = {
     cost: {coin: 1000},
     amount: 1,
     item: "guard",
+    kingdom: true
+  },
+  "kingBedShop":{
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 100},
+    amount: 1,//irrelevant here?
+    item: "bed",
     kingdom: true
   },
   "eyeGameShop":{
@@ -2751,6 +2797,11 @@ module.exports = {
     container: "b-t",
     collision: false
   },
+  "lava":{
+    kind: "b-t",
+    container: "b-t",
+    collision: false
+  },
   "stoneBT":{
     kind: "b-t",
     container: "b-t",
@@ -3309,6 +3360,12 @@ module.exports = {
     collision: true
   },
   "sign": {
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    text: null
+  },
+  "signPost": {
     kind: "interactable",
     container: "objects",
     collision: false,

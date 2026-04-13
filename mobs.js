@@ -80,6 +80,10 @@ const mobTypes = {
         pursuitSpeed: 500+Math.floor(Math.random()*100),
         thinkSpeed: 500+Math.floor(Math.random()*100),
         facing: "left",
+
+        drop: [
+            { name: "ectoplasm", min: 1, max: 1, weight: 100 },
+        ]
     }),
     skeleton: (x, y) => ({
         id: getNextMobId(),
@@ -383,6 +387,72 @@ const mobTypes = {
             //{ name: "<eye color>", min: 1, max: 5, weight: 100 }
         ]
     }),
+    gnoll: (x, y) => ({
+        id: getNextMobId(),
+        type: "gnoll",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 50,
+        attack: 10,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        rangeAttack: {
+            type: "stone",
+            slow: false,
+            //slowTime: 4000
+        },
+
+        aggroRadius: 10,
+        leashRadius: 15,
+
+        nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
+        facing: "left",
+
+        drop: [
+            { name: "coin", min:10, max: 50, weight: 100 },
+            { name: "rock", min: 10, max: 50, weight: 50}
+        ]
+    }),
+    dragon: (x, y) => ({
+        id: getNextMobId(),
+        type: "dragon",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 1000,
+        attack: 20,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        rangeAttack: {
+            type: "orangedust",
+            slow: false,
+            //slowTime: 4000
+        },
+
+        aggroRadius: 10,
+        leashRadius: 15,
+
+        nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
+        facing: "left",
+
+        drop: [
+            { name: "coin", min:500, max: 1000, weight: 100 },
+            { name: "gold", min: 1, max: 12, weight: 50}
+        ]
+    }),
     spider: (x, y) => ({
         id: getNextMobId(),
         type: "spider",
@@ -512,7 +582,7 @@ const mobTypes = {
         spawnY: y,
         multiTile: 4,//square tiles covered by mob
 
-        hp: 2000,
+        hp: 1000,
         attack: 20,
         lastAttack:Date.now(),
         state: "idle",
@@ -605,6 +675,60 @@ function createMob(type, x, y) {
 }
 
 const mobSpawns = [
+  {
+    type: "dragon",
+    x:437,y:321,
+    count: 2,
+    respawnTime: 10000
+  },
+  {
+    type: "dragon",
+    x:430,y:321,
+    count: 2,
+    respawnTime: 10000
+  },
+  {
+    type: "dragon",
+    x:433,y:312,
+    count: 2,
+    respawnTime: 10000
+  },
+  {
+    type: "dragon",
+    x:451,y:335,
+    count: 2,
+    respawnTime: 10000
+  },
+  {
+    type: "dragon",
+    x:419,y:313,
+    count: 2,
+    respawnTime: 10000
+  },
+  {
+    type: "dragon",
+    x:453,y:310,
+    count: 2,
+    respawnTime: 10000
+  },
+  {
+    type: "dragon",
+    x:475,y:305,
+    count: 2,
+    respawnTime: 10000
+  },
+  {
+    type: "gnoll",
+    x: 266, y: 84,
+    count: 2,
+    respawnTime: 5000
+  },
+  {
+    type: "gnoll",
+    x: 268, y: 88,
+    count: 2,
+    respawnTime: 5000
+  },
   {
     type: "guard",
     x:769, y:275,
