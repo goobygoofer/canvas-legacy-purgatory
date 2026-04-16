@@ -852,7 +852,29 @@ base_tiles = {
     collision: false,
     xp: 50
   },
+ "ectoplasm":{
+  x:144,y:880,
+  kind: "item",
+  id: 129,
+  container: "objects",
+  collision: false
+ },
   //LAST ADDED ITEM
+  //BOOKS
+  "bookTheunorg's Diary":{
+    x:302,y:256,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    bookName: "Theunorg's Diary"//for ./books
+  },
+  "bookReligions of Canvas":{
+    x:302,y:256,
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    bookName: "Religions of Canvas"
+  },
   "eastCrownL":{x:257,y:912},
   "eastCrownR":{x:239,y:912},
   "westCrownL":{x:17,y:32},
@@ -889,6 +911,12 @@ base_tiles = {
   "eyeRedR":{x:304,y:656},
   "cookingRange":{
     "x":192,"y":992
+  },
+  "pledgeFlagEast":{
+    x:208,y:640
+  },
+  "pledgeFlagWest":{
+    x:192,y:608
   },
   "pShadow":{
     "x":256,"y":752
@@ -929,6 +957,15 @@ base_tiles = {
     cost: {coin: 1000},
     amount: 1,
     item: "kingsguard"
+  },
+  "kingBedShop":{
+    x:256,y:816,
+    container: "objects",
+    kind: "interactable",
+    cost: {coin: 100},
+    amount: 1,//irrelevant here?
+    item: "guard",
+    kingdom: true
   },
   "eyeGameShop":{
     "x":256,"y":816,
@@ -1548,6 +1585,7 @@ base_tiles = {
   "ghostR": { "x": 48, "y": 80 },//
   "ghostL": { "x": 64, "y": 96 },
   "grass": { "x": 0, "y": 0, 'roof': false, 'type': 'b-t', 'collision': false },//plain, "y":green grass
+  "lava": {x:128,y:656},
   "swamp":{x:192,y:1280},
   "cutGrass": { "x": 128, "y": 48 },//when grass2 gets cut
   "snow": { "x": 208, "y": 528, 'roof': false, 'type': 'b-t', 'collision': false },//
@@ -2016,6 +2054,7 @@ base_tiles = {
   "table": { "x": 64, "y": 352 },
   "chair": { "x": 80, "y": 352 },
   "sign": { "x": 80, "y": 512 },
+  "signPost":{x:176,y:624},
   "deskHORIZ": { "x": 112, "y": 128 },
   "deskVERT": { "x": 0, "y": 144 },
   "deskCRV1": { "x": 16, "y": 144 },
@@ -2145,6 +2184,8 @@ base_tiles = {
   "kingsaid":{x:16,y:256},
   "gnollR": { "x": 224, "y": 576 },
   "gnollL": { "x": 240, "y": 576 },
+  "dragonR":{x:240,y:272},
+  "dragonL":{x:256,y:272},
   "rangeGoblinR": { "x": 80, "y": 336 },
   "rangeGoblinL": { "x": 96, "y": 336 },
   "mageLichR": { "x": 80, "y": 160, "collision": true },

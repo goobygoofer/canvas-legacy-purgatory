@@ -309,6 +309,7 @@ async function initPlayer(name) {
     name: name,
     king: result[0].king,
     pledge: result[0].pledge,
+    rank: result[0]?.player_rank ?? null,//should work
     takingThrone: false,
     x: result[0].x,
     y: result[0].y,
@@ -884,7 +885,8 @@ async function emitPlayerState(player) {
       activeInvItem: player.activeInventory,
       obscured: player.obscured,
       name: player.name,
-      pledge: player.pledge
+      pledge: player.pledge,
+      rank: player.rank
     });
   }
 }
@@ -895,7 +897,8 @@ async function playerDeath(player) {
     //bounty stuff here, prevent murderer if applicable
     //check if player.lastHitBy is bounty hunter && if player has a bounty
     //if bounty hunter and player bounty, payout bounty to bounty hunters bank
-    if (!player.murderer && !player.criminal) {
+    let protection = await checkBounty(player.lastHitBy, player.name);
+    if (!player.murderer && !player.criminal && protection === false) {
       sendMessage('pk message', `${player.lastHitBy} is now a murderer!`);
       await startMurdererTimer(player.lastHitBy);
     }
@@ -920,6 +923,33 @@ function sendMessage(type, text, player = null) {
   }
   //player not null, goes to a player
   io.to(player.sock_id).emit(type, { message: text });
+}
+
+async function checkBounty(playerName, targetName){
+  //return true for protected, false for not protected from murderer
+  let [pData] = await query(`select pledge, player_rank from players where player_name = ?`, [playerName]);
+  if (pData.pledge===null) return false;
+  if (pData.rank===null) return false;
+  let bountyParams = [targetName, pData.pledge];
+  let [bountyData] = await query(`select * from bounties where player_name = ? and kingdom = ?`, bountyParams);
+  if (!bountyData) return false;
+  //attacking player has authority to collect bounty, targetPlayer has bounty, good to go!
+  //public message of bounty collected, private msg to bountyhunter to say how much went to bank
+  //private msg to targetPlayer to say their bounty has been collected and their name is clear
+  //payout bounty to player's bank, clear bounty in db for targetPlayer
+  let payout = bountyData.amount;
+  await query(`delete from bounties where player_name = ? and kingdom = ?`, [targetName, pData.pledge]);
+  await addBankItem(playerName, 21, payout);
+  let player = players[playerName];
+  let targetPlayer = players[targetName];
+  if (player){
+    sendMessage('server message', `You collect a bounty of ${payout} coins for defeating ${targetName}. It has been sent to your bank`, player);
+  }
+  if (targetPlayer){
+    sendMessage('server message', `A bounty of ${payout} coins has been collected for your defeat. You are now a free man in the ${pData.pledge} kingdom!`, targetPlayer);
+  }
+  sendMessage('server message', `A bounty of ${payout} coins has been paid to ${playerName} by order of the ${pData.pledge} kingdom!`);
+  return true;
 }
 
 async function startMurdererTimer(name) {
@@ -1835,6 +1865,9 @@ async function parseCmdMsg(name, cmd) {
     //await setBounty(player, words);
     sendMessage('pk message', `This feature is in development!`, player);
   }
+  if (words[0]==='rank'){
+    await rankPlayer(player, words);
+  }
   if (words[0] === "trade") {
     let targetName = words[1];
     if (targetName === name) {
@@ -1861,6 +1894,51 @@ async function parseCmdMsg(name, cmd) {
   if (words[0] === "tax") {
     await setTaxes(player, words[1]);
   }
+}
+
+async function rankPlayer(player, words){
+  //words[0] rank, words[1] name, words[2] title
+  console.log(`targetPlayer: ${words[1]}, rank: ${words[2]}`);
+  if (player.king===null){
+    sendMessage('pk message', `Only the king may set ranks!`, player);
+    return;
+  }
+  if (player.name===words[1]){
+    sendMessage('pk message', `You are of the highest rank! You high or somethin'?`, player);
+    return;
+  }
+  if (words[1]==='Admin'){
+    sendMessage('pk message', `Lightning strikes the turrets of your castle!`, player);
+    return;
+  }
+  if (words[2]!=='knight' && words[2]!=='general' && words[2]!=='none'){
+    sendMessage('pk message', `Rank must be 'knight' or 'general'! 'none' to derank a player.`, player);
+    return;
+  }
+  let targetPlayer = words[1];
+  const [row] = await query(
+    `SELECT 1 FROM players WHERE player_name = ? LIMIT 1`,
+    [targetPlayer]
+  );
+  if (!row){
+    sendMessage('pk message', `${targetPlayer} does not exist, or check that you spelled the player's name correctly.`, player);
+    return;
+  }
+  let [targetSide] = await query(`select pledge from players where player_name = ?`, [targetPlayer]);
+  if (targetSide.pledge!==player.king){
+    sendMessage('pk message', `You can only rank constituents of your kingdom!`, player);
+    return;
+  }
+  let [targetRank] = await query(`select player_rank from players where player_name = ?`, [targetPlayer]);
+  if (targetRank.player_rank===words[2]){
+    sendMessage('pk message', `${targetPlayer} already holds the rank of ${words[2]}!`, player);
+    return;
+  }
+  sendMessage('server message', `You set ${targetPlayer}'s rank to ${words[2]}!`);
+  let setRank = words[2];
+  if (setRank === 'none') setRank = null;
+  query(`update players set player_rank = ? where player_name = ?`, [setRank, words[1]]);
+
 }
 
 async function setBounty(player, words){
@@ -2848,7 +2926,7 @@ async function areaStrike(mapTile, type){
   }, 250);
 }
 
-function damagePlayer(player, targetPlayer, damage, type) {
+async function damagePlayer(player, targetPlayer, damage, type) {
   if (targetPlayer.takingThrone===true){
     cancelPendingChannels(targetPlayer.name);
   }
@@ -2877,10 +2955,18 @@ function damagePlayer(player, targetPlayer, damage, type) {
   if (player !== null) {
     if (!targetPlayer.criminal && !targetPlayer.murderer && targetPlayer.name !== player.name) {
       if (!player.criminal && !player.murderer) {
-        //bounty stuff here, prevent criminal if applicable
-        //check if player is a bounty hunter AND if targetPlayer has a bounty
-        startCriminalTimer(player.name);//15 min criminal!
-        sendMessage('pk message', 'You are now wanted!', player);
+        let protection = false;
+        let bountyParams = [targetPlayer.name, player.pledge];
+        let [targetBounty] = await query(`select * from bounties where player_name = ? and kingdom = ?`, bountyParams);
+        if (targetBounty && player.rank!==null){
+          protection = true;
+        }
+        if (protection === false){
+          startCriminalTimer(player.name);//15 min criminal!
+          sendMessage('pk message', 'You are now wanted!', player);          
+        } else {
+          sendMessage('server message', `${targetPlayer.name}'s bounty prevents you from criminal status.`, player);
+        }
       }
     }
   }
@@ -3689,6 +3775,9 @@ async function readBook(name, objName){
     name: bookName,
     text: text
   });
+  //if baseTiles[objName]?.action, do thing
+  //for xp boosts, must be written/checked in db
+  //for action, must pass server fxns as args (like quests use)
 }
 
 async function pledgeKingdom(name, flag){
@@ -3720,7 +3809,11 @@ async function pledgeKingdom(name, flag){
       sendMessage('pk message', `You must wait 24 hours before unpledging!`, player);
     } else {
       await query(`update players set pledge = null, pledgeDate = ? where player_name = ?`, [Date.now(), name]);
-      sendMessage('server message', `You cease to be a constituent of the ${side} kingdom.`, player);
+      sendMessage('server message', `You cease to be a constituent of the ${side} kingdom. You no longer hold a rank if you had one!`, player);
+      //set rank to null, send message if it wasn't already null
+      //query rank
+      //query rank to null
+      await query(`update player set player_rank = null where player_name = ?`, [name]);
     }
     return;
   }

@@ -1028,6 +1028,173 @@ socket.on("chatEvent", (data) => {
   }
 });
 
+socket.on("readBook", (data) => {
+  console.log(`book name: ${data.name}`);
+  console.log(`text: ${data.text}`);
+  openBook(data.text, data.name);
+});
+
+let bookPopup = null;
+let bookPages = [];
+let bookIndex = 0;
+let isDragging = false;
+let dragOffset = { x: 0, y: 0 };
+
+function paginateBook(text, maxChars = 600) {
+  const pages = [];
+
+  for (let i = 0; i < text.length; i += maxChars) {
+    pages.push(text.slice(i, i + maxChars));
+  }
+
+  return pages;
+}
+
+function openBook(text, bookName) {
+  if (!text) return;
+
+  bookPages = paginateBook(String(text));
+  bookIndex = 0;
+
+  if (bookPopup) bookPopup.remove();
+
+  bookPopup = document.createElement("div");
+
+  Object.assign(bookPopup.style, {
+    position: "fixed",
+    top: "60%",
+    left: "50%",
+    transform: "translate(-50%, -50%)",
+    width: "380px",
+    height: "300px",
+    background: "#f4e7c5",
+    border: "2px solid #333",
+    zIndex: 9999,
+    display: "flex",
+    flexDirection: "column",
+    userSelect: "none",
+    fontSize: "12px"
+  });
+
+  // HEADER (drag handle)
+  const header = document.createElement("div");
+  header.innerText = bookName;//
+
+  Object.assign(header.style, {
+    background: "#d8c79a",
+    padding: "4px",
+    fontWeight: "bold",
+    cursor: "grab"
+  });
+
+  // PAGE AREA
+  const pageWrap = document.createElement("div");
+
+  Object.assign(pageWrap.style, {
+    flex: 1,
+    display: "flex",
+    gap: "6px",
+    padding: "6px",
+    overflow: "hidden"
+  });
+
+  const left = document.createElement("div");
+  const right = document.createElement("div");
+
+  Object.assign(left.style, {
+    flex: 1,
+    whiteSpace: "pre-wrap",
+    overflow: "hidden",
+    borderRight: "1px solid #999",
+    paddingRight: "4px"
+  });
+
+  Object.assign(right.style, {
+    flex: 1,
+    whiteSpace: "pre-wrap",
+    overflow: "hidden"
+  });
+
+  pageWrap.append(left, right);
+
+  // CONTROLS
+  const controls = document.createElement("div");
+
+  Object.assign(controls.style, {
+    display: "flex",
+    justifyContent: "space-between",
+    padding: "4px"
+  });
+
+  const prev = document.createElement("button");
+  const next = document.createElement("button");
+  const close = document.createElement("button");
+
+  prev.innerText = "<";
+  next.innerText = ">";
+  close.innerText = "x";
+
+  controls.append(prev, next, close);
+
+  function render() {
+    const page = bookPages[bookIndex] || "";
+
+    // SIMPLE AND SAFE: split only for display
+    const mid = Math.floor(page.length / 2);
+
+    left.innerText = page.slice(0, mid);
+    right.innerText = page.slice(mid);
+
+    prev.disabled = bookIndex === 0;
+    next.disabled = bookIndex === bookPages.length - 1;
+  }
+
+  prev.onclick = () => {
+    if (bookIndex > 0) {
+      bookIndex--;
+      render();
+    }
+  };
+
+  next.onclick = () => {
+    if (bookIndex < bookPages.length - 1) {
+      bookIndex++;
+      render();
+    }
+  };
+
+  close.onclick = () => {
+    bookPopup.remove();
+    bookPopup = null;
+  };
+
+  // DRAGGING
+  header.onmousedown = (e) => {
+    isDragging = true;
+    const rect = bookPopup.getBoundingClientRect();
+
+    dragOffset.x = e.clientX - rect.left;
+    dragOffset.y = e.clientY - rect.top;
+  };
+
+  document.onmousemove = (e) => {
+    if (!isDragging || !bookPopup) return;
+
+    bookPopup.style.left = `${e.clientX - dragOffset.x}px`;
+    bookPopup.style.top = `${e.clientY - dragOffset.y}px`;
+    bookPopup.style.transform = "none";
+  };
+
+  document.onmouseup = () => {
+    isDragging = false;
+  };
+
+  bookPopup.append(header, pageWrap, controls);
+  document.body.appendChild(bookPopup);
+
+  render();
+}
+
 let reignData = null;
 let kings = null;
 
@@ -1318,6 +1485,8 @@ socket.on('readSign', (data) => {
 
 socket.on('playerState', (data)=> {
   playerData.name = data.name;
+  playerData.pledge = data.pledge;
+  playerData.rank = data.rank;
   playerData.x=data.x;
   playerData.y=data.y;
   playerData.z=data.z;

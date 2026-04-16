@@ -1260,6 +1260,12 @@ module.exports = {
     collision: false,
     bookName: "Theunorg's Diary"//for ./books
   },
+  "bookReligions of Canvas":{
+    kind: "interactable",
+    container: "objects",
+    collision: false,
+    bookName: "Religions of Canvas"
+  },
   "redcarpet": {
     prettyName: "carpet",
     kind: 'item',
@@ -3249,6 +3255,9 @@ module.exports = {
     prettyName: "King's Aid",
     speech: `Stand on the coffer and press Shift to pay for guards to protect the throne! Salary for a guard is currently 1000 coins.`,
     action: async (player, sendMessage, kingdoms) => {
+          if (player.king===null){
+            return;
+          }
           sendMessage(
             'server message',
             `You currently have ${kingdoms[player.king].guards} guards on standby, ${kingdoms[player.king].activeGuard} are active.`,
