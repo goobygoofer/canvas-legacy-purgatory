@@ -94,7 +94,8 @@ let playerData = {
   head: null,
   feet: null,
   quiver: null,
-  hp: null
+  hp: null,
+  hasBounty: null
 };
 
 const itemById = Object.fromEntries(
@@ -1487,6 +1488,7 @@ socket.on('playerState', (data)=> {
   playerData.name = data.name;
   playerData.pledge = data.pledge;
   playerData.rank = data.rank;
+  playerData.hasBounty = data.hasBounty;
   playerData.x=data.x;
   playerData.y=data.y;
   playerData.z=data.z;
@@ -2879,6 +2881,36 @@ function drawPlayers(chunk){
             j * 32, i * 32, 32, 32
           );
         }
+        //superimpose stars if rank knight or general
+        if (players[p].rank!==null){
+          let starNum = 0;
+          if (players[p].rank==='knight') starNum = 1;
+          if (players[p].rank==='general') starNum = 2;
+          //draw stars
+          for (let s = 0; s < starNum; s++) {
+            const offsetX = s * 8 - ((starNum - 1) * 4); // center stars
+            const offsetY = -4; // slightly above player tile
+
+            ctx.fillStyle = 'yellow';
+            ctx.font = '12px monospace';
+            ctx.fillText('★', j * 32 + offsetX + 16, i * 32 + offsetY);
+          }
+        }
+        if (players[p]?.bounty !== null) {
+          const cx = j * 32 + 16;
+          const cy = i * 32 + 16;
+
+          if (players[p].bounty === 'east') {
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.1)';
+          } else if (players[p].bounty === 'west') {
+            ctx.fillStyle = 'rgba(0, 0, 255, 0.1)';
+          }
+
+          ctx.beginPath();
+          ctx.arc(cx, cy, 16, 0, Math.PI * 2); // radius = half tile
+          ctx.fill();
+        }
+        //superimpose signifier of having a bounty
       } catch (err) {
         //haha!
       }

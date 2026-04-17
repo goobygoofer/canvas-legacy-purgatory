@@ -305,11 +305,28 @@ async function initPlayer(name) {
   let miningLvl = await levelFromXp(result[0].miningXp);
   let fishingLvl = await levelFromXp(result[0].fishingXp);
 
+  let hasBounty = null;//for addPlayerToTile to display bounty on frontend
+  const [row] = await query(
+    `SELECT * FROM bounties WHERE player_name = ?`,
+    [name]
+  );
+  if (row){
+    switch (row.kingdom){
+      case 'east':
+        hasBounty='east';
+        break;
+      case 'west':
+        hasBounty='west';
+        break;
+    }
+  }
+
   players[name] = {// Initialize player object
     name: name,
     king: result[0].king,
     pledge: result[0].pledge,
     rank: result[0]?.player_rank ?? null,//should work
+    hasBounty: hasBounty,
     takingThrone: false,
     x: result[0].x,
     y: result[0].y,
@@ -772,7 +789,9 @@ function addPlayerToTile(name, x = null, y = null, z = null) {
     feet: player.feet,
     quiver: player.quiver, //prob not needed cause not visible
     murderSprite: player.murderSprite,
-    criminalSprite: player.criminalSprite
+    criminalSprite: player.criminalSprite,
+    rank: player.rank,
+    bounty: player.hasBounty,
   }
   markTileChanged(x, y);
 }
@@ -886,7 +905,8 @@ async function emitPlayerState(player) {
       obscured: player.obscured,
       name: player.name,
       pledge: player.pledge,
-      rank: player.rank
+      rank: player.rank,
+      hasBounty: player.hasBounty
     });
   }
 }
@@ -946,6 +966,7 @@ async function checkBounty(playerName, targetName){
     sendMessage('server message', `You collect a bounty of ${payout} coins for defeating ${targetName}. It has been sent to your bank`, player);
   }
   if (targetPlayer){
+    targetPlayer.hasBounty = null;
     sendMessage('server message', `A bounty of ${payout} coins has been collected for your defeat. You are now a free man in the ${pData.pledge} kingdom!`, targetPlayer);
   }
   sendMessage('server message', `A bounty of ${payout} coins has been paid to ${playerName} by order of the ${pData.pledge} kingdom!`);
@@ -1819,9 +1840,11 @@ function chatMessage(socket, msg){
     parseCmdMsg(socket.user, msg);
   } else {
     let senderName = socket.user;
+    let player = players[socket.user];
     if (players[socket.user].murderer===true){
       senderName = `<span style="color: red;">${senderName}</span>`;
     }
+    let prefixColor = 'yellow';//Ⓐ
     if (players[socket.user].king!==null){
       switch (players[socket.user].king){
         case 'east':
@@ -1831,7 +1854,28 @@ function chatMessage(socket, msg){
           senderName = `<span style="color: blue;">King</span> ${senderName}`;
           break;
       }
+    } else {
+      if (player.pledge===null){
+        senderName = `<span style="color: red;">Ⓐ</span> ${senderName}`;
+      }
+      switch (player.pledge){
+        case 'east':
+          senderName = `<span style="color: green;">${senderName}</span>`;
+          break;
+        case 'west':
+          senderName = `<span style="color: blue;">${senderName}</span>`;
+          break;
+      }
+      switch (player.rank){
+        case 'knight':
+          senderName = `<span style="color: yellow;">Sir</span>${senderName}`;
+          break;
+        case 'general':
+          senderName = `<span style="color: yellow;">Lord</span> ${senderName}`;
+          break;
+      }
     }
+
     io.emit('chat message', {
       user: senderName,
       message: msg
@@ -1862,8 +1906,8 @@ async function parseCmdMsg(name, cmd) {
     helpChat(player, words);
   }
   if (words[0]==='bounty'){
-    //await setBounty(player, words);
-    sendMessage('pk message', `This feature is in development!`, player);
+    await setBounty(player, words);
+    //sendMessage('pk message', `This feature is in development!`, player);
   }
   if (words[0]==='rank'){
     await rankPlayer(player, words);
@@ -2001,6 +2045,7 @@ async function setBounty(player, words){
   if (players[targetPlayer]){
     sendMessage('pk message', `King ${player.name} of the ${player.king} kingdom has put a bounty of ${bounty} coins on your head!`, players[targetPlayer]);
     if (existingBounty===true){
+      players[targetPlayer].hasBounty = player.king;
       sendMessage('pk message', `You now have a bounty of ${hasBounty.amount + bounty} coins on your head!`, players[targetPlayer]);
     }
     if (players[targetPlayer].pledge===player.king){
@@ -4200,11 +4245,15 @@ async function purchaseItem(playerName, objName){
 }
 
 async function kingPurchase(player, item){
-  if (player.king===null){
-    sendMessage('pk message', `Only for use by the king!`, player);
+  //change so generals can also make king purchases, but probably only guards?
+  if (player.king===null && player.rank !== 'general'){
+    sendMessage('pk message', `Only for use by the king and generals!`, player);
     return;
   }
   let currKingdom = player.king;
+  if (currKingdom===null){
+    currKingdom = player.pledge;//should work cause general has to be pledged
+  }
   if (item==='guard'){
     let hasCoin = await getItemAmount(player.name, 21);
     if (hasCoin<1000){
@@ -4212,8 +4261,8 @@ async function kingPurchase(player, item){
       return;
     }
     await removeItem(player.name, 21, 1000);
-    kingdoms[player.king].guards+=1;
-    await query (`update kingdoms set guards = guards + ? where kingdom = ?`, [1, player.king]);
+    kingdoms[currKingdom].guards+=1;
+    await query (`update kingdoms set guards = guards + ? where kingdom = ?`, [1, currKingdom]);
     sendMessage('server message', `You put 1000 coins into the coffer for a guard's salary.`, player);
   }
   if (item==='bed'){
@@ -4223,8 +4272,8 @@ async function kingPurchase(player, item){
       return;
     }
     await removeItem(player.name, 21, 100);
-    kingdoms[player.king].beds+=20;
-    await query (`update kingdoms set beds = beds + ? where kingdom = ?`, [20, player.king]);
+    kingdoms[currKingdom].beds+=20;
+    await query (`update kingdoms set beds = beds + ? where kingdom = ?`, [20, currKingdom]);
     sendMessage('server message', `You put 100 coins into the coffer and free up 20 beds at inns across the kingdom. There are currently ${kingdoms[player.king].beds} available.`, player);
   }
 }
