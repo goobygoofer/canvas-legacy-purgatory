@@ -420,6 +420,38 @@ const mobTypes = {
             { name: "rock", min: 10, max: 50, weight: 50}
         ]
     }),
+    yeti: (x, y) => ({
+        id: getNextMobId(),
+        type: "yeti",
+        x, y,
+        spawnX: x,
+        spawnY: y,
+
+        hp: 200,
+        attack: 20,
+        lastAttack:Date.now(),
+        state: "idle",
+        target: null,
+
+        rangeAttack: {
+            type: "snowball",
+            slow: false,
+            slowTime: 4000
+        },
+
+        aggroRadius: 10,
+        leashRadius: 15,
+
+        nextThink: 0,
+        baseSpeed: 500+Math.floor(Math.random()*100),
+        pursuitSpeed: 500+Math.floor(Math.random()*100),
+        thinkSpeed: 500+Math.floor(Math.random()*100),
+        facing: "left",
+
+        drop: [
+            { name: "coin", min:100, max: 250, weight: 100 }
+        ]
+    }),
     dragon: (x, y) => ({
         id: getNextMobId(),
         type: "dragon",
@@ -428,7 +460,7 @@ const mobTypes = {
         spawnY: y,
 
         hp: 1000,
-        attack: 20,
+        attack: 50,
         lastAttack:Date.now(),
         state: "idle",
         target: null,
@@ -449,8 +481,8 @@ const mobTypes = {
         facing: "left",
 
         drop: [
-            { name: "coin", min:500, max: 1000, weight: 100 },
-            { name: "gold", min: 1, max: 12, weight: 50}
+            { name: "coin", min:500, max: 750, weight: 100 },
+            { name: "gold", min: 1, max: 4, weight: 50}
         ]
     }),
     spider: (x, y) => ({
@@ -675,6 +707,24 @@ function createMob(type, x, y) {
 }
 
 const mobSpawns = [
+  {
+    type: "yeti",
+    x:633,y:143,
+    count:2,
+    respawnTime: 5000
+  },
+  {
+    type: "yeti",
+    x:629,y:128,
+    count:2,
+    respawnTime: 5000
+  },
+  {
+    type: "yeti",
+    x:645,y:117,
+    count:2,
+    respawnTime: 5000
+  },
   {
     type: "dragon",
     x:437,y:321,

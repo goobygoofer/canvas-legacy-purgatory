@@ -1282,6 +1282,12 @@ base_tiles = {
   "stoneDown": { "x": 256, "y": 0 },
   "stoneLeft": { "x": 256, "y": 0 },
   "stoneRight": { "x": 256, "y": 0 },
+
+  "snowballUp": { "x": 160, "y": 256 },
+  "snowballDown": { "x": 176, "y": 256 },
+  "snowballLeft": { "x": 192, "y": 256 },
+  "snowballRight": { "x": 208, "y": 256 },
+
   "speedbootsL": {
     "x":161,"y":448
   },
@@ -2184,6 +2190,8 @@ base_tiles = {
   "kingsaid":{x:16,y:256},
   "gnollR": { "x": 224, "y": 576 },
   "gnollL": { "x": 240, "y": 576 },
+  "yetiR":{x:256,y:528},
+  "yetiL":{x:240,y:528},
   "dragonR":{x:240,y:272},
   "dragonL":{x:256,y:272},
   "rangeGoblinR": { "x": 80, "y": 336 },

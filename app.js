@@ -152,6 +152,35 @@ app.post('/login', async (req, res) => {
 });
 
 app.use("/viewer", express.static(path.join(__dirname, "viewer")));
+app.use("/camera_view", express.static(path.join(__dirname, "camera_view")));
+app.get("/camera", (req, res) => {
+  res.sendFile(path.join(__dirname, "camera", "index.html"));
+});
+
+//CAM STUFF
+const cameraNamespace = io.of("/camera");
+
+let camera = null;
+let viewer = null;
+
+cameraNamespace.on("connection", (socket) => {
+
+  socket.on("register", (type) => {
+    if (type === "camera") camera = socket;
+
+    if (type === "viewer") {
+      viewer = socket;
+    }
+  });
+
+  socket.on("frame", (data) => {
+    if (socket === camera && viewer) {
+      viewer.emit("frame", data);
+    }
+  });
+
+});
+//END CAM STUFF
 
 async function queryPassword(name, pass) {
   if (name.length > 30 || pass.length > 99) return;
@@ -1844,7 +1873,6 @@ function chatMessage(socket, msg){
     if (players[socket.user].murderer===true){
       senderName = `<span style="color: red;">${senderName}</span>`;
     }
-    let prefixColor = 'yellow';//Ⓐ
     if (players[socket.user].king!==null){
       switch (players[socket.user].king){
         case 'east':
@@ -3855,9 +3883,6 @@ async function pledgeKingdom(name, flag){
     } else {
       await query(`update players set pledge = null, pledgeDate = ? where player_name = ?`, [Date.now(), name]);
       sendMessage('server message', `You cease to be a constituent of the ${side} kingdom. You no longer hold a rank if you had one!`, player);
-      //set rank to null, send message if it wasn't already null
-      //query rank
-      //query rank to null
       await query(`update player set player_rank = null where player_name = ?`, [name]);
     }
     return;
@@ -4202,6 +4227,10 @@ async function purchaseItem(playerName, objName){
       await kingPurchase(player, itemDef.item);
       return;
     }
+    if (itemDef?.anarchistPurchase){
+      await anarchistPurchase(player, itemDef.item);
+      return;//or just use rest of this function and have it marked anarchist, crim etc
+    }
     // ---------- deduct cost ----------
     await removeItem(playerName, costItemId, costAmount);
 
@@ -4244,6 +4273,18 @@ async function purchaseItem(playerName, objName){
     return true;
 }
 
+async function anarchistPurchase(player, item){
+  //sort of same as king purchase but player has to be unpledged
+  //pledgeDate must be at least 48 hrs ago
+  //success? criminal status
+  //for items, anarchist: true so only anarchists can use em
+  //--player.pledge!==null return
+  //--query pledgeDate, <48 hrs return
+  //--query coins, <cost return
+  //--
+  //OR just use rest of regular purchase fxn and use this as a true/false marker
+}
+
 async function kingPurchase(player, item){
   //change so generals can also make king purchases, but probably only guards?
   if (player.king===null && player.rank !== 'general'){
@@ -4274,7 +4315,7 @@ async function kingPurchase(player, item){
     await removeItem(player.name, 21, 100);
     kingdoms[currKingdom].beds+=20;
     await query (`update kingdoms set beds = beds + ? where kingdom = ?`, [20, currKingdom]);
-    sendMessage('server message', `You put 100 coins into the coffer and free up 20 beds at inns across the kingdom. There are currently ${kingdoms[player.king].beds} available.`, player);
+    sendMessage('server message', `You put 100 coins into the coffer and free up 20 beds at inns across the kingdom. There are currently ${kingdoms[currKingdom].beds} available.`, player);
   }
 }
 

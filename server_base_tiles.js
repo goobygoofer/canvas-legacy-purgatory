@@ -1436,6 +1436,9 @@ module.exports = {
   "stone":{
     attack: 25
   },
+  "snowball":{
+    attack: 20
+  },
   "campfire1": {
     container: "objects",
     collision: true
