@@ -6,22 +6,45 @@
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    const socket = io("/camera");
+    const socket = io("/camera", {
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000
+    });
 
-    async function startCamera() {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: true
-      });
+    let stream = null;
+    let canvas = null;
+    let ctx = null;
+    let interval = null;
 
-      const video = document.getElementById("video");
-      video.srcObject = stream;
+    // Runs EVERY time connection is established (initial + reconnect)
+    socket.on("connect", async () => {
+      console.log("Connected to server");
 
-      const canvas = document.createElement("canvas");
-      const ctx = canvas.getContext("2d");
-
+      // Register camera on every connection/reconnection
       socket.emit("register", "camera");
 
-      setInterval(() => {
+      // Only initialize camera ONCE
+      if (!stream) {
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
+
+        const video = document.getElementById("video");
+        video.srcObject = stream;
+
+        canvas = document.createElement("canvas");
+        ctx = canvas.getContext("2d");
+
+        startStreaming(video);
+      }
+    });
+
+    function startStreaming(video) {
+      // Prevent duplicate intervals
+      if (interval) return;
+
+      interval = setInterval(() => {
+        if (!socket.connected) return;
         if (video.readyState !== 4) return;
 
         canvas.width = video.videoWidth;
@@ -30,13 +53,17 @@
         ctx.drawImage(video, 0, 0);
 
         canvas.toBlob((blob) => {
-          socket.emit("frame", blob);
+          if (socket.connected) {
+            socket.emit("frame", blob);
+          }
         }, "image/jpeg", 0.6);
 
-      }, 100); // ~10fps
+      }, 100); // ~10 FPS
     }
 
-    startCamera();
+    socket.on("disconnect", (reason) => {
+      console.log("Disconnected:", reason);
+    });
   </script>
 </body>
 </html>

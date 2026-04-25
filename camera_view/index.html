@@ -1,22 +1,43 @@
 <!DOCTYPE html>
 <html>
 <body>
-  <h1>Viewer</h1>
-  <img id="feed">
+  <h1>Camera View</h1>
+
+  <img id="feed" style="max-width: 100%;">
+
+  <button id="saveBtn">Save Image</button>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io("/camera");
 
+    let latestBlob = null;
+
     socket.emit("register", "viewer");
 
     socket.on("frame", (data) => {
-      const img = document.getElementById("feed");
-
       const blob = new Blob([data], { type: "image/jpeg" });
+      latestBlob = blob;
 
+      const img = document.getElementById("feed");
       img.src = URL.createObjectURL(blob);
     });
+
+    document.getElementById("saveBtn").onclick = () => {
+      if (!latestBlob) return;
+
+      const url = URL.createObjectURL(latestBlob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `camera_${Date.now()}.jpg`;
+
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+
+      URL.revokeObjectURL(url);
+    };
   </script>
 </body>
 </html>

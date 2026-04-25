@@ -120,7 +120,6 @@ const io = new Server(server);
 app.use(express.urlencoded({ extended: true }));
 
 const query =  require('./db.js');
-//const querystring = require('querystring');
 
 var players = {};
 const PORT = process.env.PORT || 3000;
@@ -152,12 +151,35 @@ app.post('/login', async (req, res) => {
 });
 
 app.use("/viewer", express.static(path.join(__dirname, "viewer")));
-app.use("/camera_view", express.static(path.join(__dirname, "camera_view")));
-app.get("/camera", (req, res) => {
+
+//CAM STUFF
+const cam_pass = 'hylics=1337';
+function checkCamPass(req, res, next){
+  if (req.query.pass!==cam_pass){
+    return res.status(403).send("FAFO");
+  }
+  next();
+}
+app.get("/camera", checkCamPass, (req, res) => {
   res.sendFile(path.join(__dirname, "camera", "index.html"));
 });
 
-//CAM STUFF
+app.get("/camera_view", checkCamPass, (req, res) => {
+  res.sendFile(path.join(__dirname, "camera_view", "index.html"));
+});
+
+app.get("/kick_cam", checkCamPass, (req, res) => {
+  console.log("Attempting to kick camera and viewer");
+  if (camera){
+    camera.disconnect();
+    camera = null;
+  }
+  if (viewer){
+    viewer.disconnect();
+    viewer = null;
+  }
+});
+
 const cameraNamespace = io.of("/camera");
 
 let camera = null;
@@ -166,7 +188,12 @@ let viewer = null;
 cameraNamespace.on("connection", (socket) => {
 
   socket.on("register", (type) => {
-    if (type === "camera") camera = socket;
+    if (type === "camera") {
+      if (camera && camera !== socket) {
+        camera.disconnect();
+      }
+      camera = socket;
+    }
 
     if (type === "viewer") {
       viewer = socket;
@@ -176,6 +203,12 @@ cameraNamespace.on("connection", (socket) => {
   socket.on("frame", (data) => {
     if (socket === camera && viewer) {
       viewer.emit("frame", data);
+    }
+  });
+
+  socket.on("disconnect", () => {
+    if (socket === camera) {
+      camera = null;
     }
   });
 
