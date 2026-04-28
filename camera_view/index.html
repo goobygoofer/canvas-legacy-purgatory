@@ -6,6 +6,9 @@
   <img id="feed" style="max-width: 100%;">
 
   <button id="saveBtn">Save Image</button>
+  <button id="left">LEFT</button>
+  <button id="center">CENTER</button>
+  <button id="right">RIGHT</button>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
@@ -38,6 +41,15 @@
 
       URL.revokeObjectURL(url);
     };
+    document.getElementById('center').onclick = () => {
+      socket.emit('center');
+    }
+    document.getElementById('left').onclick = () => {
+      socket.emit('left');
+    }
+    document.getElementById('right').onclick = () => {
+      socket.emit('right');
+    }
   </script>
 </body>
 </html>

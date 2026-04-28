@@ -206,6 +206,22 @@ cameraNamespace.on("connection", (socket) => {
     }
   });
 
+  socket.on("center", (data) => {
+    //emit to camera_app left or right servo movement
+    camera.emit('center');
+  });
+  socket.on('left', (data) => {
+    camera.emit('left');
+  })
+  socket.on('right', (data) => {
+    camera.emit('right');
+  })
+
+  socket.on("saveFrame", (data) => {
+    //doesn't have to have data
+    //when viewer saves frame, camera_app saves frame too
+  });
+
   socket.on("disconnect", () => {
     if (socket === camera) {
       camera = null;
